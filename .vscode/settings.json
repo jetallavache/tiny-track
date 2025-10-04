@@ -1,0 +1,15 @@
+{
+    "files.associations": {
+        "in.h": "c",
+        "socket.h": "c",
+        "string.h": "c",
+        "sha.h": "c",
+        "base64.h": "c",
+        "e_os2.h": "c",
+        "stdio.h": "c",
+        "s_printf.h": "c",
+        "time.h": "c",
+        "errno.h": "c"
+    },
+    "C_Cpp.errorSquiggles": "disabled"
+}
