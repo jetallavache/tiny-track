@@ -27,8 +27,8 @@ clean:							# Cleanup. Delete built program and all build artifacts
 
 style_fix:
 	clang-format -i --style="{BasedOnStyle: Google}" $(SOURCES) $(HEADERS)
-	prettier --write "*.{js,json,css,html}"
-cpplint: 
+	prettier --write "test/*.{js,json,css,html}"
+cpplint:
 	clang-format -n --style="{BasedOnStyle: Google}" --verbose $(SOURCES) $(HEADERS)
 cppcheck:
 	cppcheck --enable=all --force --suppress=missingIncludeSystem --language=c $(SOURCES) $(HEADERS)

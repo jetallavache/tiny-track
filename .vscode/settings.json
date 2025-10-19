@@ -9,7 +9,19 @@
         "stdio.h": "c",
         "s_printf.h": "c",
         "time.h": "c",
-        "errno.h": "c"
+        "errno.h": "c",
+        "m_pack.h": "c",
+        "log.h": "c",
+        "http.h": "c",
+        "net.h": "c",
+        "proto.h": "c",
+        "event.h": "c",
+        "stdbool.h": "c",
+        "url.h": "c",
+        "timer.h": "c",
+        "calc.h": "c",
+        "bio.h": "c",
+        "ring.h": "c"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }
