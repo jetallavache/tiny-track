@@ -45,7 +45,7 @@ struct s_mgr {
 
   void* userdata; /* Произвольный указатель пользовательских данных */
   // void *tls_ctx;
-  struct s_timer* timers; /* Активные таймеры */
+  struct timer* timers; /* Активные таймеры */
   S_SOCK_TYPE pipe;
 
   struct c_state state; /* Общий стейт сборщика метрик */
@@ -119,7 +119,7 @@ struct s_conn* s_net_connect_svc(struct s_mgr* mgr, const char* url,
                                  s_event_handler_t fn, void* fn_data,
                                  s_event_handler_t pfn, void* pfn_data);
 
-struct s_timer* s_net_timer_add(struct s_mgr*, uint64_t ms, unsigned flags,
+struct timer* s_net_timer_add(struct s_mgr*, uint64_t ms, unsigned flags,
                                 void (*fn)(void*), void* arg);
 
 size_t s_net_printf(struct s_conn*, const char* fmt, ...);

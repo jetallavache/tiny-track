@@ -98,12 +98,12 @@ struct s_conn* s_net_listen(struct s_mgr* mgr, const char* url,
   return c;
 }
 
-struct s_timer* s_net_timer_add(struct s_mgr* mgr, uint64_t ms, unsigned flags,
+struct timer* s_net_timer_add(struct s_mgr* mgr, uint64_t ms, unsigned flags,
                                 void (*fn)(void*), void* arg) {
-  struct s_timer* t = (struct s_timer*)calloc(1, sizeof(*t));
+  struct timer* t = (struct timer*)calloc(1, sizeof(*t));
   if (t != NULL) {
     flags |= S_TIMER_AUTODELETE; /* Автоматически удалять таймер */
-    s_timer_init(&mgr->timers, t, ms, flags, fn, arg);
+    timer_init(&mgr->timers, t, ms, flags, fn, arg);
   }
   return t;
 }
@@ -122,7 +122,7 @@ void s_net_mgr_init(struct s_mgr* mgr) {
 
 void s_net_mgr_free(struct s_mgr* mgr) {
   struct s_conn* c;
-  struct s_timer *tmp, *t = mgr->timers;
+  struct timer *tmp, *t = mgr->timers;
   while (t != NULL) tmp = t->next, free(t), t = tmp;
   mgr->timers =
       NULL; /* Важно. Следующий звонок на опрос не будет касаться таймеров */
@@ -140,7 +140,7 @@ void s_net_mgr_poll(struct s_mgr* mgr, int ms) {
   s_sock_iotest(mgr, ms);
   now = util_millis();
 
-  s_timer_poll(&mgr->timers, now);
+  timer_poll(&mgr->timers, now);
 
   for (c = mgr->conns; c != NULL; c = tmp) {
     bool is_resp = c->is_resp;

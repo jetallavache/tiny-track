@@ -44,7 +44,7 @@ static void timer_fn(void* arg) {
 
     // api_ws_send(c, &mgr->packet, sizeof(mgr->packet), WS_OP_BINARY);
 
-    // ! проверяем интервал у клиента если не истёк то отправляем
+    // ! проверяем интервал у клиента, если не истёк то отправляем
 
     p_send_metrics(c);
   }
@@ -99,16 +99,17 @@ int main(void) {
   log_set(LL_DEBUG);
 
   s_net_timer_add(&mgr, 500, S_TIMER_REPEAT, timer_fn,
-                  &mgr); /* 100, 500, 1000, 5000*/
+                  &mgr); /* 100, 500, 1000, 5000 */
 
   printf("Starting WS listener on %s/websocket\n", s_listen_on);
 
   api_http_listen(&mgr, s_listen_on, fn, NULL);
 
   for (;;) {
-    s_net_mgr_poll(&mgr, 500); /* 100, 500, 1000, 5000*/
+    s_net_mgr_poll(&mgr, 500); /* 100, 500, 1000, 5000 */
   }
 
   s_net_mgr_free(&mgr);
+
   return 0;
 }
