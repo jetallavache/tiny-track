@@ -15,6 +15,18 @@
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb"
+        },
+        {
+            "name": "debug-tinytd",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/producer/tinytd",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/src/producer",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb"
         }
     ]
 }
