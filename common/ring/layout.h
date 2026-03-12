@@ -1,6 +1,7 @@
 #ifndef TT_RING_LAYOUT_H
 #define TT_RING_LAYOUT_H
 
+#include <stdatomic.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -45,9 +46,9 @@ struct tt_ring_consumer_table {
 
 /* Метаданные кольцевого буфера - 64 bytes */
 struct tt_ring_meta {
-  volatile uint32_t seq;  /* Sequence counter для seqlock */
-  volatile uint32_t head; /* Позиция записи */
-  volatile uint32_t tail; /* Позиция чтения (для single consumer) */
+  _Atomic uint32_t seq;  /* Sequence counter для seqlock */
+  _Atomic uint32_t head; /* Позиция записи */
+  _Atomic uint32_t tail; /* Позиция чтения (для single consumer) */
   uint32_t capacity;      /* Размер в элементах */
   uint32_t cell_size;     /* Размер одного элемента */
   uint64_t first_ts;      /* Timestamp первого элемента */
