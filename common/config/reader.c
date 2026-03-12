@@ -1,0 +1,81 @@
+#include "reader.h"
+
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h>
+
+#include "ini.h"
+
+int tt_config_read_int(const char* filepath, const char* key, int default_val) {
+  char buf[32];
+  if (tt_config_ini_read(filepath, key, buf, sizeof(buf)) != 0) {
+    return default_val;
+  }
+  return atoi(buf);
+}
+
+bool tt_config_read_bool(const char* filepath, const char* key,
+                         bool default_val) {
+  char buf[32];
+  if (tt_config_ini_read(filepath, key, buf, sizeof(buf)) != 0) {
+    return default_val;
+  }
+
+  /* Поддержка различных форматов */
+  if (strcasecmp(buf, "true") == 0 || strcasecmp(buf, "yes") == 0 ||
+      strcasecmp(buf, "on") == 0 || strcmp(buf, "1") == 0) {
+    return true;
+  }
+
+  if (strcasecmp(buf, "false") == 0 || strcasecmp(buf, "no") == 0 ||
+      strcasecmp(buf, "off") == 0 || strcmp(buf, "0") == 0) {
+    return false;
+  }
+
+  return default_val;
+}
+
+int tt_config_read_str(const char* filepath, const char* key, char* buf,
+                       size_t bufsize, const char* default_val) {
+  if (tt_config_ini_read(filepath, key, buf, bufsize) != 0) {
+    if (default_val) {
+      strncpy(buf, default_val, bufsize - 1);
+      buf[bufsize - 1] = '\0';
+    } else {
+      buf[0] = '\0';
+    }
+    return -1;
+  }
+  return 0;
+}
+
+tt_log_level_t tt_config_parse_log_level(const char* level_str) {
+  if (!level_str)
+    return TT_LOG_INFO;
+
+  if (strcasecmp(level_str, "emerg") == 0)
+    return TT_LOG_EMERG;
+  if (strcasecmp(level_str, "alert") == 0)
+    return TT_LOG_ALERT;
+  if (strcasecmp(level_str, "crit") == 0)
+    return TT_LOG_CRIT;
+  if (strcasecmp(level_str, "err") == 0 || strcasecmp(level_str, "error") == 0)
+    return TT_LOG_ERR;
+  if (strcasecmp(level_str, "warning") == 0 ||
+      strcasecmp(level_str, "warn") == 0)
+    return TT_LOG_WARNING;
+  if (strcasecmp(level_str, "notice") == 0)
+    return TT_LOG_NOTICE;
+  if (strcasecmp(level_str, "info") == 0)
+    return TT_LOG_INFO;
+  if (strcasecmp(level_str, "debug") == 0)
+    return TT_LOG_DEBUG;
+
+  /* Попробовать как число */
+  int level = atoi(level_str);
+  if (level >= TT_LOG_EMERG && level <= TT_LOG_DEBUG) {
+    return (tt_log_level_t)level;
+  }
+
+  return TT_LOG_INFO; /* default */
+}
