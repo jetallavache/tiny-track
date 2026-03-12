@@ -6,6 +6,7 @@
 
 #include "common/sink/log.h"
 #include "layout.h"
+#include "seqlock.h"
 #include "shm.h"
 
 int tt_ring_reader_open(struct tt_ring_reader* ctx, const char* path) {
@@ -62,15 +63,22 @@ int tt_ring_reader_get_latest(struct tt_ring_reader* ctx,
     return TT_READER_ERR_STALE;
   }
 
-  uint32_t head = ctx->l1_meta->head;
-  if (head == 0)
-    return TT_READER_ERR_NODATA;
+  /* Seqlock: читаем с retry */
+  uint32_t seq;
+  do {
+    seq = tt_seqlock_read_begin(&ctx->l1_meta->seq);
 
-  uint32_t last_idx =
-      (head - 1 + ctx->l1_meta->capacity) % ctx->l1_meta->capacity;
+    uint32_t head = ctx->l1_meta->head;
+    if (head == 0)
+      return TT_READER_ERR_NODATA;
 
-  memcpy(out, ctx->l1_data + last_idx * ctx->l1_meta->cell_size,
-         sizeof(struct tt_proto_metrics));
+    uint32_t last_idx =
+        (head - 1 + ctx->l1_meta->capacity) % ctx->l1_meta->capacity;
+
+    memcpy(out, ctx->l1_data + last_idx * ctx->l1_meta->cell_size,
+           sizeof(struct tt_proto_metrics));
+
+  } while (tt_seqlock_read_retry(&ctx->l1_meta->seq, seq));
 
   return TT_READER_OK;
 }
@@ -100,21 +108,31 @@ int tt_ring_reader_get_history(struct tt_ring_reader* ctx, int level,
   if (!meta)
     return TT_READER_ERR_INVALID;
 
-  uint32_t head = meta->head;
-  uint32_t available = head;
+  /* Seqlock: читаем с retry */
+  uint32_t seq;
+  int actual_count;
+  do {
+    seq = tt_seqlock_read_begin(&meta->seq);
 
-  if (available == 0)
-    return TT_READER_ERR_NODATA;
-  if ((uint32_t)count > available)
-    count = available;
+    uint32_t head = meta->head;
+    uint32_t available = head;
 
-  for (int i = 0; i < count; i++) {
-    uint32_t idx = (head - count + i + meta->capacity) % meta->capacity;
-    memcpy(&out[i], data + idx * meta->cell_size,
-           sizeof(struct tt_proto_metrics));
-  }
+    if (available == 0)
+      return TT_READER_ERR_NODATA;
+    if ((uint32_t)count > available)
+      count = available;
 
-  return count;
+    for (int i = 0; i < count; i++) {
+      uint32_t idx = (head - count + i + meta->capacity) % meta->capacity;
+      memcpy(&out[i], data + idx * meta->cell_size,
+             sizeof(struct tt_proto_metrics));
+    }
+
+    actual_count = count;
+
+  } while (tt_seqlock_read_retry(&meta->seq, seq));
+
+  return actual_count;
 }
 
 void tt_ring_reader_close(struct tt_ring_reader* ctx) {

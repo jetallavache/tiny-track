@@ -7,6 +7,7 @@
 
 #include "common/sink/log.h"
 #include "layout.h"
+#include "seqlock.h"
 #include "shm.h"
 
 static uint64_t get_timestamp_ms(void) {
@@ -58,6 +59,7 @@ int tt_ring_writer_init(struct tt_ring_writer* ctx, const char* live_path,
   struct tt_ring_meta* l1_meta =
       (struct tt_ring_meta*)((uint8_t*)ctx->live_addr + TT_HEADER_SIZE +
                              TT_CONSUMER_TABLE_SIZE);
+  l1_meta->seq = 0;
   l1_meta->head = 0;
   l1_meta->tail = 0;
   l1_meta->capacity = l1_capacity;
@@ -69,6 +71,7 @@ int tt_ring_writer_init(struct tt_ring_writer* ctx, const char* live_path,
   struct tt_ring_meta* l2_meta =
       (struct tt_ring_meta*)((uint8_t*)ctx->live_addr +
                              tt_layout_l2_meta_offset(l1_capacity, cell_size));
+  l2_meta->seq = 0;
   l2_meta->head = 0;
   l2_meta->tail = 0;
   l2_meta->capacity = l2_capacity;
@@ -81,6 +84,7 @@ int tt_ring_writer_init(struct tt_ring_writer* ctx, const char* live_path,
       (struct tt_ring_meta*)((uint8_t*)ctx->live_addr +
                              tt_layout_l3_meta_offset(l1_capacity, l2_capacity,
                                                       cell_size));
+  l3_meta->seq = 0;
   l3_meta->head = 0;
   l3_meta->tail = 0;
   l3_meta->capacity = l3_capacity;
@@ -99,7 +103,6 @@ int tt_ring_writer_write_l1(struct tt_ring_writer* ctx,
     return -1;
   }
 
-  // Проверка валидности адреса
   volatile uint8_t test = *((uint8_t*)ctx->live_addr);
   (void)test;
 
@@ -116,6 +119,9 @@ int tt_ring_writer_write_l1(struct tt_ring_writer* ctx,
 
   sample->timestamp = hdr->last_update_ts;
 
+  /* Seqlock: начало записи */
+  tt_seqlock_write_begin(&meta->seq);
+
   uint32_t head = meta->head;
   memcpy(data + head * cell_size, sample, cell_size);
 
@@ -125,6 +131,9 @@ int tt_ring_writer_write_l1(struct tt_ring_writer* ctx,
   }
 
   meta->head = (head + 1) % meta->capacity;
+
+  /* Seqlock: конец записи */
+  tt_seqlock_write_end(&meta->seq);
 
   msync(ctx->live_addr, ctx->total_size, MS_ASYNC);
 

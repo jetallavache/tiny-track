@@ -45,6 +45,7 @@ struct tt_ring_consumer_table {
 
 /* Метаданные кольцевого буфера - 64 bytes */
 struct tt_ring_meta {
+  volatile uint32_t seq;  /* Sequence counter для seqlock */
   volatile uint32_t head; /* Позиция записи */
   volatile uint32_t tail; /* Позиция чтения (для single consumer) */
   uint32_t capacity;      /* Размер в элементах */
@@ -52,7 +53,7 @@ struct tt_ring_meta {
   uint64_t first_ts;      /* Timestamp первого элемента */
   uint64_t last_ts;       /* Timestamp последнего элемента */
   uint32_t flags;         /* Флаги */
-  uint8_t padding[24];    /* Выравнивание до 64 байт */
+  uint8_t padding[20];    /* Выравнивание до 64 байт */
 };
 
 /* Полный layout mmap файла */
