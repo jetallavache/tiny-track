@@ -1,0 +1,36 @@
+.kiro
+
+# Autotools
+/autom4te.cache/
+/aclocal.m4
+/ar-lib
+/compile
+/config.guess
+/config.h
+/config.h.in
+/config.log
+/config.status
+/config.sub
+/configure
+/depcomp
+/install-sh
+/missing
+/stamp-h1
+Makefile
+Makefile.in
+.deps/
+*.o
+*.a
+vgcore.*
+*~
+.dirstamp
+
+# Build artifacts
+*.bin
+tinytd/tinytd
+cli/tiny-cli
+gateway/tinytrack
+
+# Distribution
+tinytrack-*.tar.gz
+tinytrack-*/
