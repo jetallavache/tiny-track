@@ -7,6 +7,7 @@
 
 #include "common/proto/v1.h"
 #include "common/ring/reader.h"
+#include "common/ring/shm.h"
 #include "common/ring/writer.h"
 
 #define TEST_DURATION_SEC 10
@@ -49,7 +50,7 @@ static void *reader_thread(void *arg) {
   struct tt_ring_reader reader;
   struct tt_proto_metrics sample;
 
-  if (tt_ring_reader_open(&reader, "/tinytd-test-live") != TT_READER_OK) {
+  if (tt_ring_reader_open(&reader, "/tmp/tinytd-test-live") != TT_READER_OK) {
     fprintf(stderr, "Reader %d: failed to open\n", stats->id);
     return NULL;
   }
@@ -81,9 +82,10 @@ int main(void) {
   printf("Write interval: %d us\n\n", WRITE_INTERVAL_US);
 
   struct tt_ring_writer writer;
-  if (tt_ring_writer_init(&writer, "/tinytd-test-live", "/tinytd-test-shadow",
-                          3600, 1440, 672, 0644) != TT_WRITER_OK) {
-    fprintf(stderr, "Failed to init writer\n");
+  int ret = tt_ring_writer_init(&writer, "/tmp/tinytd-test-live", "/tmp/tinytd-test-shadow",
+                          3600, 1440, 672, 0644);
+  if (ret != TT_WRITER_OK) {
+    fprintf(stderr, "Failed to init writer: %d\n", ret);
     return 1;
   }
 
@@ -130,8 +132,8 @@ int main(void) {
 
   /* Cleanup */
   tt_ring_writer_cleanup(&writer);
-  tt_shm_unlink("/tinytd-test-live");
-  tt_shm_unlink("/tinytd-test-shadow");
+  tt_shm_unlink("/tmp/tinytd-test-live");
+  tt_shm_unlink("/tmp/tinytd-test-shadow");
 
   if (total_inconsistent > 0) {
     printf("\n❌ TEST FAILED: Found inconsistent reads!\n");

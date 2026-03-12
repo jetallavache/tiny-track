@@ -8,6 +8,7 @@
 
 #include "common/proto/v1.h"
 #include "common/ring/reader.h"
+#include "common/ring/shm.h"
 #include "common/ring/writer.h"
 
 #define BENCH_ITERATIONS 1000000
@@ -24,7 +25,7 @@ static void bench_writer_throughput(void) {
   struct tt_ring_writer writer;
   struct tt_proto_metrics sample = {0};
 
-  tt_ring_writer_init(&writer, "/tinytd-bench-live", "/tinytd-bench-shadow",
+  tt_ring_writer_init(&writer, "/tmp/tinytd-bench-live", "/tmp/tinytd-bench-shadow",
                       3600, 1440, 672, 0644);
 
   uint64_t start = get_ns();
@@ -35,8 +36,8 @@ static void bench_writer_throughput(void) {
   uint64_t end = get_ns();
 
   tt_ring_writer_cleanup(&writer);
-  tt_shm_unlink("/tinytd-bench-live");
-  tt_shm_unlink("/tinytd-bench-shadow");
+  tt_shm_unlink("/tmp/tinytd-bench-live");
+  tt_shm_unlink("/tmp/tinytd-bench-shadow");
 
   double elapsed_sec = (end - start) / 1e9;
   double ops_per_sec = BENCH_ITERATIONS / elapsed_sec;
@@ -56,7 +57,7 @@ static void bench_reader_throughput(void) {
   struct tt_proto_metrics sample = {0};
   struct tt_proto_metrics out;
 
-  tt_ring_writer_init(&writer, "/tinytd-bench-live", "/tinytd-bench-shadow",
+  tt_ring_writer_init(&writer, "/tmp/tinytd-bench-live", "/tmp/tinytd-bench-shadow",
                       3600, 1440, 672, 0644);
 
   /* Заполняем данными */
@@ -65,7 +66,7 @@ static void bench_reader_throughput(void) {
     tt_ring_writer_write_l1(&writer, &sample);
   }
 
-  tt_ring_reader_open(&reader, "/tinytd-bench-live");
+  tt_ring_reader_open(&reader, "/tmp/tinytd-bench-live");
 
   uint64_t start = get_ns();
   for (int i = 0; i < BENCH_ITERATIONS; i++) {
@@ -75,8 +76,8 @@ static void bench_reader_throughput(void) {
 
   tt_ring_reader_close(&reader);
   tt_ring_writer_cleanup(&writer);
-  tt_shm_unlink("/tinytd-bench-live");
-  tt_shm_unlink("/tinytd-bench-shadow");
+  tt_shm_unlink("/tmp/tinytd-bench-live");
+  tt_shm_unlink("/tmp/tinytd-bench-shadow");
 
   double elapsed_sec = (end - start) / 1e9;
   double ops_per_sec = BENCH_ITERATIONS / elapsed_sec;
@@ -101,7 +102,7 @@ static void *reader_thread(void *arg) {
   struct tt_ring_reader reader;
   struct tt_proto_metrics out;
 
-  tt_ring_reader_open(&reader, "/tinytd-bench-live");
+  tt_ring_reader_open(&reader, "/tmp/tinytd-bench-live");
 
   uint64_t start = get_ns();
   for (int i = 0; i < ctx->iterations; i++) {
@@ -118,7 +119,7 @@ static void bench_concurrent_readers(void) {
   struct tt_ring_writer writer;
   struct tt_proto_metrics sample = {0};
 
-  tt_ring_writer_init(&writer, "/tinytd-bench-live", "/tinytd-bench-shadow",
+  tt_ring_writer_init(&writer, "/tmp/tinytd-bench-live", "/tmp/tinytd-bench-shadow",
                       3600, 1440, 672, 0644);
 
   /* Заполняем данными */
@@ -145,8 +146,8 @@ static void bench_concurrent_readers(void) {
   uint64_t end = get_ns();
 
   tt_ring_writer_cleanup(&writer);
-  tt_shm_unlink("/tinytd-bench-live");
-  tt_shm_unlink("/tinytd-bench-shadow");
+  tt_shm_unlink("/tmp/tinytd-bench-live");
+  tt_shm_unlink("/tmp/tinytd-bench-shadow");
 
   double elapsed_sec = (end - start) / 1e9;
   double total_ops = BENCH_ITERATIONS;
@@ -170,7 +171,7 @@ static void bench_seqlock_contention(void) {
   struct tt_ring_writer writer;
   struct tt_proto_metrics sample = {0};
 
-  tt_ring_writer_init(&writer, "/tinytd-bench-live", "/tinytd-bench-shadow",
+  tt_ring_writer_init(&writer, "/tmp/tinytd-bench-live", "/tmp/tinytd-bench-shadow",
                       3600, 1440, 672, 0644);
 
   /* Writer thread */
@@ -192,7 +193,7 @@ static void bench_seqlock_contention(void) {
   /* Reader с подсчетом retry */
   struct tt_ring_reader reader;
   struct tt_proto_metrics out;
-  tt_ring_reader_open(&reader, "/tinytd-bench-live");
+  tt_ring_reader_open(&reader, "/tmp/tinytd-bench-live");
 
   int total_reads = 10000;
   int retries = 0;
@@ -207,8 +208,8 @@ static void bench_seqlock_contention(void) {
 
   tt_ring_reader_close(&reader);
   tt_ring_writer_cleanup(&writer);
-  tt_shm_unlink("/tinytd-bench-live");
-  tt_shm_unlink("/tinytd-bench-shadow");
+  tt_shm_unlink("/tmp/tinytd-bench-live");
+  tt_shm_unlink("/tmp/tinytd-bench-shadow");
 
   printf("Seqlock contention:\n");
   printf("  Total reads: %d\n", total_reads);
@@ -224,7 +225,7 @@ static void bench_memory_usage(void) {
   size_t l2_cap = 1440;
   size_t l3_cap = 672;
 
-  tt_ring_writer_init(&writer, "/tinytd-bench-live", "/tinytd-bench-shadow",
+  tt_ring_writer_init(&writer, "/tmp/tinytd-bench-live", "/tmp/tinytd-bench-shadow",
                       l1_cap, l2_cap, l3_cap, 0644);
 
   size_t cell_size = sizeof(struct tt_proto_metrics);
@@ -242,8 +243,8 @@ static void bench_memory_usage(void) {
          (total_size * 2) / 1024.0 / 1024.0);
 
   tt_ring_writer_cleanup(&writer);
-  tt_shm_unlink("/tinytd-bench-live");
-  tt_shm_unlink("/tinytd-bench-shadow");
+  tt_shm_unlink("/tmp/tinytd-bench-live");
+  tt_shm_unlink("/tmp/tinytd-bench-shadow");
 }
 
 int main(void) {

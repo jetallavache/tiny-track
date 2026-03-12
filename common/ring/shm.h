@@ -16,6 +16,7 @@ enum {
 void* tt_shm_create(const char* path, size_t len, int mode);
 void* tt_shm_read(const char* path, size_t* len);
 void tt_shm_dealloc(void* addr, size_t len);
+void tt_shm_unlink(const char* path);
 
 const char* tt_shm_err(int errcode);
 

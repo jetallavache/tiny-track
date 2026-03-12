@@ -103,6 +103,10 @@ void tt_shm_dealloc(void* addr, size_t len) {
   }
 }
 
+void tt_shm_unlink(const char* path) {
+  shm_unlink(path);
+}
+
 const char* tt_shm_err(int errcode) {
   switch (errcode) {
     case SHM_MMAP_ERR:
