@@ -1,5 +1,9 @@
 #include "commands.h"
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -441,9 +445,9 @@ int ttc_cmd_debug(const struct ttc_ctx* ctx) {
 
 int ttc_cmd_version(const struct ttc_ctx* ctx) {
   if (ctx->format == FMT_JSON) {
-    printf("{\"version\": \"0.1.0\", \"proto\": 1}\n");
+    printf("{\"version\": \"%s\", \"proto\": 1}\n", PACKAGE_VERSION);
     return 0;
   }
-  printf("tiny-cli 0.1.0  (TinyTrack protocol v1)\n");
+  printf("tiny-cli %s  (TinyTrack protocol v1)\n", PACKAGE_VERSION);
   return 0;
 }
