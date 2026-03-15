@@ -83,14 +83,9 @@ int ttr_writer_recover_from_shadow(struct ttr_writer* ctx) {
 }
 
 int ttr_writer_init(struct ttr_writer* ctx, const struct ttr_writer_config* cfg) {
-  ctx->l1_capacity = cfg->l1_capacity;
-  ctx->l2_capacity = cfg->l2_capacity;
-  ctx->l3_capacity = cfg->l3_capacity;
-  ctx->cell_size   = cfg->cell_size;
-  ctx->file_mode   = cfg->file_mode;
-  ctx->aggregate   = cfg->aggregate;
-  ctx->dirty_min   = SIZE_MAX;
-  ctx->dirty_max   = 0;
+  ctx->cfg       = *cfg;
+  ctx->dirty_min = SIZE_MAX;
+  ctx->dirty_max = 0;
 
   ctx->total_size = tt_layout_total_size(cfg->l1_capacity, cfg->l2_capacity,
                                          cfg->l3_capacity, cfg->cell_size);
@@ -178,7 +173,7 @@ int ttr_writer_write_l1(struct ttr_writer* ctx, const void* sample) {
     return TTR_WRITER_ERR_NULL;
   }
 
-  size_t cell_size = ctx->cell_size;
+  size_t cell_size = ctx->cfg.cell_size;
 
   struct ttr_header* hdr = (struct ttr_header*)ctx->live_addr;
   hdr->last_update_ts = get_timestamp_ms();
@@ -220,7 +215,7 @@ int ttr_writer_aggregate_l2(struct ttr_writer* ctx) {
     return TTR_WRITER_ERR_NULL;
   }
 
-  size_t cell_size = ctx->cell_size;
+  size_t cell_size = ctx->cfg.cell_size;
 
   struct ttr_meta* l1_meta =
       (struct ttr_meta*)((uint8_t*)ctx->live_addr + TTR_HEADER_SIZE +
@@ -229,9 +224,9 @@ int ttr_writer_aggregate_l2(struct ttr_writer* ctx) {
 
   struct ttr_meta* l2_meta =
       (struct ttr_meta*)((uint8_t*)ctx->live_addr +
-                         ttr_layout_l2_meta_offset(ctx->l1_capacity, cell_size));
+                         ttr_layout_l2_meta_offset(ctx->cfg.l1_capacity, cell_size));
   uint8_t* l2_data = (uint8_t*)ctx->live_addr +
-                     ttr_layout_l2_offset(ctx->l1_capacity, cell_size);
+                     ttr_layout_l2_offset(ctx->cfg.l1_capacity, cell_size);
 
   uint32_t available = l1_meta->head;
   if (available == 0) {
@@ -249,7 +244,7 @@ int ttr_writer_aggregate_l2(struct ttr_writer* ctx) {
   }
 
   uint8_t agg[cell_size];
-  ctx->aggregate(tmp, n, cell_size, agg);
+  ctx->cfg.aggregate(tmp, n, cell_size, agg);
 
   ttr_seqlock_write_begin(&l2_meta->seq);
 
@@ -262,9 +257,9 @@ int ttr_writer_aggregate_l2(struct ttr_writer* ctx) {
 
   ttr_seqlock_write_end(&l2_meta->seq);
 
-  mark_dirty(ctx, ttr_layout_l2_meta_offset(ctx->l1_capacity, cell_size),
+  mark_dirty(ctx, ttr_layout_l2_meta_offset(ctx->cfg.l1_capacity, cell_size),
              TTR_META_SIZE);
-  mark_dirty(ctx, ttr_layout_l2_offset(ctx->l1_capacity, cell_size) +
+  mark_dirty(ctx, ttr_layout_l2_offset(ctx->cfg.l1_capacity, cell_size) +
                       head * cell_size, cell_size);
 
   return 0;
@@ -276,20 +271,20 @@ int ttr_writer_aggregate_l3(struct ttr_writer* ctx) {
     return TTR_WRITER_ERR_NULL;
   }
 
-  size_t cell_size = ctx->cell_size;
+  size_t cell_size = ctx->cfg.cell_size;
 
   struct ttr_meta* l2_meta =
       (struct ttr_meta*)((uint8_t*)ctx->live_addr +
-                         ttr_layout_l2_meta_offset(ctx->l1_capacity, cell_size));
+                         ttr_layout_l2_meta_offset(ctx->cfg.l1_capacity, cell_size));
   uint8_t* l2_data = (uint8_t*)ctx->live_addr +
-                     ttr_layout_l2_offset(ctx->l1_capacity, cell_size);
+                     ttr_layout_l2_offset(ctx->cfg.l1_capacity, cell_size);
 
   struct ttr_meta* l3_meta =
       (struct ttr_meta*)((uint8_t*)ctx->live_addr +
-                         ttr_layout_l3_meta_offset(ctx->l1_capacity,
-                                                   ctx->l2_capacity, cfg->cell_size));
+                         ttr_layout_l3_meta_offset(ctx->cfg.l1_capacity,
+                                                   ctx->cfg.l2_capacity, ctx->cfg.cell_size));
   uint8_t* l3_data = (uint8_t*)ctx->live_addr +
-                     ttr_layout_l3_offset(ctx->l1_capacity, ctx->l2_capacity,
+                     ttr_layout_l3_offset(ctx->cfg.l1_capacity, ctx->cfg.l2_capacity,
                                           cell_size);
 
   uint32_t available = l2_meta->head;
@@ -307,7 +302,7 @@ int ttr_writer_aggregate_l3(struct ttr_writer* ctx) {
   }
 
   uint8_t agg[cell_size];
-  ctx->aggregate(tmp, n, cell_size, agg);
+  ctx->cfg.aggregate(tmp, n, cell_size, agg);
 
   ttr_seqlock_write_begin(&l3_meta->seq);
 
@@ -321,10 +316,10 @@ int ttr_writer_aggregate_l3(struct ttr_writer* ctx) {
   ttr_seqlock_write_end(&l3_meta->seq);
 
   mark_dirty(ctx,
-             ttr_layout_l3_meta_offset(ctx->l1_capacity, ctx->l2_capacity,
-                                       cfg->cell_size), TTR_META_SIZE);
+             ttr_layout_l3_meta_offset(ctx->cfg.l1_capacity, ctx->cfg.l2_capacity,
+                                       ctx->cfg.cell_size), TTR_META_SIZE);
   mark_dirty(ctx,
-             ttr_layout_l3_offset(ctx->l1_capacity, ctx->l2_capacity,
+             ttr_layout_l3_offset(ctx->cfg.l1_capacity, ctx->cfg.l2_capacity,
                                   cell_size) + head * cell_size, cell_size);
 
   return 0;
@@ -346,7 +341,7 @@ int ttr_writer_shadow_sync(struct ttr_writer* ctx) {
   ((struct ttr_header*)ctx->shadow_addr)->last_shadow_sync_ts = now;
 
   /* Compute and store checksum over the complete shadow */
-  if (ctx->enable_crc) {
+  if (ctx->cfg.enable_crc) {
     uint32_t crc = adler32(ctx->shadow_addr, ctx->total_size);
     ((struct ttr_header*)ctx->shadow_addr)->crc32 = crc;
   } else {

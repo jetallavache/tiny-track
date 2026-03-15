@@ -21,22 +21,6 @@ enum {
   TTR_WRITER_ERR_NODATA = -4,
 };
 
-struct ttr_writer {
-  void* live_addr;
-  void* shadow_addr;
-  size_t total_size;
-  size_t cell_size;
-  uint32_t l1_capacity;
-  uint32_t l2_capacity;
-  uint32_t l3_capacity;
-  mode_t file_mode;
-  bool enable_crc;
-  ttr_aggregate_fn aggregate;
-  /* Dirty range tracking for incremental shadow_sync */
-  size_t dirty_min;
-  size_t dirty_max;
-};
-
 struct ttr_writer_config {
   const char* live_path;
   const char* shadow_path;
@@ -45,7 +29,19 @@ struct ttr_writer_config {
   uint32_t l3_capacity;
   size_t cell_size;
   mode_t file_mode;
+  bool enable_crc;
   ttr_aggregate_fn aggregate;
+};
+
+struct ttr_writer {
+  void* live_addr;
+  void* shadow_addr;
+  size_t total_size;
+  /* Dirty range tracking for incremental shadow_sync */
+  size_t dirty_min;
+  size_t dirty_max;
+  /* Configuration (kept for runtime use) */
+  struct ttr_writer_config cfg;
 };
 
 int ttr_writer_init(struct ttr_writer* ctx, const struct ttr_writer_config* cfg);
