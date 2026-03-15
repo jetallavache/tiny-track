@@ -9,26 +9,18 @@
 #include <string.h>
 #include <time.h>
 
+#include "common/ringbuf/layout.h"
 #include "output.h"
 #include "reader.h"
-#include "common/ringbuf/layout.h"
-
-/* ------------------------------------------------------------------ */
-/* Constants                                                            */
-/* ------------------------------------------------------------------ */
 
 #define HISTORY_LEN 60
 
-#define CP_HEADER    1
-#define CP_OK        2
-#define CP_WARN      3
-#define CP_CRIT      4
-#define CP_DIM       5
-#define CP_TITLE     6
-
-/* ------------------------------------------------------------------ */
-/* State                                                                */
-/* ------------------------------------------------------------------ */
+#define CP_HEADER 1
+#define CP_OK     2
+#define CP_WARN   3
+#define CP_CRIT   4
+#define CP_DIM    5
+#define CP_TITLE  6
 
 typedef struct {
   struct ttc_reader reader;
@@ -38,17 +30,12 @@ typedef struct {
   int               hist_count;
   int               mode;
   int               show_help;
-  /* Ring labels computed once on first successful reader open */
-  char              ring_label[3][24];
+  char              ring_label[3][24]; /* computed once on connect */
   int               labels_ready;
 } dash_state;
 
 static volatile sig_atomic_t g_resize = 0;
-static void on_sigwinch(int s) { (void)s; g_resize = 1; }
-
-/* ------------------------------------------------------------------ */
-/* Colors                                                               */
-/* ------------------------------------------------------------------ */
+static void                  on_sigwinch(int s) { (void)s; g_resize = 1; }
 
 static void init_colors(void) {
   start_color();
@@ -61,58 +48,46 @@ static void init_colors(void) {
   init_pair(CP_TITLE,  COLOR_CYAN,   -1);
 }
 
-/* ------------------------------------------------------------------ */
-/* Helpers                                                              */
-/* ------------------------------------------------------------------ */
-
 static int pct_pair(double pct, double warn, double crit) {
   if (pct >= crit) return CP_CRIT;
   if (pct >= warn) return CP_WARN;
   return CP_OK;
 }
 
-static void fmt_bytes(unsigned long b, char* buf, size_t len) {
+static void fmt_bytes(unsigned long b, char *buf, size_t len) {
   if      (b >= 1UL << 30) snprintf(buf, len, "%.1fG", b / (double)(1UL << 30));
   else if (b >= 1UL << 20) snprintf(buf, len, "%.1fM", b / (double)(1UL << 20));
   else if (b >= 1UL << 10) snprintf(buf, len, "%.1fK", b / (double)(1UL << 10));
   else                     snprintf(buf, len, "%luB",  b);
 }
 
-/* Compute ring label from metadata — call once, result is stable. */
-static void compute_ring_label(const struct ttr_meta* m, int level,
-                                char* buf, size_t len) {
+static void compute_ring_label(const struct ttr_meta *m, int level,
+                                char *buf, size_t len) {
   uint32_t filled = m->head < m->capacity ? m->head : m->capacity;
-
-  if (filled >= 2 && m->last_ts > m->first_ts) {
-    uint64_t interval_ms = (m->last_ts - m->first_ts) / (filled - 1);
-    uint64_t total_ms    = (uint64_t)m->capacity * interval_ms;
-
-    char ivl[12], total[12];
-
-    if      (interval_ms < 1000)     snprintf(ivl, sizeof(ivl), "%llums", (unsigned long long)interval_ms);
-    else if (interval_ms < 60000)    snprintf(ivl, sizeof(ivl), "%llds",  (unsigned long long)(interval_ms / 1000));
-    else if (interval_ms < 3600000)  snprintf(ivl, sizeof(ivl), "%lldm",  (unsigned long long)(interval_ms / 60000));
-    else                             snprintf(ivl, sizeof(ivl), "%lldh",  (unsigned long long)(interval_ms / 3600000));
-
-    if      (total_ms < 3600000)     snprintf(total, sizeof(total), "%lldm", (unsigned long long)(total_ms / 60000));
-    else if (total_ms < 86400000)    snprintf(total, sizeof(total), "%lldh", (unsigned long long)(total_ms / 3600000));
-    else                             snprintf(total, sizeof(total), "%lldd", (unsigned long long)(total_ms / 86400000));
-
-    snprintf(buf, len, "L%d %s@%s", level, total, ivl);
-  } else {
+  if (filled < 2 || m->last_ts <= m->first_ts) {
     snprintf(buf, len, "L%d %u slots", level, m->capacity);
+    return;
   }
+  uint64_t ivl_ms   = (m->last_ts - m->first_ts) / (filled - 1);
+  uint64_t total_ms = (uint64_t)m->capacity * ivl_ms;
+
+  char ivl[12], total[12];
+  if      (ivl_ms < 1000)    snprintf(ivl, sizeof(ivl), "%llums", (unsigned long long)ivl_ms);
+  else if (ivl_ms < 60000)   snprintf(ivl, sizeof(ivl), "%llds",  (unsigned long long)(ivl_ms / 1000));
+  else if (ivl_ms < 3600000) snprintf(ivl, sizeof(ivl), "%lldm",  (unsigned long long)(ivl_ms / 60000));
+  else                       snprintf(ivl, sizeof(ivl), "%lldh",  (unsigned long long)(ivl_ms / 3600000));
+
+  if      (total_ms < 3600000)  snprintf(total, sizeof(total), "%lldm", (unsigned long long)(total_ms / 60000));
+  else if (total_ms < 86400000) snprintf(total, sizeof(total), "%lldh", (unsigned long long)(total_ms / 3600000));
+  else                          snprintf(total, sizeof(total), "%lldd", (unsigned long long)(total_ms / 86400000));
+
+  snprintf(buf, len, "L%d %s@%s", level, total, ivl);
 }
 
-/* ------------------------------------------------------------------ */
-/* Drawing primitives                                                   */
-/* ------------------------------------------------------------------ */
-
-static void draw_bar(WINDOW* w, int y, int x, int width,
+static void draw_bar(WINDOW *w, int y, int x, int width,
                      double pct, double warn, double crit) {
   int filled = (int)(pct / 100.0 * width);
   if (filled > width) filled = width;
-
   wmove(w, y, x);
   waddch(w, '[');
   wattron(w, COLOR_PAIR(pct_pair(pct, warn, crit)) | A_BOLD);
@@ -124,18 +99,17 @@ static void draw_bar(WINDOW* w, int y, int x, int width,
   waddch(w, ']');
 }
 
-static void draw_sparkline(WINDOW* w, int y, int x, int width,
-                            const struct tt_metrics* hist, int count,
-                            double (*getval)(const struct tt_metrics*),
+static void draw_sparkline(WINDOW *w, int y, int x, int width,
+                            const struct tt_metrics *hist, int count,
+                            double (*getval)(const struct tt_metrics *),
                             double warn, double crit) {
   static const char sparks[] = " .:|#";
   int start = count > width ? count - width : 0;
-  int n = count - start;
-
+  int n     = count - start;
   wmove(w, y, x);
   for (int i = 0; i < n; i++) {
-    double v = getval(&hist[start + i]);
-    int idx = (int)(v / 100.0 * 4.0);
+    double v   = getval(&hist[start + i]);
+    int    idx = (int)(v / 100.0 * 4.0);
     if (idx < 0) idx = 0;
     if (idx > 4) idx = 4;
     wattron(w, COLOR_PAIR(pct_pair(v, warn, crit)));
@@ -145,23 +119,18 @@ static void draw_sparkline(WINDOW* w, int y, int x, int width,
   for (int i = n; i < width; i++) waddch(w, ' ');
 }
 
-static double get_cpu(const struct tt_metrics* m)  { return m->cpu_usage  / 100.0; }
-static double get_mem(const struct tt_metrics* m)  { return m->mem_usage  / 100.0; }
-static double get_disk(const struct tt_metrics* m) { return m->du_usage   / 100.0; }
+static double get_cpu(const struct tt_metrics *m)  { return m->cpu_usage  / 100.0; }
+static double get_mem(const struct tt_metrics *m)  { return m->mem_usage  / 100.0; }
+static double get_disk(const struct tt_metrics *m) { return m->du_usage   / 100.0; }
 
-/* ------------------------------------------------------------------ */
-/* Metric row: label + bar + sparkline                                  */
-/* ------------------------------------------------------------------ */
-
-static int draw_metric_row(WINDOW* w, int row, int bar_w,
-                            const char* label, double val,
+static int draw_metric_row(WINDOW *w, int row, int bar_w,
+                            const char *label, double val,
                             double warn, double crit,
-                            const struct tt_metrics* hist, int hcount,
-                            double (*getval)(const struct tt_metrics*)) {
+                            const struct tt_metrics *hist, int hcount,
+                            double (*getval)(const struct tt_metrics *)) {
   mvwprintw(w, row, 1, "%-5s %5.1f%%", label, val);
   draw_bar(w, row, 13, bar_w, val, warn, crit);
   row++;
-
   draw_sparkline(w, row, 13, bar_w, hist, hcount, getval, warn, crit);
   wattron(w, COLOR_PAIR(CP_DIM));
   mvwprintw(w, row, 13 + bar_w + 1, "60s");
@@ -169,16 +138,11 @@ static int draw_metric_row(WINDOW* w, int row, int bar_w,
   return row + 1;
 }
 
-/* ------------------------------------------------------------------ */
-/* Panels                                                               */
-/* ------------------------------------------------------------------ */
-
-static void draw_header(WINDOW* w, int cols, int daemon_ok) {
+static void draw_header(WINDOW *w, int cols, int daemon_ok) {
   char ts[32];
-  time_t now = time(NULL);
-  struct tm* tm = localtime(&now);
+  time_t    now = time(NULL);
+  struct tm *tm = localtime(&now);
   strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S", tm);
-
   wattron(w, COLOR_PAIR(CP_HEADER) | A_BOLD);
   for (int i = 0; i < cols; i++) mvwaddch(w, 0, i, ' ');
   mvwprintw(w, 0, 1, " TinyTrack  %s  daemon: %s",
@@ -186,16 +150,15 @@ static void draw_header(WINDOW* w, int cols, int daemon_ok) {
   wattroff(w, COLOR_PAIR(CP_HEADER) | A_BOLD);
 }
 
-static void draw_metrics(WINDOW* w, int row, int cols,
-                          const struct tt_metrics* m,
-                          const struct tt_metrics* hist, int hcount) {
+static void draw_metrics(WINDOW *w, int row, int cols,
+                          const struct tt_metrics *m,
+                          const struct tt_metrics *hist, int hcount) {
   int bar_w = cols - 24;
   if (bar_w < 20) bar_w = 20;
   if (bar_w > 60) bar_w = 60;
 
   char ts[16];
   ttc_fmt_ts(m->timestamp, ts, sizeof(ts));
-
   wattron(w, COLOR_PAIR(CP_TITLE) | A_BOLD);
   mvwprintw(w, row, 1, "[ Live Metrics  %s ]", ts);
   wattroff(w, COLOR_PAIR(CP_TITLE) | A_BOLD);
@@ -208,7 +171,6 @@ static void draw_metrics(WINDOW* w, int row, int cols,
   char rx[16], tx[16];
   fmt_bytes(m->net_rx, rx, sizeof(rx));
   fmt_bytes(m->net_tx, tx, sizeof(tx));
-
   mvwprintw(w, row, 1, "NET");
   wattron(w, COLOR_PAIR(CP_OK));
   mvwprintw(w, row, 7, "RX %-8s/s", rx);
@@ -228,26 +190,24 @@ static void draw_metrics(WINDOW* w, int row, int cols,
             m->nr_running, m->nr_total);
 }
 
-static void draw_tsdb(WINDOW* w, int row, int cols,
-                      const struct ttr_reader* r,
+static void draw_tsdb(WINDOW *w, int row, int cols,
+                      const struct ttr_reader *r,
                       const char labels[3][24]) {
   wattron(w, COLOR_PAIR(CP_TITLE) | A_BOLD);
   mvwprintw(w, row, 1, "[ Ring Buffer (TSDB) ]");
   wattroff(w, COLOR_PAIR(CP_TITLE) | A_BOLD);
   row++;
 
-  const struct ttr_meta* metas[3] = { r->l1_meta, r->l2_meta, r->l3_meta };
-
+  const struct ttr_meta *metas[3] = {r->l1_meta, r->l2_meta, r->l3_meta};
   int bar_w = cols - 15 - 38;
   if (bar_w < 10) bar_w = 10;
   if (bar_w > 40) bar_w = 40;
 
   for (int i = 0; i < 3; i++) {
-    const struct ttr_meta* m = metas[i];
-    uint32_t filled = m->head < m->capacity ? m->head : m->capacity;
-    double pct = m->capacity > 0 ? (double)filled / m->capacity * 100.0 : 0.0;
-
-    char first[16], last[16];
+    const struct ttr_meta *m      = metas[i];
+    uint32_t               filled = m->head < m->capacity ? m->head : m->capacity;
+    double                 pct    = m->capacity > 0 ? (double)filled / m->capacity * 100.0 : 0.0;
+    char                   first[16], last[16];
     ttc_fmt_ts(m->first_ts, first, sizeof(first));
     ttc_fmt_ts(m->last_ts,  last,  sizeof(last));
 
@@ -275,36 +235,30 @@ static void draw_tsdb(WINDOW* w, int row, int cols,
   }
 }
 
-static void draw_hints(WINDOW* w, int rows, int mode) {
+static void draw_hints(WINDOW *w, int rows, int mode) {
   wattron(w, COLOR_PAIR(CP_DIM));
-  mvwprintw(w, rows - 1, 1,
-            " q:quit  Tab:mode[%d/1]  ?:help", mode);
+  mvwprintw(w, rows - 1, 1, " q:quit  Tab:mode[%d/1]  ?:help", mode);
   wattroff(w, COLOR_PAIR(CP_DIM));
 }
 
 static void draw_help(int rows, int cols) {
-  int h = 12, wd = 44;
-  WINDOW* hw = newwin(h, wd, (rows - h) / 2, (cols - wd) / 2);
+  int     h = 10, wd = 40;
+  WINDOW *hw = newwin(h, wd, (rows - h) / 2, (cols - wd) / 2);
   box(hw, 0, 0);
   wattron(hw, A_BOLD);
   mvwprintw(hw, 0, (wd - 6) / 2, " Help ");
   wattroff(hw, A_BOLD);
-  mvwprintw(hw, 2,  2, "q / ESC    Quit");
-  mvwprintw(hw, 3,  2, "Tab        Cycle mode");
-  mvwprintw(hw, 5,  2, "Modes:");
-  mvwprintw(hw, 6,  2, "  0  Live metrics + sparklines");
-  mvwprintw(hw, 7,  2, "  1  Ring buffer TSDB view");
-  mvwprintw(hw, 9,  2, "Press any key to close");
+  mvwprintw(hw, 2, 2, "q / ESC    Quit");
+  mvwprintw(hw, 3, 2, "Tab        Cycle mode");
+  mvwprintw(hw, 5, 2, "Mode 0:  Live metrics + sparklines");
+  mvwprintw(hw, 6, 2, "Mode 1:  Ring buffer TSDB view");
+  mvwprintw(hw, 8, 2, "Press any key to close");
   wrefresh(hw);
   getch();
   delwin(hw);
 }
 
-/* ------------------------------------------------------------------ */
-/* Main loop                                                            */
-/* ------------------------------------------------------------------ */
-
-int ttc_cmd_dashboard(const struct ttc_ctx* ctx) {
+int ttc_cmd_dashboard(const struct ttc_ctx *ctx) {
   dash_state st = {0};
 
   initscr();
@@ -332,11 +286,9 @@ int ttc_cmd_dashboard(const struct ttc_ctx* ctx) {
       getmaxyx(stdscr, rows, cols);
     }
 
-    /* Re-open reader to detect daemon start/stop */
     if (!st.reader_ok)
       st.reader_ok = ttc_reader_open(&st.reader, ctx->mmap_path) == TTR_READER_OK;
 
-    /* Compute ring labels once — they reflect config, not live data */
     if (st.reader_ok && !st.labels_ready) {
       compute_ring_label(st.reader.ring.l1_meta, 1, st.ring_label[0], 24);
       compute_ring_label(st.reader.ring.l2_meta, 2, st.ring_label[1], 24);
@@ -344,7 +296,6 @@ int ttc_cmd_dashboard(const struct ttc_ctx* ctx) {
       st.labels_ready = 1;
     }
 
-    /* Read metrics */
     if (st.reader_ok) {
       struct tt_metrics m;
       int err = ttc_reader_get_latest(&st.reader, &m);
@@ -359,23 +310,21 @@ int ttc_cmd_dashboard(const struct ttc_ctx* ctx) {
         }
       } else if (err == TTR_READER_ERR_STALE) {
         ttc_reader_close(&st.reader);
-        st.reader_ok = 0;
-        st.labels_ready = 0; /* recompute on next connect */
+        st.reader_ok    = 0;
+        st.labels_ready = 0;
       }
     }
 
     erase();
     draw_header(stdscr, cols, st.reader_ok);
 
-    if (st.mode == 0) {
+    if (st.mode == 0)
       draw_metrics(stdscr, 2, cols, &st.latest, st.hist, st.hist_count);
-    } else {
-      if (st.reader_ok)
-        draw_tsdb(stdscr, 2, cols, &st.reader.ring,
-                  (const char (*)[24])st.ring_label);
-      else
-        mvprintw(4, 2, "Daemon not running. Waiting for %s ...", ctx->mmap_path);
-    }
+    else if (st.reader_ok)
+      draw_tsdb(stdscr, 2, cols, &st.reader.ring,
+                (const char (*)[24])st.ring_label);
+    else
+      mvprintw(4, 2, "Daemon not running. Waiting for %s ...", ctx->mmap_path);
 
     draw_hints(stdscr, rows, st.mode);
     if (st.show_help) draw_help(rows, cols);
