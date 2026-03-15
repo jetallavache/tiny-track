@@ -1,0 +1,167 @@
+.TH TINY\-CLI 1 "2026-03-15" "TinyTrack 0.1.0" "TinyTrack Manual"
+.SH NAME
+tiny\-cli \- command-line interface for the TinyTrack monitoring daemon
+.SH SYNOPSIS
+.B tiny\-cli
+[\fIoptions\fR]
+.I command
+[\fIargs\fR]
+.SH DESCRIPTION
+.B tiny\-cli
+is the administrative CLI for TinyTrack.
+It reads metrics from the shared memory ring buffer written by
+.BR tinytd (8)
+and provides live monitoring, history browsing, daemon control,
+and an interactive ncurses dashboard.
+.SH OPTIONS
+.TP
+.BI \-\-path " PATH"
+Path to the live mmap file.
+Default: \fI/dev/shm/tinytd-live.dat\fR or \fB$TINYTRACK_LIVE_PATH\fR.
+.TP
+.BI \-\-config " PATH"
+Path to the daemon configuration file.
+Default: \fI/etc/tinytrack/tinytrack.conf\fR.
+.TP
+.BI \-\-pid " PATH"
+Path to the daemon PID file.
+Default: \fI/tmp/tinytd.pid\fR.
+.TP
+.BI \-\-format " FORMAT"
+Output format: \fBtable\fR (default), \fBjson\fR, or \fBcompact\fR.
+.TP
+.BI \-\-interval " MS"
+Refresh interval in milliseconds for live views. Default: 1000.
+.TP
+.B \-\-no\-color
+Disable ANSI color output. Automatically disabled when stdout is not a tty.
+.TP
+.B \-\-verbose
+Enable verbose logging.
+.TP
+.B \-\-help
+Show usage summary.
+.TP
+.B \-\-version
+Show version and exit.
+.SH COMMANDS
+.SS status
+Show daemon status, PID, mmap path, and ring buffer fill levels for L1/L2/L3.
+.PP
+.RS
+.B tiny\-cli status
+.RE
+.SS metrics
+Show live metrics, refreshing every \fB\-\-interval\fR ms.
+Exits when the daemon stops or stdout is not a tty (single snapshot).
+.PP
+.RS
+.B tiny\-cli metrics
+.br
+.B tiny\-cli \-\-format json metrics
+.RE
+.SS history
+Show historical samples from a ring buffer level.
+.PP
+.RS
+.B tiny\-cli history [\fIl1\fR|\fIl2\fR|\fIl3\fR] [\-\-count \fIN\fR]
+.RE
+.TP
+.I l1
+1-hour ring at 1-second resolution (default).
+.TP
+.I l2
+24-hour ring at 1-minute resolution.
+.TP
+.I l3
+7-day ring at 15-minute resolution.
+.TP
+.BI \-\-count " N"
+Number of samples to show. Default: 20.
+.SS signal
+Send a signal to the running daemon.
+.PP
+.RS
+.B tiny\-cli signal \fIsigname\fR
+.RE
+.TP
+.I hup
+Reload configuration (SIGHUP).
+.TP
+.I usr1
+Rotate logs (SIGUSR1).
+.TP
+.I usr2
+Dump internal state (SIGUSR2).
+.TP
+.I term
+Graceful shutdown (SIGTERM).
+.SS service
+Manage the tinytd system service.
+.PP
+.RS
+.B tiny\-cli service \fIaction\fR
+.RE
+.PP
+Actions: \fBstart\fR, \fBstop\fR, \fBrestart\fR, \fBstatus\fR,
+\fBenable\fR, \fBdisable\fR.
+Uses \fBsystemctl\fR when available, falls back to direct process management.
+.SS debug
+Run diagnostics: check mmap integrity, magic number, config file presence,
+and daemon state.
+.PP
+.RS
+.B tiny\-cli debug
+.RE
+.SS dashboard
+Open the interactive ncurses dashboard.
+.PP
+.RS
+.B tiny\-cli dashboard
+.br
+.B tiny\-cli \-\-interval 500 dashboard
+.RE
+.PP
+.B Keys:
+.TP
+.B q / ESC
+Quit.
+.TP
+.B Tab
+Cycle between modes: live metrics (0) and ring buffer TSDB view (1).
+.TP
+.B ?
+Toggle help overlay.
+.SS version
+Print version information.
+.SH ENVIRONMENT
+.TP
+.B TINYTRACK_LIVE_PATH
+Override the default mmap file path.
+.TP
+.B TINYTRACK_SHADOW_PATH
+Override the default shadow mmap file path.
+.SH FILES
+.TP
+.I /dev/shm/tinytd-live.dat
+Default live shared memory ring buffer.
+.TP
+.I /etc/tinytrack/tinytrack.conf
+Daemon configuration file.
+.TP
+.I /tmp/tinytd.pid
+Daemon PID file (default).
+.SH EXIT STATUS
+.TP
+.B 0
+Success.
+.TP
+.B 1
+Error or daemon not running (for \fBstatus\fR).
+.SH SEE ALSO
+.BR tinytd (8),
+.BR tinytrack (8)
+.SH BUGS
+Report bugs to <bugs@example.com>.
+.SH COPYRIGHT
+Copyright \(co 2026 TinyTrack Project. MIT License.
