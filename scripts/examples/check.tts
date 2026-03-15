@@ -1,0 +1,15 @@
+# TinyTrack example script
+# Run: tiny-cli script examples/check.tts
+# Variables: $TINYTRACK_LIVE_PATH is expanded automatically
+
+# Show current status
+status
+
+# Show latest metrics in compact format
+--format compact metrics
+
+# Show last 10 L1 history samples
+history l1 --count 10
+
+# Check diagnostics
+debug
