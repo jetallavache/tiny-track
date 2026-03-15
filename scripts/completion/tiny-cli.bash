@@ -5,7 +5,7 @@ _tiny_cli() {
   local cur prev words cword
   _init_completion || return
 
-  local commands="status metrics history signal service debug dashboard version"
+  local commands="status metrics history signal service logs debug dashboard script version"
   local global_opts="--path --config --pid --format --interval --no-color --verbose --help --version"
 
   case "$prev" in
@@ -26,6 +26,15 @@ _tiny_cli() {
       return ;;
     history)
       COMPREPLY=($(compgen -W "l1 l2 l3 --count" -- "$cur"))
+      return ;;
+    logs)
+      COMPREPLY=($(compgen -W "--lines --level" -- "$cur"))
+      return ;;
+    --level)
+      COMPREPLY=($(compgen -W "debug info notice warning err crit" -- "$cur"))
+      return ;;
+    script)
+      _filedir
       return ;;
   esac
 

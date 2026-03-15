@@ -25,9 +25,11 @@ static void usage(void) {
     "  metrics           Show live metrics (refreshes every --interval ms)\n"
     "  history [LEVEL]   Show history: l1 (1h), l2 (24h), l3 (7d)\n"
     "  signal SIGNAME    Send signal to daemon: hup, usr1, usr2, term\n"
-    "  service ACTION    Manage service: start, stop, restart, enable, disable\n"
+    "  service ACTION    Manage service: start, stop, restart, status, enable, disable\n"
+    "  logs              Show daemon logs (journalctl integration)\n"
     "  debug             Diagnostics and integrity check\n"
     "  dashboard         Interactive ncurses dashboard\n"
+    "  script FILE       Execute a script file (- for stdin)\n"
     "  version           Show version\n"
   );
 }
@@ -101,6 +103,26 @@ int main(int argc, char** argv) {
       return 1;
     }
     return ttc_cmd_service(&ctx, argv[i]);
+
+  } else if (strcmp(cmd, "logs") == 0) {
+    int lines = 50;
+    const char* level = "";
+    for (; i < argc; i++) {
+      if (strcmp(argv[i], "--lines") == 0 && i + 1 < argc)
+        lines = atoi(argv[++i]);
+      else if (strcmp(argv[i], "--level") == 0 && i + 1 < argc)
+        level = argv[++i];
+      else
+        lines = atoi(argv[i]);
+    }
+    return ttc_cmd_logs(&ctx, lines, level);
+
+  } else if (strcmp(cmd, "script") == 0) {
+    if (i >= argc) {
+      fprintf(stderr, "Usage: tiny-cli script <file|->\n");
+      return 1;
+    }
+    return ttc_cmd_script(&ctx, argv[i]);
 
   } else if (strcmp(cmd, "debug") == 0) {
     return ttc_cmd_debug(&ctx);

@@ -189,41 +189,198 @@ int ttc_cmd_signal(const struct ttc_ctx* ctx, const char* signame) {
 }
 
 /* ------------------------------------------------------------------ */
-/* service                                                              */
+/* service  (systemd-aware)                                             */
 /* ------------------------------------------------------------------ */
 
-int ttc_cmd_service(const struct ttc_ctx* ctx, const char* action) {
-  /* Try systemctl first, fall back to direct process management */
+/* Query a single property from systemctl show */
+static int systemd_available(void) {
+  return system("systemctl is-system-running --quiet 2>/dev/null") != 127;
+}
+
+static void systemd_show_status(const struct ttc_ctx* ctx) {
+  /* Print structured status from systemctl */
   char cmd[256];
+  snprintf(cmd, sizeof(cmd),
+           "systemctl show tinytd --property=ActiveState,SubState,"
+           "MainPID,ExecMainStartTimestamp,LoadState 2>/dev/null");
+  FILE* f = popen(cmd, "r");
+  if (!f) return;
+
+  char line[256];
+  while (fgets(line, sizeof(line), f)) {
+    line[strcspn(line, "\n")] = '\0';
+    char* eq = strchr(line, '=');
+    if (!eq) continue;
+    *eq = '\0';
+    const char* key = line;
+    const char* val = eq + 1;
+
+    const char* color = ttc_color(ctx, COL_RESET);
+    if (strcmp(key, "ActiveState") == 0) {
+      color = strcmp(val, "active") == 0
+              ? ttc_color(ctx, COL_GREEN) : ttc_color(ctx, COL_RED);
+    }
+    printf(" %-32s %s%s%s\n", key, color, val, ttc_color(ctx, COL_RESET));
+  }
+  pclose(f);
+}
+
+int ttc_cmd_service(const struct ttc_ctx* ctx, const char* action) {
+  int use_systemd = systemd_available();
+  char cmd[512];
+
+  if (strcmp(action, "status") == 0) {
+    ttc_print_sep(ctx, 44);
+    printf(" %sService Status%s\n",
+           ttc_color(ctx, COL_BOLD), ttc_color(ctx, COL_RESET));
+    ttc_print_sep(ctx, 44);
+    if (use_systemd)
+      systemd_show_status(ctx);
+    else
+      return ttc_cmd_status(ctx);
+    return 0;
+  }
 
   if (strcmp(action, "start") == 0) {
-    if (daemon_running(ctx)) {
-      printf("tinytd is already running\n");
-      return 0;
-    }
-    snprintf(cmd, sizeof(cmd),
-             "systemctl start tinytd 2>/dev/null || "
-             "tinytd %s &", ctx->config_path);
+    if (use_systemd)
+      snprintf(cmd, sizeof(cmd), "systemctl start tinytd");
+    else if (daemon_running(ctx)) {
+      printf("tinytd is already running\n"); return 0;
+    } else
+      snprintf(cmd, sizeof(cmd), "tinytd '%s' &", ctx->config_path);
+
   } else if (strcmp(action, "stop") == 0) {
-    snprintf(cmd, sizeof(cmd),
-             "systemctl stop tinytd 2>/dev/null || "
-             "kill $(cat %s 2>/dev/null) 2>/dev/null", ctx->pid_file);
+    if (use_systemd)
+      snprintf(cmd, sizeof(cmd), "systemctl stop tinytd");
+    else
+      snprintf(cmd, sizeof(cmd), "kill $(cat '%s' 2>/dev/null) 2>/dev/null",
+               ctx->pid_file);
+
   } else if (strcmp(action, "restart") == 0) {
-    snprintf(cmd, sizeof(cmd),
-             "systemctl restart tinytd 2>/dev/null || { "
-             "kill $(cat %s 2>/dev/null) 2>/dev/null; sleep 1; tinytd %s & }",
-             ctx->pid_file, ctx->config_path);
-  } else if (strcmp(action, "status") == 0) {
-    return ttc_cmd_status(ctx);
+    if (use_systemd)
+      snprintf(cmd, sizeof(cmd), "systemctl restart tinytd");
+    else
+      snprintf(cmd, sizeof(cmd),
+               "kill $(cat '%s' 2>/dev/null) 2>/dev/null; sleep 1; tinytd '%s' &",
+               ctx->pid_file, ctx->config_path);
+
   } else if (strcmp(action, "enable") == 0 || strcmp(action, "disable") == 0) {
+    if (!use_systemd) {
+      fprintf(stderr, "systemd not available\n"); return 1;
+    }
     snprintf(cmd, sizeof(cmd), "systemctl %s tinytd", action);
+
   } else {
-    fprintf(stderr, "Unknown action: %s (start|stop|restart|status|enable|disable)\n",
+    fprintf(stderr,
+            "Unknown action: %s (start|stop|restart|status|enable|disable)\n",
             action);
     return 1;
   }
 
+  int ret = system(cmd);
+  if (ret == 0 && ctx->format != FMT_JSON)
+    printf("OK\n");
+  return ret == 0 ? 0 : 1;
+}
+
+/* ------------------------------------------------------------------ */
+/* logs  (journalctl integration)                                       */
+/* ------------------------------------------------------------------ */
+
+int ttc_cmd_logs(const struct ttc_ctx* ctx, int lines, const char* level) {
+  if (lines <= 0) lines = 50;
+
+  char cmd[256];
+  /* Try journalctl first */
+  if (system("journalctl --version >/dev/null 2>&1") == 0) {
+    if (level && strlen(level) > 0)
+      snprintf(cmd, sizeof(cmd),
+               "journalctl -u tinytd -n %d -p %s --no-pager", lines, level);
+    else
+      snprintf(cmd, sizeof(cmd),
+               "journalctl -u tinytd -n %d --no-pager", lines);
+  } else {
+    /* Fallback: grep syslog */
+    snprintf(cmd, sizeof(cmd),
+             "grep tinytd /var/log/syslog 2>/dev/null | tail -n %d"
+             " || grep tinytd /var/log/messages 2>/dev/null | tail -n %d",
+             lines, lines);
+  }
+
   return system(cmd);
+}
+
+/* ------------------------------------------------------------------ */
+/* script  (batch command execution)                                    */
+/* ------------------------------------------------------------------ */
+
+int ttc_cmd_script(const struct ttc_ctx* ctx, const char* path) {
+  FILE* f = strcmp(path, "-") == 0 ? stdin : fopen(path, "r");
+  if (!f) {
+    fprintf(stderr, "Error: cannot open script: %s\n", path);
+    return 1;
+  }
+
+  char line[512];
+  int lineno = 0, errors = 0;
+
+  while (fgets(line, sizeof(line), f)) {
+    lineno++;
+    /* Strip newline and leading whitespace */
+    char* p = line;
+    while (*p == ' ' || *p == '\t') p++;
+    p[strcspn(p, "\n\r")] = '\0';
+
+    /* Skip empty lines and comments */
+    if (*p == '\0' || *p == '#') continue;
+
+    /* Expand simple $VAR references */
+    char expanded[512];
+    char* dst = expanded;
+    for (char* s = p; *s && dst < expanded + sizeof(expanded) - 1; s++) {
+      if (*s == '$' && *(s + 1)) {
+        s++;
+        char varname[64]; int vn = 0;
+        while (*s && ((*s >= 'A' && *s <= 'Z') || (*s >= 'a' && *s <= 'z')
+               || (*s >= '0' && *s <= '9') || *s == '_') && vn < 63)
+          varname[vn++] = *s++;
+        varname[vn] = '\0'; s--;
+        const char* val = getenv(varname);
+        if (val) { strncpy(dst, val, expanded + sizeof(expanded) - dst - 1); dst += strlen(val); }
+      } else {
+        *dst++ = *s;
+      }
+    }
+    *dst = '\0';
+
+    if (ctx->verbose)
+      printf("[script:%d] %s\n", lineno, expanded);
+
+    /* Build argv and dispatch to existing commands */
+    /* Simple approach: prepend "tiny-cli" and re-parse via execvp */
+    char* argv[32]; int argc = 0;
+    char buf[512]; strncpy(buf, expanded, sizeof(buf) - 1);
+    char* tok = strtok(buf, " \t");
+    while (tok && argc < 31) { argv[argc++] = tok; tok = strtok(NULL, " \t"); }
+    argv[argc] = NULL;
+    if (argc == 0) continue;
+
+    /* Dispatch the first token as a tiny-cli command */
+    char full_cmd[600];
+    snprintf(full_cmd, sizeof(full_cmd), "tiny-cli");
+    for (int i = 0; i < argc; i++) {
+      strncat(full_cmd, " ", sizeof(full_cmd) - strlen(full_cmd) - 1);
+      strncat(full_cmd, argv[i], sizeof(full_cmd) - strlen(full_cmd) - 1);
+    }
+    int ret = system(full_cmd);
+    if (ret != 0) {
+      fprintf(stderr, "[script:%d] command failed: %s\n", lineno, expanded);
+      errors++;
+    }
+  }
+
+  if (f != stdin) fclose(f);
+  return errors > 0 ? 1 : 0;
 }
 
 /* ------------------------------------------------------------------ */
