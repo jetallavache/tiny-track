@@ -44,7 +44,7 @@ static int shadow_is_valid(const void* shadow_addr, size_t size) {
     return 0;
   if (hdr->last_update_ts == 0)
     return 0;
-  /* Verify checksum if stored */
+  /* Verify checksum if stored and crc enabled */
   if (hdr->crc32 != 0) {
     uint32_t expected = adler32(shadow_addr, size);
     if (hdr->crc32 != expected) {
@@ -417,8 +417,12 @@ int ttr_writer_shadow_sync(struct ttr_writer* ctx) {
   ((struct ttr_header*)ctx->shadow_addr)->last_shadow_sync_ts = now;
 
   /* Compute and store checksum over the complete shadow */
-  uint32_t crc = adler32(ctx->shadow_addr, ctx->total_size);
-  ((struct ttr_header*)ctx->shadow_addr)->crc32 = crc;
+  if (ctx->enable_crc) {
+    uint32_t crc = adler32(ctx->shadow_addr, ctx->total_size);
+    ((struct ttr_header*)ctx->shadow_addr)->crc32 = crc;
+  } else {
+    ((struct ttr_header*)ctx->shadow_addr)->crc32 = 0;
+  }
 
   msync(ctx->shadow_addr, ctx->total_size, MS_SYNC);
 

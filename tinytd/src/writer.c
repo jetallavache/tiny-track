@@ -14,8 +14,10 @@ int ttd_writer_init(struct ttd_writer* ctx, struct ttd_config* cfg) {
     return ret;
   }
 
-  tt_log_debug("Writer initialized: live_addr=%p, shadow_addr=%p",
-               ctx->ring.live_addr, ctx->ring.shadow_addr);
+  ctx->ring.enable_crc = cfg->enable_crc;
+  tt_log_debug("Writer initialized: live_addr=%p, shadow_addr=%p, crc=%s",
+               ctx->ring.live_addr, ctx->ring.shadow_addr,
+               cfg->enable_crc ? "on" : "off");
   return 0;
 }
 
@@ -60,10 +62,9 @@ int ttd_writer_aggregate_l3(struct ttd_writer* ctx) {
                            ttr_layout_l3_meta_offset(ctx->ring.l1_capacity,
                                                      ctx->ring.l2_capacity,
                                                      cell_size));
-    uint8_t* l3_data =
-        (uint8_t*)ctx->ring.live_addr +
-        ttr_layout_l3_offset(ctx->ring.l1_capacity, ctx->ring.l2_capacity,
-                             cell_size);
+    uint8_t* l3_data = (uint8_t*)ctx->ring.live_addr +
+                       ttr_layout_l3_offset(ctx->ring.l1_capacity,
+                                            ctx->ring.l2_capacity, cell_size);
     uint32_t head = l3_meta->head;
     uint32_t prev = (head == 0 ? l3_meta->capacity : head) - 1;
     const struct tt_proto_metrics* agg =

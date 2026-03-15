@@ -1,6 +1,7 @@
 #ifndef TTR_WRITER_H
 #define TTR_WRITER_H
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <sys/types.h>
@@ -23,6 +24,7 @@ struct ttr_writer {
   uint32_t l2_capacity;
   uint32_t l3_capacity;
   mode_t file_mode;
+  bool enable_crc;
   /* Dirty range tracking for incremental shadow_sync */
   size_t dirty_min;
   size_t dirty_max;
