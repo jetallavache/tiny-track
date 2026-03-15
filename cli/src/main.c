@@ -4,6 +4,7 @@
 
 #include "commands.h"
 #include "ctx.h"
+#include "dashboard.h"
 #include "output.h"
 
 static void usage(void) {
@@ -26,6 +27,7 @@ static void usage(void) {
     "  signal SIGNAME    Send signal to daemon: hup, usr1, usr2, term\n"
     "  service ACTION    Manage service: start, stop, restart, enable, disable\n"
     "  debug             Diagnostics and integrity check\n"
+    "  dashboard         Interactive ncurses dashboard\n"
     "  version           Show version\n"
   );
 }
@@ -102,6 +104,9 @@ int main(int argc, char** argv) {
 
   } else if (strcmp(cmd, "debug") == 0) {
     return ttc_cmd_debug(&ctx);
+
+  } else if (strcmp(cmd, "dashboard") == 0 || strcmp(cmd, "ui") == 0) {
+    return ttc_cmd_dashboard(&ctx);
 
   } else if (strcmp(cmd, "version") == 0) {
     return ttc_cmd_version(&ctx);

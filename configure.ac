@@ -31,6 +31,8 @@ AC_CHECK_FUNCS([clock_gettime gettimeofday memset munmap])
 # Check for required libraries
 AC_CHECK_LIB([rt], [clock_gettime], [], 
     [AC_MSG_ERROR([librt is required])])
+AC_CHECK_LIB([ncurses], [initscr], [],
+    [AC_MSG_ERROR([libncurses is required (install ncurses-devel)])])
 AC_CHECK_LIB([crypto], [SHA256_Init], [], 
     [AC_MSG_WARN([libcrypto not found, gateway will not be built])])
 
