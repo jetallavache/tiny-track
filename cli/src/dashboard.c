@@ -112,21 +112,21 @@ static void draw_sparkline(WINDOW* w, int y, int x, int width,
                             const struct tt_metrics* hist, int count,
                             double (*getval)(const struct tt_metrics*),
                             double warn, double crit) {
-  static const char* sparks = " ._-=+|!#";
+  /* 5-level ASCII sparkline: space . : | # */
+  static const char sparks[] = " .:|#";
   int start = count > width ? count - width : 0;
   int n = count - start;
 
   wmove(w, y, x);
   for (int i = 0; i < n; i++) {
     double v = getval(&hist[start + i]);
-    int idx = (int)(v / 100.0 * 8.0);
+    int idx = (int)(v / 100.0 * 4.0);
     if (idx < 0) idx = 0;
-    if (idx > 8) idx = 8;
+    if (idx > 4) idx = 4;
     wattron(w, COLOR_PAIR(pct_pair(v, warn, crit)));
     waddch(w, sparks[idx]);
     wattroff(w, COLOR_PAIR(pct_pair(v, warn, crit)));
   }
-  /* Pad with spaces */
   for (int i = n; i < width; i++) waddch(w, ' ');
 }
 
@@ -154,16 +154,16 @@ static void draw_header(WINDOW* w, int cols, int daemon_ok) {
 static void draw_metrics(WINDOW* w, int row, int cols,
                          const struct tt_metrics* m,
                          const struct tt_metrics* hist, int hcount) {
-  int bar_w = cols / 2 - 16;
-  if (bar_w < 10) bar_w = 10;
+  /* Bar width: half the terminal, leaving room for label + value */
+  int bar_w = (cols - 24);
+  if (bar_w < 20) bar_w = 20;
+  if (bar_w > 60) bar_w = 60;
 
   double cpu  = m->cpu_usage  / 100.0;
   double mem  = m->mem_usage  / 100.0;
   double disk = m->du_usage   / 100.0;
 
   char rx[16], tx[16], total[16], free_[16], ts[16];
-  /* reuse ttc_fmt_bytes logic inline */
-  auto void fb(unsigned long b, char* buf, int len);
   void fb(unsigned long b, char* buf, int len) {
     if (b >= 1UL<<30) snprintf(buf, len, "%.1fG", b/(double)(1UL<<30));
     else if (b >= 1UL<<20) snprintf(buf, len, "%.1fM", b/(double)(1UL<<20));
@@ -174,43 +174,52 @@ static void draw_metrics(WINDOW* w, int row, int cols,
   fb(m->net_tx, tx, sizeof(tx));
   fb(m->du_total_bytes, total, sizeof(total));
   fb(m->du_free_bytes, free_, sizeof(free_));
-
   ttc_fmt_ts(m->timestamp, ts, sizeof(ts));
 
   wattron(w, COLOR_PAIR(CP_TITLE) | A_BOLD);
-  mvwprintw(w, row, 1, "[ Metrics  %s ]", ts);
+  mvwprintw(w, row, 1, "[ Live Metrics  %s ]", ts);
   wattroff(w, COLOR_PAIR(CP_TITLE) | A_BOLD);
   row++;
 
-  /* CPU */
-  mvwprintw(w, row, 1, "CPU  %5.1f%%", cpu);
-  draw_bar(w, row, 12, bar_w, cpu, 70, 90);
-  draw_sparkline(w, row, 12 + bar_w + 2, cols - 12 - bar_w - 4,
-                 hist, hcount, get_cpu, 70, 90);
+  /* Helper: draw one metric row + sparkline row below */
+  #define METRIC_ROW(label, val, warn, crit, getfn) do { \
+    mvwprintw(w, row, 1, "%-5s %5.1f%%", label, val); \
+    draw_bar(w, row, 13, bar_w, val, warn, crit); \
+    row++; \
+    wmove(w, row, 13); \
+    draw_sparkline(w, row, 13, bar_w, hist, hcount, getfn, warn, crit); \
+    wattron(w, COLOR_PAIR(CP_DIM)); \
+    mvwprintw(w, row, 13 + bar_w + 1, "60s history"); \
+    wattroff(w, COLOR_PAIR(CP_DIM)); \
+    row++; \
+  } while (0)
+
+  METRIC_ROW("CPU",  cpu,  70, 90, get_cpu);
+  METRIC_ROW("MEM",  mem,  80, 95, get_mem);
+  METRIC_ROW("DISK", disk, 80, 95, get_disk);
+
+  #undef METRIC_ROW
+
+  /* NET: RX / TX */
+  mvwprintw(w, row, 1, "NET");
+  wattron(w, COLOR_PAIR(CP_OK));
+  mvwprintw(w, row, 7, "RX %-8s/s", rx);
+  wattroff(w, COLOR_PAIR(CP_OK));
+  wattron(w, COLOR_PAIR(CP_WARN));
+  mvwprintw(w, row, 22, "TX %-8s/s", tx);
+  wattroff(w, COLOR_PAIR(CP_WARN));
   row++;
 
-  /* MEM */
-  mvwprintw(w, row, 1, "MEM  %5.1f%%", mem);
-  draw_bar(w, row, 12, bar_w, mem, 80, 95);
-  draw_sparkline(w, row, 12 + bar_w + 2, cols - 12 - bar_w - 4,
-                 hist, hcount, get_mem, 80, 95);
-  row++;
-
-  /* DISK */
-  mvwprintw(w, row, 1, "DISK %5.1f%%", disk);
-  draw_bar(w, row, 12, bar_w, disk, 80, 95);
-  draw_sparkline(w, row, 12 + bar_w + 2, cols - 12 - bar_w - 4,
-                 hist, hcount, get_disk, 80, 95);
-  row++;
-
-  /* NET */
-  mvwprintw(w, row, 1, "NET  ↓%s/s  ↑%s/s", rx, tx);
-  row++;
-
-  /* LOAD */
-  mvwprintw(w, row, 1, "LOAD %.2f  %.2f  %.2f   PROC %u/%u",
-            m->load_1min / 100.0, m->load_5min / 100.0,
-            m->load_15min / 100.0, m->nr_running, m->nr_total);
+  /* LOAD + PROC */
+  double l1 = m->load_1min / 100.0;
+  mvwprintw(w, row, 1, "LOAD");
+  wattron(w, COLOR_PAIR(pct_pair(l1 * 100, 70, 90)));
+  mvwprintw(w, row, 7, "%.2f", l1);
+  wattroff(w, COLOR_PAIR(pct_pair(l1 * 100, 70, 90)));
+  mvwprintw(w, row, 13, "%.2f  %.2f",
+            m->load_5min / 100.0, m->load_15min / 100.0);
+  mvwprintw(w, row, 28, "PROC %u/%u",
+            m->nr_running, m->nr_total);
 }
 
 static void draw_tsdb(WINDOW* w, int row, int cols,
