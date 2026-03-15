@@ -1,11 +1,15 @@
 #ifndef TTD_DEBUG_H
 #define TTD_DEBUG_H
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #ifdef TTD_DEBUG
 
 #include "collector.h"
 #include "common/proto/v1.h"
-#include "common/ringbuf/layout.h"
+#include "common/ringbuf.h"
 
 /* Dump raw /proc collector state after each read */
 void ttd_debug_dump_collector(const struct tt_proto_metrics* sample);
