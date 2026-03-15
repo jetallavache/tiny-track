@@ -5,7 +5,6 @@
 #include <string.h>
 
 #include "common/config.h"
-#include "common/config.h"
 
 void ttd_config_set_defaults(struct ttd_config* cfg) {
   /* [daemon] */

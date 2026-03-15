@@ -255,7 +255,7 @@ static void iolog(struct ttg_conn* c, char* buf, long n, bool r) {
   if (n == TTG_IO_WAIT) {
     /* Do nothing */
   } else if (n <= 0) {
-    c->is_closing = 1;  /* Termination. Don't call mg_error() */
+    c->is_closing = 1; /* Termination. Don't call mg_error() */
   } else if (n > 0) {
     if (c->is_hexdumping) {
       tt_log_info("\n-- %lu %M %s %M %ld", c->id, ttg_print_ip_port, &c->local,
@@ -282,7 +282,8 @@ void ttg_sock_read_conn(struct ttg_conn* c) {
     size_t len = c->recv.size - c->recv.len;
     long n = -1;
     if (c->is_tls) {
-      /* TODO: It's good to think about how we will integrate tls into the implementation. */
+      /* TODO: It's good to think about how we will integrate tls into the
+       * implementation. */
     } else {
       n = iorecv(c, buf, len);
     }
@@ -296,7 +297,8 @@ void ttg_sock_write_conn(struct ttg_conn* c) {
   char* buf = (char*)c->send.buf;
   size_t len = c->send.len;
 
-  /*   long n = c->is_tls ? mg_tls_send(c, buf, len) : mg_io_send(c, buf, len); */
+  /*   long n = c->is_tls ? mg_tls_send(c, buf, len) : mg_io_send(c, buf, len);
+   */
   long n = iosend(c, buf, len);
 
   tt_log_debug("%lu %ld snd %ld/%ld rcv %ld/%ld n=%ld err=%d", c->id, c->fd,

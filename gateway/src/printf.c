@@ -103,7 +103,8 @@ static size_t dtoa(char* dst, size_t dstlen, double d, int width, bool tz) {
       d -= ch * t;
       t /= 10.0;
     }
-    /* printf(" --> [%g] -> %g %g (%d) [%.*s]\n", saved, d, t, n, s + n, buf); */
+    /* printf(" --> [%g] -> %g %g (%d) [%.*s]\n", saved, d, t, n, s + n, buf);
+     */
     if (n == 0)
       buf[s++] = '0';
     while (t >= 1.0 && n + s < (int)sizeof(buf))
@@ -122,9 +123,9 @@ static size_t dtoa(char* dst, size_t dstlen, double d, int width, bool tz) {
   }
 
   while (tz && n > 0 && buf[s + n - 1] == '0')
-    n--;  /* Trim trailing zeroes */
+    n--; /* Trim trailing zeroes */
   if (tz && n > 0 && buf[s + n - 1] == '.')
-    n--;  /* Trim trailing dot */
+    n--; /* Trim trailing dot */
   n += s;
   if (n >= (int)sizeof(buf))
     n = (int)sizeof(buf) - 1;
@@ -154,7 +155,7 @@ static size_t lld(char* buf, int64_t val, bool is_signed, bool is_hex) {
     buf[s + i] = buf[s + n - i - 1], buf[s + n - i - 1] = t;
   }
   if (val == 0)
-    buf[n++] = '0';  /* Handle special case */
+    buf[n++] = '0'; /* Handle special case */
   return n + s;
 }
 
@@ -192,7 +193,7 @@ size_t ttg_vxprintf(void (*out)(char, void*), void* param, const char* fmt,
         }
       }
       while (c == 'h')
-        c = fmt[++i];  /* Treat h and hh as int */
+        c = fmt[++i]; /* Treat h and hh as int */
       if (c == 'l') {
         is_long++, c = fmt[++i];
         if (c == 'l')

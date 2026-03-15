@@ -53,12 +53,10 @@ struct ttg_mgr {
 
 /* Connection */
 struct ttg_conn {
-  ttg_event_handler
-      fn;        /* User-provided event handler function */
-  void* fn_data; /* User-provided parameter for this function */
-  ttg_event_handler
-      pfn;        /* Protocol-specific event handler function */
-  void* pfn_data; /* Protocol-specific parameter for this function */
+  ttg_event_handler fn;  /* User-provided event handler function */
+  void* fn_data;         /* User-provided parameter for this function */
+  ttg_event_handler pfn; /* Protocol-specific event handler function */
+  void* pfn_data;        /* Protocol-specific parameter for this function */
   struct ttg_conn* next;
   struct ttg_mgr* mgr;
   struct ttg_addr local;
@@ -81,25 +79,23 @@ struct ttg_conn {
   uint32_t update_interval_ms; /* Per-connection interval (1000, 5000, 10000) */
   time_t last_update_time;     /* Last update time */
 
-  unsigned is_listening : 1; /* Listening for connections */
-  unsigned is_client : 1;    /* Outgoing (client) connection */
-  unsigned is_accepted : 1;  /* Incoming (server) connection */
-  unsigned is_resolving
-      : 1; /* Non-blocking DNS resolution in progress */
+  unsigned is_listening : 1;  /* Listening for connections */
+  unsigned is_client : 1;     /* Outgoing (client) connection */
+  unsigned is_accepted : 1;   /* Incoming (server) connection */
+  unsigned is_resolving : 1;  /* Non-blocking DNS resolution in progress */
   unsigned is_connecting : 1; /* Non-blocking connect in progress */
   unsigned is_tls : 1;        /* TLS-enabled connection */
   unsigned is_tls_hs : 1;     /* TLS handshake in progress */
   unsigned is_websocket : 1;  /* WebSocket connection */
   unsigned is_closing : 1;    /* Close and forcibly remove connection */
-  unsigned is_full
-      : 1; /* Stop reading until cleared */
-  unsigned is_resp : 1;     /* Response is still being generated */
-  unsigned is_readable : 1; /* Connection ready for reading */
-  unsigned is_writable : 1; /* Connection ready for writing*/
+  unsigned is_full : 1;       /* Stop reading until cleared */
+  unsigned is_resp : 1;       /* Response is still being generated */
+  unsigned is_readable : 1;   /* Connection ready for reading */
+  unsigned is_writable : 1;   /* Connection ready for writing*/
 
-  unsigned is_hexdumping : 1;  /* Hexdump in/out traffic */
-  unsigned is_draining : 1;    /* Send remaining data, then close and
-                                  free memory */
+  unsigned is_hexdumping : 1; /* Hexdump in/out traffic */
+  unsigned is_draining : 1;   /* Send remaining data, then close and
+                                 free memory */
 };
 
 void ttg_net_mgr_init(struct ttg_mgr*);
@@ -123,4 +119,4 @@ struct tt_timer* ttg_net_timer_add(struct ttg_mgr*, uint64_t ms, unsigned flags,
 size_t ttg_net_printf(struct ttg_conn*, const char* fmt, ...);
 size_t ttg_net_vprintf(struct ttg_conn*, const char* fmt, va_list* ap);
 
-#endif  /* TTG_NET_H */
+#endif /* TTG_NET_H */

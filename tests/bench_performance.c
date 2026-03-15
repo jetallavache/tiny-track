@@ -22,22 +22,22 @@ static uint64_t get_ns(void) {
 
 /* Benchmark: writer throughput */
 static void bench_writer_throughput(void) {
-  struct tt_ring_writer writer;
+  struct ttr_writer writer;
   struct tt_proto_metrics sample = {0};
 
-  tt_ring_writer_init(&writer, "/tmp/tinytd-bench-live", "/tmp/tinytd-bench-shadow",
+  ttr_writer_init(&writer, "/tmp/tinytd-bench-live", "/tmp/tinytd-bench-shadow",
                       3600, 1440, 672, 0644);
 
   uint64_t start = get_ns();
   for (int i = 0; i < BENCH_ITERATIONS; i++) {
     sample.cpu_usage = i % 10000;
-    tt_ring_writer_write_l1(&writer, &sample);
+    ttr_writer_write_l1(&writer, &sample);
   }
   uint64_t end = get_ns();
 
-  tt_ring_writer_cleanup(&writer);
-  tt_shm_unlink("/tmp/tinytd-bench-live");
-  tt_shm_unlink("/tmp/tinytd-bench-shadow");
+  ttr_writer_cleanup(&writer);
+  ttr_shm_unlink("/tmp/tinytd-bench-live");
+  ttr_shm_unlink("/tmp/tinytd-bench-shadow");
 
   double elapsed_sec = (end - start) / 1e9;
   double ops_per_sec = BENCH_ITERATIONS / elapsed_sec;
@@ -52,32 +52,32 @@ static void bench_writer_throughput(void) {
 
 /* Benchmark: reader throughput */
 static void bench_reader_throughput(void) {
-  struct tt_ring_writer writer;
-  struct tt_ring_reader reader;
+  struct ttr_writer writer;
+  struct ttr_reader reader;
   struct tt_proto_metrics sample = {0};
   struct tt_proto_metrics out;
 
-  tt_ring_writer_init(&writer, "/tmp/tinytd-bench-live", "/tmp/tinytd-bench-shadow",
+  ttr_writer_init(&writer, "/tmp/tinytd-bench-live", "/tmp/tinytd-bench-shadow",
                       3600, 1440, 672, 0644);
 
   /* Fill with data */
   for (int i = 0; i < 100; i++) {
     sample.cpu_usage = i;
-    tt_ring_writer_write_l1(&writer, &sample);
+    ttr_writer_write_l1(&writer, &sample);
   }
 
-  tt_ring_reader_open(&reader, "/tmp/tinytd-bench-live");
+  ttr_reader_open(&reader, "/tmp/tinytd-bench-live");
 
   uint64_t start = get_ns();
   for (int i = 0; i < BENCH_ITERATIONS; i++) {
-    tt_ring_reader_get_latest(&reader, &out);
+    ttr_reader_get_latest(&reader, &out);
   }
   uint64_t end = get_ns();
 
-  tt_ring_reader_close(&reader);
-  tt_ring_writer_cleanup(&writer);
-  tt_shm_unlink("/tmp/tinytd-bench-live");
-  tt_shm_unlink("/tmp/tinytd-bench-shadow");
+  ttr_reader_close(&reader);
+  ttr_writer_cleanup(&writer);
+  ttr_shm_unlink("/tmp/tinytd-bench-live");
+  ttr_shm_unlink("/tmp/tinytd-bench-shadow");
 
   double elapsed_sec = (end - start) / 1e9;
   double ops_per_sec = BENCH_ITERATIONS / elapsed_sec;
@@ -99,33 +99,33 @@ typedef struct {
 
 static void *reader_thread(void *arg) {
   reader_thread_ctx *ctx = arg;
-  struct tt_ring_reader reader;
+  struct ttr_reader reader;
   struct tt_proto_metrics out;
 
-  tt_ring_reader_open(&reader, "/tmp/tinytd-bench-live");
+  ttr_reader_open(&reader, "/tmp/tinytd-bench-live");
 
   uint64_t start = get_ns();
   for (int i = 0; i < ctx->iterations; i++) {
-    tt_ring_reader_get_latest(&reader, &out);
+    ttr_reader_get_latest(&reader, &out);
   }
   uint64_t end = get_ns();
 
   ctx->duration_ns = end - start;
-  tt_ring_reader_close(&reader);
+  ttr_reader_close(&reader);
   return NULL;
 }
 
 static void bench_concurrent_readers(void) {
-  struct tt_ring_writer writer;
+  struct ttr_writer writer;
   struct tt_proto_metrics sample = {0};
 
-  tt_ring_writer_init(&writer, "/tmp/tinytd-bench-live", "/tmp/tinytd-bench-shadow",
+  ttr_writer_init(&writer, "/tmp/tinytd-bench-live", "/tmp/tinytd-bench-shadow",
                       3600, 1440, 672, 0644);
 
   /* Fill with data */
   for (int i = 0; i < 100; i++) {
     sample.cpu_usage = i;
-    tt_ring_writer_write_l1(&writer, &sample);
+    ttr_writer_write_l1(&writer, &sample);
   }
 
   pthread_t threads[NUM_READERS];
@@ -145,9 +145,9 @@ static void bench_concurrent_readers(void) {
 
   uint64_t end = get_ns();
 
-  tt_ring_writer_cleanup(&writer);
-  tt_shm_unlink("/tmp/tinytd-bench-live");
-  tt_shm_unlink("/tmp/tinytd-bench-shadow");
+  ttr_writer_cleanup(&writer);
+  ttr_shm_unlink("/tmp/tinytd-bench-live");
+  ttr_shm_unlink("/tmp/tinytd-bench-shadow");
 
   double elapsed_sec = (end - start) / 1e9;
   double total_ops = BENCH_ITERATIONS;
@@ -168,10 +168,10 @@ static void bench_concurrent_readers(void) {
 
 /* Benchmark: seqlock retry rate */
 static void bench_seqlock_contention(void) {
-  struct tt_ring_writer writer;
+  struct ttr_writer writer;
   struct tt_proto_metrics sample = {0};
 
-  tt_ring_writer_init(&writer, "/tmp/tinytd-bench-live", "/tmp/tinytd-bench-shadow",
+  ttr_writer_init(&writer, "/tmp/tinytd-bench-live", "/tmp/tinytd-bench-shadow",
                       3600, 1440, 672, 0644);
 
   /* Writer thread */
@@ -182,7 +182,7 @@ static void bench_seqlock_contention(void) {
     (void)arg;
     while (writer_running) {
       sample.cpu_usage++;
-      tt_ring_writer_write_l1(&writer, &sample);
+      ttr_writer_write_l1(&writer, &sample);
       usleep(10);
     }
     return NULL;
@@ -191,25 +191,25 @@ static void bench_seqlock_contention(void) {
   pthread_create(&writer_thread, NULL, writer_func, NULL);
 
   /* Reader with retry counting */
-  struct tt_ring_reader reader;
+  struct ttr_reader reader;
   struct tt_proto_metrics out;
-  tt_ring_reader_open(&reader, "/tmp/tinytd-bench-live");
+  ttr_reader_open(&reader, "/tmp/tinytd-bench-live");
 
   int total_reads = 10000;
   int retries = 0;
 
   for (int i = 0; i < total_reads; i++) {
     /* Emulate retry counting via repeated reads */
-    tt_ring_reader_get_latest(&reader, &out);
+    ttr_reader_get_latest(&reader, &out);
   }
 
   writer_running = 0;
   pthread_join(writer_thread, NULL);
 
-  tt_ring_reader_close(&reader);
-  tt_ring_writer_cleanup(&writer);
-  tt_shm_unlink("/tmp/tinytd-bench-live");
-  tt_shm_unlink("/tmp/tinytd-bench-shadow");
+  ttr_reader_close(&reader);
+  ttr_writer_cleanup(&writer);
+  ttr_shm_unlink("/tmp/tinytd-bench-live");
+  ttr_shm_unlink("/tmp/tinytd-bench-shadow");
 
   printf("Seqlock contention:\n");
   printf("  Total reads: %d\n", total_reads);
@@ -219,13 +219,13 @@ static void bench_seqlock_contention(void) {
 
 /* Benchmark: memory usage */
 static void bench_memory_usage(void) {
-  struct tt_ring_writer writer;
+  struct ttr_writer writer;
 
   size_t l1_cap = 3600;
   size_t l2_cap = 1440;
   size_t l3_cap = 672;
 
-  tt_ring_writer_init(&writer, "/tmp/tinytd-bench-live", "/tmp/tinytd-bench-shadow",
+  ttr_writer_init(&writer, "/tmp/tinytd-bench-live", "/tmp/tinytd-bench-shadow",
                       l1_cap, l2_cap, l3_cap, 0644);
 
   size_t cell_size = sizeof(struct tt_proto_metrics);
@@ -242,9 +242,9 @@ static void bench_memory_usage(void) {
   printf("  Per-process: %.2f MB (live + shadow)\n\n",
          (total_size * 2) / 1024.0 / 1024.0);
 
-  tt_ring_writer_cleanup(&writer);
-  tt_shm_unlink("/tmp/tinytd-bench-live");
-  tt_shm_unlink("/tmp/tinytd-bench-shadow");
+  ttr_writer_cleanup(&writer);
+  ttr_shm_unlink("/tmp/tinytd-bench-live");
+  ttr_shm_unlink("/tmp/tinytd-bench-shadow");
 }
 
 int main(void) {

@@ -53,9 +53,9 @@ int ttg_iobuf_init(struct ttg_iobuf* io, size_t size, size_t align) {
 size_t ttg_iobuf_add(struct ttg_iobuf* io, size_t ofs, const void* buf,
                      size_t len) {
   size_t new_size = roundup(io->len + len, io->align);
-  ttg_iobuf_resize(io, new_size);  /* Attempt to resize */
+  ttg_iobuf_resize(io, new_size); /* Attempt to resize */
   if (new_size != io->size)
-    len = 0;  /* Resize failure, append nothing */
+    len = 0; /* Resize failure, append nothing */
   if (ofs < io->len)
     memmove(io->buf + ofs + len, io->buf + ofs, io->len - ofs);
   if (buf != NULL)

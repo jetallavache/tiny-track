@@ -10,12 +10,12 @@
 
 #include "common/log.h"
 
-void* tt_shm_create(const char* path, size_t len, int mode) {
+void* ttr_shm_create(const char* path, size_t len, int mode) {
   int fd;
   void* addr;
 
-  tt_log_debug("tt_shm_create: path='%s' (strlen=%zu), len=%zu, mode=0%o", path,
-               strlen(path), len, mode);
+  tt_log_debug("ttr_shm_create: path='%s' (strlen=%zu), len=%zu, mode=0%o",
+               path, strlen(path), len, mode);
 
   /* Check if directory exists */
   char dir_path[256];
@@ -36,7 +36,7 @@ void* tt_shm_create(const char* path, size_t len, int mode) {
   if ((fd = open(path, O_CREAT | O_RDWR, mode)) < (0)) {
     tt_log_err("open_fd failed: path='%s', mode=0%o, errno=%d (%s)", path, mode,
                errno, strerror(errno));
-    return (void*)TT_SHM_OPENFD_ERR;
+    return (void*)TTR_SHM_OPENFD_ERR;
   }
 
   tt_log_debug("open succeeded: fd=%d", fd);
@@ -44,22 +44,22 @@ void* tt_shm_create(const char* path, size_t len, int mode) {
   if ((ftruncate(fd, len)) < (0)) {
     tt_log_err("ftruncate: %s", strerror(errno));
     close(fd);
-    return (void*)TT_SHM_FTRUNCATE_ERR;
+    return (void*)TTR_SHM_FTRUNCATE_ERR;
   }
   if ((addr = mmap(NULL, len, PROT_WRITE | PROT_READ, MAP_SHARED, fd, 0)) ==
       MAP_FAILED) {
     tt_log_err("mmap: %s", strerror(errno));
     close(fd);
-    return (void*)TT_SHM_MMAP_ERR;
+    return (void*)TTR_SHM_MMAP_ERR;
   }
   if (!addr)
-    return (void*)TT_SHM_FAIL;
+    return (void*)TTR_SHM_FAIL;
   if (fd != (-1))
     close(fd);
   return addr;
 }
 
-void* tt_shm_read(const char* path, size_t* len) {
+void* ttr_shm_read(const char* path, size_t* len) {
   int fd;
   void* addr;
   struct stat st;
@@ -67,19 +67,19 @@ void* tt_shm_read(const char* path, size_t* len) {
   if ((fd = open(path, O_RDONLY)) < 0) {
     tt_log_err("open_fd failed: path=%s, errno=%d (%s)", path, errno,
                strerror(errno));
-    return (void*)TT_SHM_OPENFD_ERR;
+    return (void*)TTR_SHM_OPENFD_ERR;
   }
 
   if ((fstat(fd, &st)) < 0) {
     tt_log_err("fstat: %s", strerror(errno));
     close(fd);
-    return (void*)TT_SHM_STATFD_ERR;
+    return (void*)TTR_SHM_STATFD_ERR;
   }
 
   if (st.st_size == 0) {
     tt_log_err("fstat equal 0");
     close(fd);
-    return (void*)TT_SHM_STATFD_ERR;
+    return (void*)TTR_SHM_STATFD_ERR;
   }
 
   *len = st.st_size;
@@ -87,44 +87,44 @@ void* tt_shm_read(const char* path, size_t* len) {
   if ((addr = mmap(NULL, *len, PROT_READ, MAP_SHARED, fd, 0)) == MAP_FAILED) {
     tt_log_err("mmap: %s", strerror(errno));
     close(fd);
-    return (void*)TT_SHM_MMAP_ERR;
+    return (void*)TTR_SHM_MMAP_ERR;
   }
 
   if (!addr)
-    return (void*)TT_SHM_FAIL;
+    return (void*)TTR_SHM_FAIL;
   if (fd != (-1))
     close(fd);
   return addr;
 }
 
-void tt_shm_dealloc(void* addr, size_t len) {
+void ttr_shm_dealloc(void* addr, size_t len) {
   if ((munmap(addr, len)) < (0)) {
     tt_log_err("munmap: %s", strerror(errno));
   }
 }
 
-void tt_shm_unlink(const char* path) {
+void ttr_shm_unlink(const char* path) {
   shm_unlink(path);
 }
 
-const char* tt_shm_error_code_str(int errcode) {
+const char* tt_shm_errorstr(int errcode) {
   switch (errcode) {
-    case TT_SHM_MMAP_ERR:
+    case TTR_SHM_MMAP_ERR:
       return "Error mmap";
       break;
-    case TT_SHM_FTRUNCATE_ERR:
+    case TTR_SHM_FTRUNCATE_ERR:
       return "Error ftruncate";
       break;
-    case TT_SHM_OPENFD_ERR:
+    case TTR_SHM_OPENFD_ERR:
       return "Error open_fd";
       break;
-    case TT_SHM_READFD_ERR:
+    case TTR_SHM_READFD_ERR:
       return "Error read_fd";
       break;
-    case TT_SHM_STATFD_ERR:
+    case TTR_SHM_STATFD_ERR:
       return "Error fstat";
       break;
-    case TT_SHM_FAIL:
+    case TTR_SHM_FAIL:
       return "Buffer is empty";
       break;
     default:

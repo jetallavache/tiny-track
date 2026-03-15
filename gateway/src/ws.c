@@ -9,13 +9,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "common/log.h"
 #include "b64.h"
-#include "util.h"
+#include "common/log.h"
 #include "http.h"
 #include "printf.h"
 #include "sock.h"
 #include "url.h"
+#include "util.h"
 
 struct ws_msg {
   uint8_t flags;
@@ -104,7 +104,8 @@ static size_t ws_process(uint8_t* buf, size_t len, struct ws_msg* msg) {
       msg->data_len = (size_t)(((uint64_t)be32(buf + 2) << 32) + be32(buf + 6));
     }
   }
-  /* Sanity check, and integer overflow protection for the boundary check below */
+  /* Sanity check, and integer overflow protection for the boundary check below
+   */
   /* data_len should not be larger than 1 Gb */
   if (msg->data_len > 1024 * 1024 * 1024)
     return 0;
@@ -139,7 +140,7 @@ static size_t mkhdr(size_t len, int op, bool is_client, uint8_t* buf) {
     n = 10;
   }
   if (is_client) {
-    buf[1] |= 1 << 7;  /* Set masking flag */
+    buf[1] |= 1 << 7; /* Set masking flag */
     ttg_util_random(&buf[n], 4);
     n += 4;
   }
@@ -170,7 +171,7 @@ size_t ttg_ws_send(struct ttg_conn* c, const void* buf, size_t len, int op) {
 static bool ttg_ws_client_handshake(struct ttg_conn* c) {
   int n = ttg_http_get_request_len(c->recv.buf, c->recv.len);
   if (n < 0) {
-    ttg_event_error(c, "not http");  /* Some just, not an HTTP request */
+    ttg_event_error(c, "not http"); /* Some just, not an HTTP request */
   } else if (n > 0) {
     if (n < 15 || memcmp(c->recv.buf + 9, "101", 3) != 0) {
       ttg_event_error(c, "ws handshake error");
@@ -185,9 +186,9 @@ static bool ttg_ws_client_handshake(struct ttg_conn* c) {
     }
     ttg_iobuf_del(&c->recv, 0, (size_t)n);
   } else {
-    return true;  /* Request is not yet received, quit event handler */
+    return true; /* Request is not yet received, quit event handler */
   }
-  return false;  /* Continue event handler */
+  return false; /* Continue event handler */
 }
 
 static void ttg_ws_cb(struct ttg_conn* c, int ev, void* ev_data) {
@@ -226,7 +227,8 @@ static void ttg_ws_cb(struct ttg_conn* c, int ev, void* ev_data) {
         case TTG_WS_OP_CLOSE:
           tt_log_debug("%lu WS CLOSE", c->id);
           ttg_event_call(c, TTG_EVENT_WS_CTL, &m);
-          /* Echo the payload of the received CLOSE message back to the sender */
+          /* Echo the payload of the received CLOSE message back to the sender
+           */
           ttg_ws_send(c, m.data.buf, m.data.len, TTG_WS_OP_CLOSE);
           c->is_draining = 1;
           break;
@@ -239,8 +241,8 @@ static void ttg_ws_cb(struct ttg_conn* c, int ev, void* ev_data) {
       /* Handle fragmented frames: strip header, keep in c->recv */
       if (final == 0 || op == 0) {
         if (op)
-          ofs++, len--, msg.header_len--;  /* First frame */
-        ttg_iobuf_del(&c->recv, ofs, msg.header_len);  /* Strip header */
+          ofs++, len--, msg.header_len--;             /* First frame */
+        ttg_iobuf_del(&c->recv, ofs, msg.header_len); /* Strip header */
         len -= msg.header_len;
         ofs += len;
         c->pfn_data = (void*)ofs;
@@ -302,8 +304,7 @@ void ttg_ws_upgrade(struct ttg_conn* c, struct ttg_http_message* hm,
     ttg_http_reply(c, 426, "", "WS upgrade expected\n");
     c->is_draining = 1;
   } else {
-    struct ttg_str* wsproto =
-        ttg_http_get_header(hm, "Sec-WebSocket-Protocol");
+    struct ttg_str* wsproto = ttg_http_get_header(hm, "Sec-WebSocket-Protocol");
     va_list ap;
     va_start(ap, fmt);
     ws_handshake(c, wskey, wsproto, fmt, &ap);
@@ -320,10 +321,10 @@ size_t ttg_ws_wrap(struct ttg_conn* c, size_t len, int op) {
 
   /* NOTE: order of operations is important! */
   if (ttg_iobuf_add(&c->send, c->send.len, NULL, header_len) != 0) {
-    p = &c->send.buf[c->send.len - len];  /* p points to data */
-    memmove(p, p - header_len, len);  /* Shift data */
-    memcpy(p - header_len, header, header_len);  /* Prepend header */
-    ttg_ws_mask(c, len);  /* Mask data */
+    p = &c->send.buf[c->send.len - len];        /* p points to data */
+    memmove(p, p - header_len, len);            /* Shift data */
+    memcpy(p - header_len, header, header_len); /* Prepend header */
+    ttg_ws_mask(c, len);                        /* Mask data */
   }
   return c->send.len;
 }

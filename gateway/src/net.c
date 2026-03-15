@@ -4,9 +4,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "util.h"
 #include "printf.h"
 #include "sock.h"
+#include "util.h"
 
 size_t ttg_net_vprintf(struct ttg_conn* c, const char* fmt, va_list* ap) {
   size_t old = c->send.len;
@@ -125,8 +125,7 @@ void ttg_net_mgr_free(struct ttg_mgr* mgr) {
   struct tt_timer *tmp, *t = mgr->timers;
   while (t != NULL)
     tmp = t->next, free(t), t = tmp;
-  mgr->timers =
-      NULL; /* Important. Next poll call will not touch timers */
+  mgr->timers = NULL; /* Important. Next poll call will not touch timers */
   for (c = mgr->conns; c != NULL; c = c->next)
     c->is_closing = 1;
   ttg_net_mgr_poll(mgr, 0);
@@ -155,10 +154,10 @@ void ttg_net_mgr_poll(struct ttg_mgr* mgr, int ms) {
     }
 
     tt_log_debug("%lu %c%c %c%c%c%c%c %lu", c->id, c->is_readable ? 'r' : '-',
-               c->is_writable ? 'w' : '-', c->is_tls ? 'T' : 't',
-               c->is_connecting ? 'C' : 'c', c->is_tls_hs ? 'H' : 'h',
-               c->is_resolving ? 'R' : 'r', c->is_closing ? 'C' : 'c',
-               /* c->rtls.len */ 0);
+                 c->is_writable ? 'w' : '-', c->is_tls ? 'T' : 't',
+                 c->is_connecting ? 'C' : 'c', c->is_tls_hs ? 'H' : 'h',
+                 c->is_resolving ? 'R' : 'r', c->is_closing ? 'C' : 'c',
+                 /* c->rtls.len */ 0);
 
     if (c->is_resolving || c->is_closing) {
       /* Do nothing */

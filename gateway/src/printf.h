@@ -17,7 +17,7 @@ size_t ttg_vsnprintf(char* buf, size_t len, const char* fmt, va_list* ap);
 size_t ttg_print_ip_port(void (*out)(char, void*), void* arg, va_list* ap);
 
 /* Various output functions */
-void ttg_pfn_iobuf(char ch, void* param);  /* param: struct ttg_iobuf * */
+void ttg_pfn_iobuf(char ch, void* param); /* param: struct ttg_iobuf * */
 
 /* Unused public functions - kept for reference
 void ttg_pfn_stdout(char c, void* param);
@@ -30,4 +30,4 @@ size_t print_mac(void (*out)(char, void*), void* arg, va_list* ap);
 #define ESC(str) print_esc, 0, (str)
 */
 
-#endif  /* TTG_PRINTF_H */
+#endif /* TTG_PRINTF_H */

@@ -1,26 +1,26 @@
-#ifndef TT_RING_LAYOUT_H
-#define TT_RING_LAYOUT_H
+#ifndef TTR_LAYOUT_H
+#define TTR_LAYOUT_H
 
 #include <stdatomic.h>
 #include <stddef.h>
 #include <stdint.h>
 
 /* Magic number for validation */
-#define TT_MAGIC 0x544D5452 /* "TMTR" */
-#define TT_VERSION 1
+#define TTR_MAGIC 0x544D5452 /* "TMTR" */
+#define TTR_VERSION 1
 
 /* Block sizes */
-#define TT_HEADER_SIZE 256
-#define TT_CONSUMER_TABLE_SIZE 2048
-#define TT_RING_META_SIZE 64
-#define TT_MAX_CONSUMERS 32
+#define TTR_HEADER_SIZE 256
+#define TTR_CONSUMER_TABLE_SIZE 2048
+#define TTR_META_SIZE 64
+#define TTR_MAX_CONSUMERS 32
 
 /* Main file header - 256 bytes */
-struct tt_ring_header {
-  uint32_t magic;          /* TT_MAGIC */
-  uint32_t version;        /* TT_VERSION */
-  uint32_t crc32;          /* CRC32 of the entire file */
-  uint64_t last_update_ts; /* Timestamp of last update (heartbeat) */
+struct ttr_header {
+  uint32_t magic;               /* TTR_MAGIC */
+  uint32_t version;             /* TTR_VERSION */
+  uint32_t crc32;               /* CRC32 of the entire file */
+  uint64_t last_update_ts;      /* Timestamp of last update (heartbeat) */
   uint64_t last_shadow_sync_ts; /* Timestamp of last shadow sync */
   uint32_t writer_pid;          /* PID of the writer process */
   uint32_t num_consumers;       /* Number of active consumers */
@@ -28,7 +28,7 @@ struct tt_ring_header {
 };
 
 /* Consumer record - 64 bytes */
-struct tt_ring_consumer {
+struct ttr_consumer {
   uint32_t consumer_id;   /* ID consumer */
   uint32_t pid;           /* Process PID */
   uint32_t read_index_l1; /* Read position in L1 */
@@ -40,64 +40,66 @@ struct tt_ring_consumer {
 };
 
 /* Consumer table */
-struct tt_ring_consumer_table {
-  struct tt_ring_consumer entries[TT_MAX_CONSUMERS];
+struct ttr_consumer_table {
+  struct ttr_consumer entries[TTR_MAX_CONSUMERS];
 };
 
 /* Ring buffer metadata - 64 bytes */
-struct tt_ring_meta {
+struct ttr_meta {
   _Atomic uint32_t seq;  /* Sequence counter for seqlock */
   _Atomic uint32_t head; /* Write position */
   _Atomic uint32_t tail; /* Read position (for single consumer) */
-  uint32_t capacity;      /* Capacity in elements */
-  uint32_t cell_size;     /* Size of one element */
-  uint64_t first_ts;      /* Timestamp of the first element */
-  uint64_t last_ts;       /* Timestamp of the last element */
-  uint32_t flags;         /* Flags */
-  uint8_t padding[20];    /* Padding to 64 bytes */
+  uint32_t capacity;     /* Capacity in elements */
+  uint32_t cell_size;    /* Size of one element */
+  uint64_t first_ts;     /* Timestamp of the first element */
+  uint64_t last_ts;      /* Timestamp of the last element */
+  uint32_t flags;        /* Flags */
+  uint8_t padding[20];   /* Padding to 64 bytes */
 };
 
 /* Full mmap file layout */
-struct tt_ring_layout {
-  struct tt_ring_header header;
-  struct tt_ring_consumer_table consumers;
+struct ttr_layout {
+  struct ttr_header header;
+  struct ttr_consumer_table consumers;
 
   /* L1: 1 hour @ 1s interval */
-  struct tt_ring_meta l1_meta;
+  struct ttr_meta l1_meta;
   uint8_t l1_data[]; /* Dynamic size */
 
   /* L2 and L3 follow L1_data */
 };
 
 /* Offset calculation */
-static inline size_t tt_layout_l1_offset(void) {
-  return TT_HEADER_SIZE + TT_CONSUMER_TABLE_SIZE + TT_RING_META_SIZE;
+static inline size_t ttr_layout_l1_offset(void) {
+  return TTR_HEADER_SIZE + TTR_CONSUMER_TABLE_SIZE + TTR_META_SIZE;
 }
 
-static inline size_t tt_layout_l2_meta_offset(size_t l1_capacity,
-                                              size_t cell_size) {
-  return tt_layout_l1_offset() + l1_capacity * cell_size;
+static inline size_t ttr_layout_l2_meta_offset(size_t l1_capacity,
+                                               size_t cell_size) {
+  return ttr_layout_l1_offset() + l1_capacity * cell_size;
 }
 
-static inline size_t tt_layout_l2_offset(size_t l1_capacity, size_t cell_size) {
-  return tt_layout_l2_meta_offset(l1_capacity, cell_size) + TT_RING_META_SIZE;
+static inline size_t ttr_layout_l2_offset(size_t l1_capacity,
+                                          size_t cell_size) {
+  return ttr_layout_l2_meta_offset(l1_capacity, cell_size) + TTR_META_SIZE;
 }
 
-static inline size_t tt_layout_l3_meta_offset(size_t l1_capacity,
-                                              size_t l2_capacity,
-                                              size_t cell_size) {
-  return tt_layout_l2_offset(l1_capacity, cell_size) + l2_capacity * cell_size;
+static inline size_t ttr_layout_l3_meta_offset(size_t l1_capacity,
+                                               size_t l2_capacity,
+                                               size_t cell_size) {
+  return ttr_layout_l2_offset(l1_capacity, cell_size) + l2_capacity * cell_size;
 }
 
-static inline size_t tt_layout_l3_offset(size_t l1_capacity, size_t l2_capacity,
-                                         size_t cell_size) {
-  return tt_layout_l3_meta_offset(l1_capacity, l2_capacity, cell_size) +
-         TT_RING_META_SIZE;
+static inline size_t ttr_layout_l3_offset(size_t l1_capacity,
+                                          size_t l2_capacity,
+                                          size_t cell_size) {
+  return ttr_layout_l3_meta_offset(l1_capacity, l2_capacity, cell_size) +
+         TTR_META_SIZE;
 }
 
 static inline size_t tt_layout_total_size(size_t l1_cap, size_t l2_cap,
                                           size_t l3_cap, size_t cell_size) {
-  return tt_layout_l3_offset(l1_cap, l2_cap, cell_size) + l3_cap * cell_size;
+  return ttr_layout_l3_offset(l1_cap, l2_cap, cell_size) + l3_cap * cell_size;
 }
 
-#endif /* TT_RING_LAYOUT_H */
+#endif /* TTR_LAYOUT_H */

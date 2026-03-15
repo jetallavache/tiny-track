@@ -38,7 +38,7 @@ int ttg_http_get_request_len(const unsigned char* buf, size_t buf_len) {
 }
 
 struct ttg_str* ttg_http_get_header(struct ttg_http_message* h,
-                                           const char* name) {
+                                    const char* name) {
   size_t i, n = strlen(name), max = sizeof(h->headers) / sizeof(h->headers[0]);
   for (i = 0; i < max && h->headers[i].name.len > 0; i++) {
     struct ttg_str *k = &h->headers[i].name, *v = &h->headers[i].value;
@@ -53,14 +53,15 @@ static bool vcb(uint8_t c) {
   return (c & 0xc0) == 0x80;
 }
 
-/* Get the length of a character (valid UTF-8). Used to analyze the method, URI, headers */
+/* Get the length of a character (valid UTF-8). Used to analyze the method, URI,
+ * headers */
 static size_t clen(const char* s, const char* end) {
   const unsigned char *u = (unsigned char*)s, c = *u;
   long n = (long)(end - s);
   if (c > ' ' && c <= '~')
-    return 1;  /* Usual ascii printed char */
+    return 1; /* Usual ascii printed char */
   if ((c & 0xe0) == 0xc0 && n > 1 && vcb(u[1]))
-    return 2;  /* 2-byte UTF8 */
+    return 2; /* 2-byte UTF8 */
   if ((c & 0xf0) == 0xe0 && n > 2 && vcb(u[1]) && vcb(u[2]))
     return 3;
   if ((c & 0xf8) == 0xf0 && n > 3 && vcb(u[1]) && vcb(u[2]) && vcb(u[3]))
@@ -68,18 +69,18 @@ static size_t clen(const char* s, const char* end) {
   return 0;
 }
 
-/* Skip to a new line. Return the extended letter "s" or NULL in case of an error. */
-static const char* skiptorn(const char* s, const char* end,
-                            struct ttg_str* v) {
+/* Skip to a new line. Return the extended letter "s" or NULL in case of an
+ * error. */
+static const char* skiptorn(const char* s, const char* end, struct ttg_str* v) {
   v->buf = (char*)s;
   while (s < end && s[0] != '\n' && s[0] != '\r')
-    s++, v->len++;  /* To newline */
+    s++, v->len++; /* To newline */
   if (s >= end || (s[0] == '\r' && s[1] != '\n'))
-    return NULL;  /* Stray \r */
+    return NULL; /* Stray \r */
   if (s < end && s[0] == '\r')
-    s++;  /* Skip \r */
+    s++; /* Skip \r */
   if (s >= end || *s++ != '\n')
-    return NULL;  /* Skip \n */
+    return NULL; /* Skip \n */
   return s;
 }
 
@@ -96,21 +97,22 @@ static bool ttg_http_parse_headers(const char* s, const char* end,
     while (s < end && s[0] != ':' && (n = clen(s, end)) > 0)
       s += n, k.len += n;
     if (k.len == 0)
-      return false;  /* Empty name */
+      return false; /* Empty name */
     if (s >= end || clen(s, end) == 0)
-      return false;  /* Invalid UTF-8 */
+      return false; /* Invalid UTF-8 */
     if (*s++ != ':')
-      return false;  /* Invalid, not followed by : */
+      return false; /* Invalid, not followed by : */
     /* if (clen(s, end) == 0) return false;  /* Invalid UTF-8 */
     while (s < end && (s[0] == ' ' || s[0] == '\t'))
-      s++;  /* Skip spaces */
+      s++; /* Skip spaces */
     if ((s = skiptorn(s, end, &v)) == NULL)
       return false;
     while (v.len > 0 && (v.buf[v.len - 1] == ' ' || v.buf[v.len - 1] == '\t')) {
-      v.len--;  /* Trim spaces */
+      v.len--; /* Trim spaces */
     }
-    /* tt_log_info("--HH [%.*s] [%.*s]", (int)k.len, k.buf, (int)v.len, v.buf); */
-    h[i].name = k, h[i].value = v;  /* Success. Assign values */
+    /* tt_log_info("--HH [%.*s] [%.*s]", (int)k.len, k.buf, (int)v.len, v.buf);
+     */
+    h[i].name = k, h[i].value = v; /* Success. Assign values */
   }
   return true;
 }
@@ -125,19 +127,19 @@ bool to_size_t(struct ttg_str str, size_t* val) {
   while (i < str.len && str.buf[i] >= '0' && str.buf[i] <= '9') {
     size_t digit = (size_t)(str.buf[i] - '0');
     if (result > max2)
-      return false;  /* Overflow */
+      return false; /* Overflow */
     result *= 10;
     if (result > max - digit)
-      return false;  /* Overflow */
+      return false; /* Overflow */
     result += digit;
     i++, ndigits++;
   }
   while (i < str.len && (str.buf[i] == ' ' || str.buf[i] == '\t'))
     i++;
   if (ndigits == 0)
-    return false;  /* #2322: Content-Length = 1 * DIGIT */
+    return false; /* #2322: Content-Length = 1 * DIGIT */
   if (i != str.len)
-    return false;  /* Ditto */
+    return false; /* Ditto */
   *val = (size_t)result;
   return true;
 }
@@ -197,7 +199,7 @@ int ttg_http_parse(const char* s, size_t len, struct ttg_http_message* hm) {
 
   if (!ttg_http_parse_headers(s, end, hm->headers,
                               sizeof(hm->headers) / sizeof(hm->headers[0])))
-    return -1;  /* error when parsing */
+    return -1; /* error when parsing */
   if ((cl = ttg_http_get_header(hm, "Content-Length")) != NULL) {
     if (to_size_t(*cl, &hm->body.len) == false)
       return -1;
@@ -217,7 +219,7 @@ int ttg_http_parse(const char* s, size_t len, struct ttg_http_message* hm) {
     hm->message.len = (size_t)req_len;
   }
   if (hm->message.len < (size_t)req_len)
-    return -1;  /* Overflow protection */
+    return -1; /* Overflow protection */
 
   return req_len;
 }
@@ -390,19 +392,19 @@ static int skip_chunk(const char* buf, int len, int* pl, int* dl) {
   while (i < len && is_hex_digit(buf[i]))
     i++;
   if (i == 0)
-    return -1;  /* Error, no length specified */
+    return -1; /* Error, no length specified */
   if (i > (int)sizeof(int) * 2)
-    return -1;  /* Chunk length is too big */
+    return -1; /* Chunk length is too big */
   if (len < i + 1 || buf[i] != '\r' || buf[i + 1] != '\n')
-    return -1;  /* Error */
+    return -1; /* Error */
   if (ttg_str_to_num(strl(buf, (size_t)i), 16, &n, sizeof(int)) == false)
-    return -1;  /* Decode chunk length, overflow */
+    return -1; /* Decode chunk length, overflow */
   if (n < 0)
-    return -1;  /* Error. TODO(): some checks now redundant */
+    return -1; /* Error. TODO(): some checks now redundant */
   if (n > len - i - 4)
-    return 0;  /* Chunk not yet fully buffered */
+    return 0; /* Chunk not yet fully buffered */
   if (buf[i + n + 2] != '\r' || buf[i + n + 3] != '\n')
-    return -1;  /* Error */
+    return -1; /* Error */
   *pl = i + 2, *dl = n;
   return i + 2 + n + 2;
 }
@@ -412,12 +414,12 @@ static void http_cb(struct ttg_conn* c, int ev, void* ev_data) {
       (ev == TTG_EVENT_POLL && c->is_accepted && !c->is_draining &&
        c->recv.len > 0)) {
     struct ttg_http_message hm;
-    size_t ofs = 0;  /* Parsing offset */
+    size_t ofs = 0; /* Parsing offset */
 
     while (c->is_resp == 0 && ofs < c->recv.len) {
       const char* buf = (char*)c->recv.buf + ofs;
       int n = ttg_http_parse(buf, c->recv.len - ofs, &hm);
-      struct ttg_str* te;  /* Transfer - encoding header */
+      struct ttg_str* te; /* Transfer - encoding header */
       bool is_chunked = false;
       size_t old_len = c->recv.len;
 
@@ -432,23 +434,23 @@ static void http_cb(struct ttg_conn* c, int ev, void* ev_data) {
         return;
       }
       if (n == 0)
-        break;  /* Request is not buffered yet */
-      ttg_event_call(c, TTG_EVENT_HTTP_HDRS, &hm);  /* Got all HTTP headers */
+        break; /* Request is not buffered yet */
+      ttg_event_call(c, TTG_EVENT_HTTP_HDRS, &hm); /* Got all HTTP headers */
       if (c->recv.len != old_len) {
         /* User manipulated received data. Wash our hands */
         tt_log_debug("%lu detaching HTTP handler", c->id);
         c->pfn = NULL;
         return;
       }
-      if (ev == TTG_EVENT_CLOSE) {  /* If client did not set Content-Length */
-        hm.message.len = c->recv.len - ofs;  /* and closes now, deliver MSG */
+      if (ev == TTG_EVENT_CLOSE) { /* If client did not set Content-Length */
+        hm.message.len = c->recv.len - ofs; /* and closes now, deliver MSG */
         hm.body.len = hm.message.len - (size_t)(hm.body.buf - hm.message.buf);
       }
       if ((te = ttg_http_get_header(&hm, "Transfer-Encoding")) != NULL) {
         if (ttg_str_casecmp(*te, str("chunked")) == 0) {
           is_chunked = true;
         } else {
-          ttg_event_error(c, "Invalid Transfer-Encoding");  /* See #2460 */
+          ttg_event_error(c, "Invalid Transfer-Encoding"); /* See #2460 */
           return;
         }
       } else if (ttg_http_get_header(&hm, "Content-length") == NULL) {
@@ -458,13 +460,16 @@ static void http_cb(struct ttg_conn* c, int ev, void* ev_data) {
         bool require_content_len = false;
         if (!is_response && (ttg_str_casecmp(hm.method, str("POST")) == 0 ||
                              ttg_str_casecmp(hm.method, str("PUT")) == 0)) {
-          /* POST and PUT should include an entity body. Therefore, they should */
-          /* contain a Content-length header. Other requests can also contain a */
+          /* POST and PUT should include an entity body. Therefore, they should
+           */
+          /* contain a Content-length header. Other requests can also contain a
+           */
           /* body, but their content has no defined semantics (RFC 7231) */
           require_content_len = true;
-          ofs += (size_t)n;  /* this request has been processed */
+          ofs += (size_t)n; /* this request has been processed */
         } else if (is_response) {
-          /* HTTP spec 7.2 Entity body: All other responses must include a body */
+          /* HTTP spec 7.2 Entity body: All other responses must include a body
+           */
           /* or Content-Length header field defined with a value of 0. */
           int status = ttg_http_status(&hm);
           require_content_len = status >= 200 && status != 204 && status != 304;
@@ -487,7 +492,7 @@ static void http_cb(struct ttg_conn* c, int ev, void* ev_data) {
         while ((cl = skip_chunk(s + o, len - o, &pl, &dl)) > 0 && dl)
           o += cl;
         if (cl == 0)
-          break;  /* No zero-len chunk, buffer more data */
+          break; /* No zero-len chunk, buffer more data */
         if (cl < 0) {
           ttg_event_error(c, "Invalid chunk");
           break;
@@ -502,27 +507,27 @@ static void http_cb(struct ttg_conn* c, int ev, void* ev_data) {
             break;
         }
         ofs += (size_t)(n + o);
-      } else {  /* Normal, non-chunked data */
+      } else { /* Normal, non-chunked data */
         size_t len = c->recv.len - ofs - (size_t)n;
         if (hm.body.len > len)
-          break;  /* Buffer more data */
+          break; /* Buffer more data */
         ofs += (size_t)n + hm.body.len;
       }
 
       if (c->is_accepted)
-        c->is_resp = 1;  /* Start generating response */
+        c->is_resp = 1; /* Start generating response */
       ttg_event_call(c, TTG_EVENT_HTTP_MSG,
-                     &hm);  /* User handler can clear is_resp */
+                     &hm); /* User handler can clear is_resp */
       if (c->is_accepted && !c->is_resp) {
         struct ttg_str* cc = ttg_http_get_header(&hm, "Connection");
         if (cc != NULL && ttg_str_casecmp(*cc, str("close")) == 0) {
-          c->is_draining = 1;  /* honor "Connection: close" */
+          c->is_draining = 1; /* honor "Connection: close" */
           break;
         }
       }
     }
     if (ofs > 0)
-      ttg_iobuf_del(&c->recv, 0, ofs);  /* Delete processed data */
+      ttg_iobuf_del(&c->recv, 0, ofs); /* Delete processed data */
   }
   (void)ev_data;
 }

@@ -9,68 +9,69 @@
 #include "seqlock.h"
 #include "shm.h"
 
-int tt_ring_reader_open(struct tt_ring_reader* ctx, const char* path) {
-  if ((intptr_t)(ctx->addr = tt_shm_read(path, &ctx->size)) < 0) {
-    tt_log_err("Failed to read mmap (%s)", tt_shm_error_code_str((intptr_t)ctx->addr));
-    return TT_READER_ERR_READ;
+int ttr_reader_open(struct ttr_reader* ctx, const char* path) {
+  if ((intptr_t)(ctx->addr = ttr_shm_read(path, &ctx->size)) < 0) {
+    tt_log_err("Failed to read mmap (%s)",
+               tt_shm_errorstr((intptr_t)ctx->addr));
+    return TTR_READER_ERR_READ;
   }
 
-  struct tt_ring_header* hdr = (struct tt_ring_header*)ctx->addr;
-  if (hdr->magic != TT_MAGIC) {
-    tt_shm_dealloc(ctx->addr, ctx->size);
-    return TT_READER_ERR_MAGIC;
+  struct ttr_header* hdr = (struct ttr_header*)ctx->addr;
+  if (hdr->magic != TTR_MAGIC) {
+    ttr_shm_dealloc(ctx->addr, ctx->size);
+    return TTR_READER_ERR_MAGIC;
   }
 
-  if (hdr->version != TT_VERSION) {
-    tt_shm_dealloc(ctx->addr, ctx->size);
-    return TT_READER_ERR_VERSION;
+  if (hdr->version != TTR_VERSION) {
+    ttr_shm_dealloc(ctx->addr, ctx->size);
+    return TTR_READER_ERR_VERSION;
   }
 
-  ctx->l1_meta = (struct tt_ring_meta*)((uint8_t*)ctx->addr + TT_HEADER_SIZE +
-                                        TT_CONSUMER_TABLE_SIZE);
-  ctx->l1_data = (uint8_t*)ctx->addr + tt_layout_l1_offset();
+  ctx->l1_meta = (struct ttr_meta*)((uint8_t*)ctx->addr + TTR_HEADER_SIZE +
+                                    TTR_CONSUMER_TABLE_SIZE);
+  ctx->l1_data = (uint8_t*)ctx->addr + ttr_layout_l1_offset();
 
   ctx->l2_meta =
-      (struct tt_ring_meta*)((uint8_t*)ctx->addr +
-                             tt_layout_l2_meta_offset(ctx->l1_meta->capacity,
-                                                      ctx->l1_meta->cell_size));
+      (struct ttr_meta*)((uint8_t*)ctx->addr +
+                         ttr_layout_l2_meta_offset(ctx->l1_meta->capacity,
+                                                   ctx->l1_meta->cell_size));
   ctx->l2_data =
       (uint8_t*)ctx->addr +
-      tt_layout_l2_offset(ctx->l1_meta->capacity, ctx->l1_meta->cell_size);
+      ttr_layout_l2_offset(ctx->l1_meta->capacity, ctx->l1_meta->cell_size);
 
   ctx->l3_meta =
-      (struct tt_ring_meta*)((uint8_t*)ctx->addr +
-                             tt_layout_l3_meta_offset(ctx->l1_meta->capacity,
-                                                      ctx->l2_meta->capacity,
-                                                      ctx->l1_meta->cell_size));
+      (struct ttr_meta*)((uint8_t*)ctx->addr +
+                         ttr_layout_l3_meta_offset(ctx->l1_meta->capacity,
+                                                   ctx->l2_meta->capacity,
+                                                   ctx->l1_meta->cell_size));
   ctx->l3_data =
-      (uint8_t*)ctx->addr + tt_layout_l3_offset(ctx->l1_meta->capacity,
-                                                ctx->l2_meta->capacity,
-                                                ctx->l1_meta->cell_size);
+      (uint8_t*)ctx->addr + ttr_layout_l3_offset(ctx->l1_meta->capacity,
+                                                 ctx->l2_meta->capacity,
+                                                 ctx->l1_meta->cell_size);
 
-  return TT_READER_OK;
+  return TTR_READER_OK;
 }
 
-int tt_ring_reader_get_latest(struct tt_ring_reader* ctx,
-                              struct tt_proto_metrics* out) {
+int ttr_reader_get_latest(struct ttr_reader* ctx,
+                          struct tt_proto_metrics* out) {
   if (!ctx->l1_meta)
-    return TT_READER_ERR_INVALID;
+    return TTR_READER_ERR_INVALID;
 
-  struct tt_ring_header* hdr = (struct tt_ring_header*)ctx->addr;
+  struct ttr_header* hdr = (struct ttr_header*)ctx->addr;
   uint64_t now_ms = time(NULL) * 1000;
 
   if (now_ms - hdr->last_update_ts > 3000) {
-    return TT_READER_ERR_STALE;
+    return TTR_READER_ERR_STALE;
   }
 
   /* Seqlock: read with retry */
   uint32_t seq;
   do {
-    seq = tt_seqlock_read_begin(&ctx->l1_meta->seq);
+    seq = ttr_seqlock_read_begin(&ctx->l1_meta->seq);
 
     uint32_t head = ctx->l1_meta->head;
     if (head == 0)
-      return TT_READER_ERR_NODATA;
+      return TTR_READER_ERR_NODATA;
 
     uint32_t last_idx =
         (head - 1 + ctx->l1_meta->capacity) % ctx->l1_meta->capacity;
@@ -78,14 +79,14 @@ int tt_ring_reader_get_latest(struct tt_ring_reader* ctx,
     memcpy(out, ctx->l1_data + last_idx * ctx->l1_meta->cell_size,
            sizeof(struct tt_proto_metrics));
 
-  } while (tt_seqlock_read_retry(&ctx->l1_meta->seq, seq));
+  } while (ttr_seqlock_read_retry(&ctx->l1_meta->seq, seq));
 
-  return TT_READER_OK;
+  return TTR_READER_OK;
 }
 
-int tt_ring_reader_get_history(struct tt_ring_reader* ctx, int level,
-                               struct tt_proto_metrics* out, int count) {
-  struct tt_ring_meta* meta;
+int ttr_reader_get_history(struct ttr_reader* ctx, int level,
+                           struct tt_proto_metrics* out, int count) {
+  struct ttr_meta* meta;
   uint8_t* data;
 
   switch (level) {
@@ -102,23 +103,23 @@ int tt_ring_reader_get_history(struct tt_ring_reader* ctx, int level,
       data = ctx->l3_data;
       break;
     default:
-      return TT_READER_ERR_INVALID;
+      return TTR_READER_ERR_INVALID;
   }
 
   if (!meta)
-    return TT_READER_ERR_INVALID;
+    return TTR_READER_ERR_INVALID;
 
   /* Seqlock: read with retry */
   uint32_t seq;
   int actual_count;
   do {
-    seq = tt_seqlock_read_begin(&meta->seq);
+    seq = ttr_seqlock_read_begin(&meta->seq);
 
     uint32_t head = meta->head;
     uint32_t available = head;
 
     if (available == 0)
-      return TT_READER_ERR_NODATA;
+      return TTR_READER_ERR_NODATA;
     if ((uint32_t)count > available)
       count = available;
 
@@ -130,33 +131,33 @@ int tt_ring_reader_get_history(struct tt_ring_reader* ctx, int level,
 
     actual_count = count;
 
-  } while (tt_seqlock_read_retry(&meta->seq, seq));
+  } while (ttr_seqlock_read_retry(&meta->seq, seq));
 
   return actual_count;
 }
 
-void tt_ring_reader_close(struct tt_ring_reader* ctx) {
+void ttr_reader_close(struct ttr_reader* ctx) {
   if (ctx->addr) {
-    tt_shm_dealloc(ctx->addr, ctx->size);
+    ttr_shm_dealloc(ctx->addr, ctx->size);
     ctx->addr = NULL;
   }
 }
 
-const char* tt_ring_reader_strerror(int errcode) {
+const char* ttr_reader_strerror(int errcode) {
   switch (errcode) {
-    case TT_READER_OK:
+    case TTR_READER_OK:
       return "Success";
-    case TT_READER_ERR_READ:
+    case TTR_READER_ERR_READ:
       return "Error opening mmap-area";
-    case TT_READER_ERR_MAGIC:
+    case TTR_READER_ERR_MAGIC:
       return "Invalid magic number";
-    case TT_READER_ERR_VERSION:
+    case TTR_READER_ERR_VERSION:
       return "Unsupported version";
-    case TT_READER_ERR_NODATA:
+    case TTR_READER_ERR_NODATA:
       return "No data available";
-    case TT_READER_ERR_INVALID:
+    case TTR_READER_ERR_INVALID:
       return "Invalid parameters";
-    case TT_READER_ERR_STALE:
+    case TTR_READER_ERR_STALE:
       return "Data is stale (daemon not running)";
     default:
       return "Unknown error";

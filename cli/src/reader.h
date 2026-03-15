@@ -4,9 +4,9 @@
 #include "common/proto/v1.h"
 #include "common/ringbuf.h"
 
-/* Wrapper around tt_ring_reader for tiny-cli */
+/* Wrapper around ttr_reader for tiny-cli */
 struct ttc_reader {
-  struct tt_ring_reader ring;
+  struct ttr_reader ring;
 };
 
 int ttc_reader_open(struct ttc_reader* ctx, const char* path);

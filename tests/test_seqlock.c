@@ -25,7 +25,7 @@ typedef struct {
 
 /* Writer thread: writes monotonically increasing values */
 static void *writer_thread(void *arg) {
-  struct tt_ring_writer *writer = arg;
+  struct ttr_writer *writer = arg;
   struct tt_proto_metrics sample = {0};
   uint64_t counter = 0;
 
@@ -36,7 +36,7 @@ static void *writer_thread(void *arg) {
     sample.net_rx = counter;
     sample.net_tx = counter;
 
-    tt_ring_writer_write_l1(writer, &sample);
+    ttr_writer_write_l1(writer, &sample);
     usleep(WRITE_INTERVAL_US);
   }
 
@@ -47,16 +47,16 @@ static void *writer_thread(void *arg) {
 /* Reader thread: checks data consistency */
 static void *reader_thread(void *arg) {
   reader_stats *stats = arg;
-  struct tt_ring_reader reader;
+  struct ttr_reader reader;
   struct tt_proto_metrics sample;
 
-  if (tt_ring_reader_open(&reader, "/tmp/tinytd-test-live") != TT_READER_OK) {
+  if (ttr_reader_open(&reader, "/tmp/tinytd-test-live") != TTR_READER_OK) {
     fprintf(stderr, "Reader %d: failed to open\n", stats->id);
     return NULL;
   }
 
   while (running) {
-    if (tt_ring_reader_get_latest(&reader, &sample) == TT_READER_OK) {
+    if (ttr_reader_get_latest(&reader, &sample) == TTR_READER_OK) {
       stats->reads++;
 
       /* Consistency check: all fields must come from the same sample */
@@ -70,7 +70,7 @@ static void *reader_thread(void *arg) {
     usleep(100);
   }
 
-  tt_ring_reader_close(&reader);
+  ttr_reader_close(&reader);
   return NULL;
 }
 
@@ -81,10 +81,10 @@ int main(void) {
   printf("Readers: %d\n", NUM_READERS);
   printf("Write interval: %d us\n\n", WRITE_INTERVAL_US);
 
-  struct tt_ring_writer writer;
-  int ret = tt_ring_writer_init(&writer, "/tmp/tinytd-test-live", "/tmp/tinytd-test-shadow",
+  struct ttr_writer writer;
+  int ret = ttr_writer_init(&writer, "/tmp/tinytd-test-live", "/tmp/tinytd-test-shadow",
                           3600, 1440, 672, 0644);
-  if (ret != TT_WRITER_OK) {
+  if (ret != TTR_WRITER_OK) {
     fprintf(stderr, "Failed to init writer: %d\n", ret);
     return 1;
   }
@@ -131,9 +131,9 @@ int main(void) {
          total_inconsistent, (total_inconsistent * 100.0) / total_reads);
 
   /* Cleanup */
-  tt_ring_writer_cleanup(&writer);
-  tt_shm_unlink("/tmp/tinytd-test-live");
-  tt_shm_unlink("/tmp/tinytd-test-shadow");
+  ttr_writer_cleanup(&writer);
+  ttr_shm_unlink("/tmp/tinytd-test-live");
+  ttr_shm_unlink("/tmp/tinytd-test-shadow");
 
   if (total_inconsistent > 0) {
     printf("\n❌ TEST FAILED: Found inconsistent reads!\n");

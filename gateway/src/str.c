@@ -16,8 +16,7 @@ static int tolc(char c) {
   return (c >= 'A' && c <= 'Z') ? c + 'a' - 'A' : c;
 }
 
-int ttg_str_casecmp(const struct ttg_str str1,
-                const struct ttg_str str2) {
+int ttg_str_casecmp(const struct ttg_str str1, const struct ttg_str str2) {
   size_t i = 0;
   while (i < str1.len && i < str2.len) {
     int c1 = tolc(str1.buf[i]);
@@ -35,8 +34,7 @@ int ttg_str_casecmp(const struct ttg_str str1,
   return 0;
 }
 
-bool ttg_str_match(struct ttg_str s, struct ttg_str p,
-               struct ttg_str* caps) {
+bool ttg_str_match(struct ttg_str s, struct ttg_str p, struct ttg_str* caps) {
   size_t i = 0, j = 0, ni = 0, nj = 0;
   if (caps)
     caps->buf = NULL, caps->len = 0;
@@ -72,8 +70,7 @@ bool ttg_str_match(struct ttg_str s, struct ttg_str p,
   return true;
 }
 
-bool ttg_str_to_num(struct ttg_str str, int base, void* val,
-                size_t val_len) {
+bool ttg_str_to_num(struct ttg_str str, int base, void* val, size_t val_len) {
   size_t i = 0, ndigits = 0;
   uint64_t max = val_len == sizeof(uint8_t)    ? 0xFF
                  : val_len == sizeof(uint16_t) ? 0xFFFF

@@ -83,4 +83,22 @@ struct tt_proto_ack {
 }; /* Total 2 bytes */
 #pragma pack(pop)
 
+#pragma pack(push, 1)
+struct tt_proto_packet_payload {
+  struct tt_proto_packet_header header; /* 10 bytes */
+  struct tt_proto_metrics payload;      /* 52 bytes */
+}; /* Total 62 bytes */
+#pragma pack(pop)
+
+/*
+
+tt_proto_packet_payload:
+
+tt_proto_packet_header + tt_proto_metrics
+tt_proto_packet_header + tt_proto_alert
+tt_proto_packet_header + tt_proto_cmd
+tt_proto_packet_header + tt_proto_ack
+
+*/
+
 #endif /* TT_PROTO_V1_H */

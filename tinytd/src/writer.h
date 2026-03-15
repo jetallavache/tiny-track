@@ -5,9 +5,9 @@
 #include "common/ringbuf.h"
 #include "config.h"
 
-/* Wrapper around tt_ring_writer for tinytd */
+/* Wrapper around ttr_writer for tinytd */
 struct ttd_writer {
-  struct tt_ring_writer ring;
+  struct ttr_writer ring;
 };
 
 int ttd_writer_init(struct ttd_writer* ctx, struct ttd_config* cfg);

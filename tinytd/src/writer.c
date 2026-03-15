@@ -1,12 +1,12 @@
 #include "writer.h"
 
-#include "common/ringbuf.h"
 #include "common/log.h"
+#include "common/ringbuf.h"
 
 int ttd_writer_init(struct ttd_writer* ctx, struct ttd_config* cfg) {
-  int ret = tt_ring_writer_init(&ctx->ring, cfg->live_path, cfg->shadow_path,
-                                cfg->l1_capacity, cfg->l2_capacity,
-                                cfg->l3_capacity, cfg->file_mode);
+  int ret = ttr_writer_init(&ctx->ring, cfg->live_path, cfg->shadow_path,
+                            cfg->l1_capacity, cfg->l2_capacity,
+                            cfg->l3_capacity, cfg->file_mode);
   if (ret < 0) {
     tt_log_err("Failed to initialize ring writer");
     return ret;
@@ -24,21 +24,21 @@ int ttd_writer_write_l1(struct ttd_writer* ctx,
                ctx ? ctx->ring.live_addr : NULL);
     return -1;
   }
-  return tt_ring_writer_write_l1(&ctx->ring, sample);
+  return ttr_writer_write_l1(&ctx->ring, sample);
 }
 
 int ttd_writer_aggregate_l2(struct ttd_writer* ctx) {
-  return tt_ring_writer_aggregate_l2(&ctx->ring);
+  return ttr_writer_aggregate_l2(&ctx->ring);
 }
 
 int ttd_writer_aggregate_l3(struct ttd_writer* ctx) {
-  return tt_ring_writer_aggregate_l3(&ctx->ring);
+  return ttr_writer_aggregate_l3(&ctx->ring);
 }
 
 int ttd_writer_shadow_sync(struct ttd_writer* ctx) {
-  return tt_ring_writer_shadow_sync(&ctx->ring);
+  return ttr_writer_shadow_sync(&ctx->ring);
 }
 
 void ttd_writer_cleanup(struct ttd_writer* ctx) {
-  tt_ring_writer_cleanup(&ctx->ring);
+  ttr_writer_cleanup(&ctx->ring);
 }

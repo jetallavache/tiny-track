@@ -19,4 +19,4 @@ void ttg_iobuf_free(struct ttg_iobuf*);
 size_t ttg_iobuf_add(struct ttg_iobuf*, size_t, const void*, size_t);
 size_t ttg_iobuf_del(struct ttg_iobuf*, size_t ofs, size_t len);
 
-#endif  /* TTG_IOBUF_H */
+#endif /* TTG_IOBUF_H */

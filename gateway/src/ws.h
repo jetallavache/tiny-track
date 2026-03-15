@@ -4,9 +4,9 @@
 #include <stdarg.h>
 #include <stdint.h>
 
-#include "str.h"
 #include "http.h"
 #include "net.h"
+#include "str.h"
 
 #define TTG_WS_OP_CONTINUATION 0x0
 #define TTG_WS_OP_TEXT 0x1
@@ -17,7 +17,7 @@
 
 struct ttg_ws_message {
   struct ttg_str data; /* WebSocket message data */
-  uint8_t flags;              /* WebSocket message flags */
+  uint8_t flags;       /* WebSocket message flags */
 };
 
 struct ttg_conn* ttg_ws_connect(struct ttg_mgr*, const char* url,
@@ -30,4 +30,4 @@ size_t ttg_ws_wrap(struct ttg_conn*, size_t len, int op);
 size_t ttg_ws_printf(struct ttg_conn* c, int op, const char* fmt, ...);
 size_t ttg_ws_vprintf(struct ttg_conn* c, int op, const char* fmt, va_list*);
 
-#endif  /* TTG_WS_H */
+#endif /* TTG_WS_H */
