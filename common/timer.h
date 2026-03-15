@@ -5,19 +5,19 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/* Таймер */
+/* Timer */
 struct tt_timer {
-  uint64_t period_ms;      /* Период таймера в миллисекундах */
-  uint64_t expire;         /* Истечение срока действия в миллисекундах */
-  unsigned flags;          /* Список установленных флагов */
-#define TIMER_ONCE 0       /* Вызвать функцию один раз */
-#define TIMER_REPEAT 1     /* Периодический вызов */
-#define TIMER_RUN_NOW 2    /* Вызов функции сразу после установки таймера */
-#define TIMER_CALLED 4     /* Функция таймера была вызвана хотя бы один раз */
-#define TIMER_AUTODELETE 8 /* Вызвать s_free() в конце выполнения */
-  void (*fn)(void*);       /* Функция обратного вызова */
-  void* arg;               /* Её аргументы */
-  struct tt_timer* next;   /* Указатель на следующий экземпляр таймера */
+  uint64_t period_ms;      /* Timer period in milliseconds */
+  uint64_t expire;         /* Expiration time in milliseconds */
+  unsigned flags;          /* Set of active flags */
+#define TIMER_ONCE 0       /* Call function once */
+#define TIMER_REPEAT 1     /* Periodic call */
+#define TIMER_RUN_NOW 2    /* Call function immediately after timer is set */
+#define TIMER_CALLED 4     /* Timer function has been called at least once */
+#define TIMER_AUTODELETE 8 /* Call s_free() at the end of execution */
+  void (*fn)(void*);       /* Callback function */
+  void* arg;               /* Its arguments */
+  struct tt_timer* next;   /* Pointer to the next timer instance */
 };
 
 void tt_timer_init(struct tt_timer** head, struct tt_timer* timer,

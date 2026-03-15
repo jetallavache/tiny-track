@@ -4,7 +4,7 @@
 #include <stdarg.h>
 #include <stdint.h>
 
-#include "common/utils/str.h"
+#include "str.h"
 #include "http.h"
 #include "net.h"
 
@@ -16,12 +16,12 @@
 #define TTG_WS_OP_PONG 0xA
 
 struct ttg_ws_message {
-  struct tt_util_string data; /* Данные сообщения WebSocket */
-  uint8_t flags;              /* Флаги сообщения WebSocket */
+  struct ttg_str data; /* WebSocket message data */
+  uint8_t flags;              /* WebSocket message flags */
 };
 
 struct ttg_conn* ttg_ws_connect(struct ttg_mgr*, const char* url,
-                                ttg_event_handler_t fn, void* fn_data,
+                                ttg_event_handler fn, void* fn_data,
                                 const char* fmt, ...);
 void ttg_ws_upgrade(struct ttg_conn*, struct ttg_http_message*, const char* fmt,
                     ...);
@@ -30,4 +30,4 @@ size_t ttg_ws_wrap(struct ttg_conn*, size_t len, int op);
 size_t ttg_ws_printf(struct ttg_conn* c, int op, const char* fmt, ...);
 size_t ttg_ws_vprintf(struct ttg_conn* c, int op, const char* fmt, va_list*);
 
-#endif  // TTG_WS_H
+#endif  /* TTG_WS_H */

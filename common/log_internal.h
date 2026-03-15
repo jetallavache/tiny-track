@@ -5,13 +5,13 @@
 
 #include "log.h"
 
-/* Внутреннее состояние логирования */
+/* Internal logging state */
 typedef struct {
   tt_log_backend_t backend;
   tt_log_level_t min_level;
   const char* ident;
   bool initialized;
-  void* backend_data; /* Специфичные данные backend */
+  void* backend_data; /* Backend-specific data */
 } tt_log_state_t;
 
 /* Backend: stderr/stdout */

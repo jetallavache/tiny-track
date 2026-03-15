@@ -46,7 +46,7 @@ int ttc_cmd_live(const char* path, int interval_ms, const char* format) {
     } else if (err == TT_READER_ERR_STALE) {
       fprintf(stderr,
               "Warning: tinytd daemon is not running (data is stale)\n");
-      /* Можно продолжить показывать старые данные или выйти */
+      /* Can continue showing stale data or exit */
       break;
     }
     usleep(interval_ms * 1000);

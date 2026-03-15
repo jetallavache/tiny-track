@@ -5,71 +5,71 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/* Magic number для валидации */
+/* Magic number for validation */
 #define TT_MAGIC 0x544D5452 /* "TMTR" */
 #define TT_VERSION 1
 
-/* Размеры блоков */
+/* Block sizes */
 #define TT_HEADER_SIZE 256
 #define TT_CONSUMER_TABLE_SIZE 2048
 #define TT_RING_META_SIZE 64
 #define TT_MAX_CONSUMERS 32
 
-/* Главный заголовок файла - 256 bytes */
+/* Main file header - 256 bytes */
 struct tt_ring_header {
   uint32_t magic;          /* TT_MAGIC */
   uint32_t version;        /* TT_VERSION */
-  uint32_t crc32;          /* CRC32 всего файла */
-  uint64_t last_update_ts; /* Timestamp последнего обновления (heartbeat) */
-  uint64_t last_shadow_sync_ts; /* Timestamp последней синхронизации */
-  uint32_t writer_pid;          /* PID writer процесса */
-  uint32_t num_consumers;       /* Количество активных consumers */
-  uint8_t padding[216];         /* Выравнивание до 256 байт */
+  uint32_t crc32;          /* CRC32 of the entire file */
+  uint64_t last_update_ts; /* Timestamp of last update (heartbeat) */
+  uint64_t last_shadow_sync_ts; /* Timestamp of last shadow sync */
+  uint32_t writer_pid;          /* PID of the writer process */
+  uint32_t num_consumers;       /* Number of active consumers */
+  uint8_t padding[216];         /* Padding to 256 bytes */
 };
 
-/* Запись о consumer - 64 bytes */
+/* Consumer record - 64 bytes */
 struct tt_ring_consumer {
   uint32_t consumer_id;   /* ID consumer */
-  uint32_t pid;           /* PID процесса */
-  uint32_t read_index_l1; /* Позиция чтения в L1 */
-  uint32_t read_index_l2; /* Позиция чтения в L2 */
-  uint32_t read_index_l3; /* Позиция чтения в L3 */
-  uint64_t last_seen_ts;  /* Последняя активность */
-  uint32_t flags;         /* Флаги */
-  uint8_t padding[28];    /* Выравнивание до 64 байт */
+  uint32_t pid;           /* Process PID */
+  uint32_t read_index_l1; /* Read position in L1 */
+  uint32_t read_index_l2; /* Read position in L2 */
+  uint32_t read_index_l3; /* Read position in L3 */
+  uint64_t last_seen_ts;  /* Last activity timestamp */
+  uint32_t flags;         /* Flags */
+  uint8_t padding[28];    /* Padding to 64 bytes */
 };
 
-/* Таблица consumers */
+/* Consumer table */
 struct tt_ring_consumer_table {
   struct tt_ring_consumer entries[TT_MAX_CONSUMERS];
 };
 
-/* Метаданные кольцевого буфера - 64 bytes */
+/* Ring buffer metadata - 64 bytes */
 struct tt_ring_meta {
-  _Atomic uint32_t seq;  /* Sequence counter для seqlock */
-  _Atomic uint32_t head; /* Позиция записи */
-  _Atomic uint32_t tail; /* Позиция чтения (для single consumer) */
-  uint32_t capacity;      /* Размер в элементах */
-  uint32_t cell_size;     /* Размер одного элемента */
-  uint64_t first_ts;      /* Timestamp первого элемента */
-  uint64_t last_ts;       /* Timestamp последнего элемента */
-  uint32_t flags;         /* Флаги */
-  uint8_t padding[20];    /* Выравнивание до 64 байт */
+  _Atomic uint32_t seq;  /* Sequence counter for seqlock */
+  _Atomic uint32_t head; /* Write position */
+  _Atomic uint32_t tail; /* Read position (for single consumer) */
+  uint32_t capacity;      /* Capacity in elements */
+  uint32_t cell_size;     /* Size of one element */
+  uint64_t first_ts;      /* Timestamp of the first element */
+  uint64_t last_ts;       /* Timestamp of the last element */
+  uint32_t flags;         /* Flags */
+  uint8_t padding[20];    /* Padding to 64 bytes */
 };
 
-/* Полный layout mmap файла */
+/* Full mmap file layout */
 struct tt_ring_layout {
   struct tt_ring_header header;
   struct tt_ring_consumer_table consumers;
 
   /* L1: 1 hour @ 1s interval */
   struct tt_ring_meta l1_meta;
-  uint8_t l1_data[]; /* Динамический размер */
+  uint8_t l1_data[]; /* Dynamic size */
 
-  /* L2 и L3 идут после L1_data */
+  /* L2 and L3 follow L1_data */
 };
 
-/* Вычисление смещений */
+/* Offset calculation */
 static inline size_t tt_layout_l1_offset(void) {
   return TT_HEADER_SIZE + TT_CONSUMER_TABLE_SIZE + TT_RING_META_SIZE;
 }

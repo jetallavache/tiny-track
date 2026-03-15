@@ -30,7 +30,7 @@ static int b64_decode_single(int c) {
   }
 }
 
-size_t b64_update(unsigned char ch, char* to, size_t n) {
+size_t ttg_b64_update(unsigned char ch, char* to, size_t n) {
   unsigned long rem = (n & 3) % 3;
   if (rem == 0) {
     to[n] = (char)b64_encode_single(ch >> 2);
@@ -46,11 +46,11 @@ size_t b64_update(unsigned char ch, char* to, size_t n) {
   return n;
 }
 
-size_t b64_final(char* to, size_t n) {
+size_t ttg_b64_final(char* to, size_t n) {
   size_t saved = n;
   /* printf("---[%.*s]\n", n, to); */
   if (n & 3)
-    n = b64_update(0, to, n);
+    n = ttg_b64_update(0, to, n);
   if ((saved & 3) == 2)
     n--;
   /* printf("    %d[%.*s]\n", n, n, to); */
@@ -60,19 +60,19 @@ size_t b64_final(char* to, size_t n) {
   return n;
 }
 
-size_t b64_encode(const unsigned char* p, size_t n, char* to, size_t dl) {
+size_t ttg_b64_encode(const unsigned char* p, size_t n, char* to, size_t dl) {
   size_t i, len = 0;
   if (dl > 0)
     to[0] = '\0';
   if (dl < ((n / 3) + (n % 3 ? 1 : 0)) * 4 + 1)
     return 0;
   for (i = 0; i < n; i++)
-    len = b64_update(p[i], to, len);
-  len = b64_final(to, len);
+    len = ttg_b64_update(p[i], to, len);
+  len = ttg_b64_final(to, len);
   return len;
 }
 
-size_t b64_decode(const char* src, size_t n, char* dst, size_t dl) {
+size_t ttg_b64_decode(const char* src, size_t n, char* dst, size_t dl) {
   const char* end = src == NULL ? NULL : src + n; /* Cannot add to NULL */
   size_t len = 0;
   if (dl < n / 4 * 3 + 1)

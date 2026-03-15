@@ -2,13 +2,13 @@
 
 #include <string.h>
 
-struct tt_util_string str_s(const char* s) {
-  struct tt_util_string str = {(char*)s, s == NULL ? 0 : strlen(s)};
+struct ttg_str ttg_str_create(const char* s) {
+  struct ttg_str str = {(char*)s, s == NULL ? 0 : strlen(s)};
   return str;
 }
 
-struct tt_util_string str_n(const char* s, size_t n) {
-  struct tt_util_string str = {(char*)s, n};
+struct ttg_str ttg_str_create_with_size(const char* s, size_t len) {
+  struct ttg_str str = {(char*)s, len};
   return str;
 }
 
@@ -16,46 +16,8 @@ static int tolc(char c) {
   return (c >= 'A' && c <= 'Z') ? c + 'a' - 'A' : c;
 }
 
-/* int casecmp(const char *s1, const char *s2) { */
-/*   int diff = 0; */
-/*   do { */
-/*     int c = tolc(*s1++), d = tolc(*s2++); */
-/*     diff = c - d; */
-/*   } while (diff == 0 && s1[-1] != '\0'); */
-/*   return diff; */
-/* } */
-
-/* struct tt_util_string strdup(const struct tt_util_string s) { */
-/*   struct tt_util_string r = {NULL, 0}; */
-/*   if (s.len > 0 && s.buf != NULL) { */
-/*     char *sc = (char *) calloc(1, s.len + 1); */
-/*     if (sc != NULL) { */
-/*       memcpy(sc, s.buf, s.len); */
-/*       sc[s.len] = '\0'; */
-/*       r.buf = sc; */
-/*       r.len = s.len; */
-/*     } */
-/*   } */
-/*   return r; */
-/* } */
-
-/* int strcmp(const struct tt_util_string str1, const struct tt_util_string */
-/* str2) { */
-/*   size_t i = 0; */
-/*   while (i < str1.len && i < str2.len) { */
-/*     int c1 = str1.buf[i]; */
-/*     int c2 = str2.buf[i]; */
-/*     if (c1 < c2) return -1; */
-/*     if (c1 > c2) return 1; */
-/*     i++; */
-/*   } */
-/*   if (i < str1.len) return 1; */
-/*   if (i < str2.len) return -1; */
-/*   return 0; */
-/* } */
-
-int str_casecmp(const struct tt_util_string str1,
-                const struct tt_util_string str2) {
+int ttg_str_casecmp(const struct ttg_str str1,
+                const struct ttg_str str2) {
   size_t i = 0;
   while (i < str1.len && i < str2.len) {
     int c1 = tolc(str1.buf[i]);
@@ -73,8 +35,8 @@ int str_casecmp(const struct tt_util_string str1,
   return 0;
 }
 
-bool str_match(struct tt_util_string s, struct tt_util_string p,
-               struct tt_util_string* caps) {
+bool ttg_str_match(struct ttg_str s, struct ttg_str p,
+               struct ttg_str* caps) {
   size_t i = 0, j = 0, ni = 0, nj = 0;
   if (caps)
     caps->buf = NULL, caps->len = 0;
@@ -110,21 +72,7 @@ bool str_match(struct tt_util_string s, struct tt_util_string p,
   return true;
 }
 
-/* bool span(struct tt_util_string s, struct tt_util_string *a, struct */
-/* tt_util_string *b, char sep) { */
-/*   if (s.len == 0 || s.buf == NULL) { */
-/*     return false;  - Empty string, nothing to span - fail */
-/*   } else { */
-/*     size_t len = 0; */
-/*     while (len < s.len && s.buf[len] != sep) len++;  - Find separator */
-/*     if (a) *a = str_n(s.buf, len);                - Init a */
-/*     if (b) *b = str_n(s.buf + len, s.len - len);  - Init b */
-/*     if (b && len < s.len) b->buf++, b->len--;        - Skip separator */
-/*     return true; */
-/*   } */
-/* } */
-
-bool str_to_num(struct tt_util_string str, int base, void* val,
+bool ttg_str_to_num(struct ttg_str str, int base, void* val,
                 size_t val_len) {
   size_t i = 0, ndigits = 0;
   uint64_t max = val_len == sizeof(uint8_t)    ? 0xFF

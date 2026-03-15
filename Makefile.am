@@ -1,8 +1,8 @@
 SUBDIRS = common tinytd cli gateway tests etc
 
-EXTRA_DIST = README.md INSTALL.md LICENSE
+EXTRA_DIST = README.md docs/INSTALL.md LICENSE
 
-dist_doc_DATA = README.md INSTALL.md LICENSE
+dist_doc_DATA = README.md docs/INSTALL.md LICENSE
 
 # Code formatting
 .PHONY: format format-check

@@ -1,4 +1,4 @@
-#include "log_internal.h"
+#include "common/log_internal.h"
 
 #ifdef HAVE_SYSTEMD
 #include <stdio.h>
@@ -7,12 +7,12 @@
 #include <unistd.h>
 
 bool tt_log_journal_available(void) {
-  /* Проверяем доступность journal через наличие /run/systemd/journal */
+  /* Check journal availability via /run/systemd/journal */
   return (access("/run/systemd/journal", F_OK) == 0);
 }
 
 int tt_log_journal_init(tt_log_state_t* state) {
-  /* Для journal не требуется специальная инициализация */
+  /* No special initialization required for journal */
   return 0;
 }
 
@@ -22,7 +22,7 @@ void tt_log_journal_write(tt_log_state_t* state, tt_log_level_t level,
   char buf[1024];
   vsnprintf(buf, sizeof(buf), fmt, args);
 
-  /* Прямая запись в journal с метаданными */
+  /* Direct write to journal with metadata */
   if (file && func) {
     sd_journal_send("MESSAGE=%s", buf, "PRIORITY=%d", (int)level,
                     "SYSLOG_IDENTIFIER=%s", state->ident, "CODE_FILE=%s", file,
@@ -34,7 +34,7 @@ void tt_log_journal_write(tt_log_state_t* state, tt_log_level_t level,
 }
 
 void tt_log_journal_shutdown(tt_log_state_t* state) {
-  /* Нет необходимости в cleanup для journal */
+  /* No cleanup needed for journal */
 }
 
 #endif /* HAVE_SYSTEMD */

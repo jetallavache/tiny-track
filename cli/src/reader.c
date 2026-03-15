@@ -1,6 +1,6 @@
 #include "reader.h"
 
-#include "common/ring/reader.h"
+#include "common/ringbuf.h"
 
 int ttc_reader_open(struct ttc_reader* ctx, const char* path) {
   return tt_ring_reader_open(&ctx->ring, path);

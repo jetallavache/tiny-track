@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "common/utils/util.h"
+#include "util.h"
 #include "printf.h"
 #include "sock.h"
 
@@ -37,17 +37,17 @@ void ttg_net_close_conn(struct ttg_conn* c) {
   LIST_DELETE(struct ttg_conn, &c->mgr->conns, c);
   ttg_event_call(c, TTG_EVENT_CLOSE, NULL);
   tt_log_debug("%lu %ld closed", c->id, c->fd);
-  // s_tls_free(c);
+  /* s_tls_free(c); */
   ttg_iobuf_free(&c->recv);
   ttg_iobuf_free(&c->send);
-  // ttg_iobuf_free(&c->rtls);
-  util_bzero((unsigned char*)c, sizeof(*c));
+  /* ttg_iobuf_free(&c->rtls); */
+  ttg_util_bzero((unsigned char*)c, sizeof(*c));
   free(c);
 }
 
 struct ttg_conn* ttg_net_connect_svc(struct ttg_mgr* mgr, const char* url,
-                                     ttg_event_handler_t fn, void* fn_data,
-                                     ttg_event_handler_t pfn, void* pfn_data) {
+                                     ttg_event_handler fn, void* fn_data,
+                                     ttg_event_handler pfn, void* pfn_data) {
   struct ttg_conn* c = NULL;
   if (url == NULL || url[0] == '\0') {
     tt_log_err("null url");
@@ -55,12 +55,12 @@ struct ttg_conn* ttg_net_connect_svc(struct ttg_mgr* mgr, const char* url,
     tt_log_err("OOM");
   } else {
     LIST_ADD_HEAD(struct ttg_conn, &mgr->conns, c);
-    // c->is_udp = (strncmp(url, "udp:", 4) == 0);
+    /* c->is_udp = (strncmp(url, "udp:", 4) == 0); */
     c->fd = (void*)(size_t)TTG_INVALID_SOCKET;
     c->fn = fn;
     c->is_client = true;
     c->fn_data = fn_data;
-    // c->is_tls = (ttg_url_is_ssl(url) != 0);
+    /* c->is_tls = (ttg_url_is_ssl(url) != 0); */
     c->pfn = pfn;
     c->pfn_data = pfn_data;
     ttg_event_call(c, TTG_EVENT_OPEN, (void*)url);
@@ -70,12 +70,12 @@ struct ttg_conn* ttg_net_connect_svc(struct ttg_mgr* mgr, const char* url,
 }
 
 struct ttg_conn* ttg_net_connect(struct ttg_mgr* mgr, const char* url,
-                                 ttg_event_handler_t fn, void* fn_data) {
+                                 ttg_event_handler fn, void* fn_data) {
   return ttg_net_connect_svc(mgr, url, fn, fn_data, NULL, NULL);
 }
 
 struct ttg_conn* ttg_net_listen(struct ttg_mgr* mgr, const char* url,
-                                ttg_event_handler_t fn, void* fn_data) {
+                                ttg_event_handler fn, void* fn_data) {
   struct ttg_conn* c = NULL;
 
   if ((c = ttg_net_alloc_conn(mgr)) == NULL) {
@@ -89,7 +89,7 @@ struct ttg_conn* ttg_net_listen(struct ttg_mgr* mgr, const char* url,
     LIST_ADD_HEAD(struct ttg_conn, &mgr->conns, c);
     c->fn = fn;
     c->fn_data = fn_data;
-    // c->is_tls = (mg_url_is_ssl(url) != 0);
+    /* c->is_tls = (mg_url_is_ssl(url) != 0); */
 
     ttg_event_call(c, TTG_EVENT_OPEN, NULL);
     tt_log_debug("%lu %ld %s", c->id, c->fd, url);
@@ -102,7 +102,7 @@ struct tt_timer* ttg_net_timer_add(struct ttg_mgr* mgr, uint64_t ms,
                                    void* arg) {
   struct tt_timer* t = (struct tt_timer*)calloc(1, sizeof(*t));
   if (t != NULL) {
-    flags |= TIMER_AUTODELETE; /* Автоматически удалять таймер */
+    flags |= TIMER_AUTODELETE; /* Automatically delete timer */
     tt_timer_init(&mgr->timers, t, ms, flags, fn, arg);
   }
   return t;
@@ -126,14 +126,14 @@ void ttg_net_mgr_free(struct ttg_mgr* mgr) {
   while (t != NULL)
     tmp = t->next, free(t), t = tmp;
   mgr->timers =
-      NULL; /* Важно. Следующий звонок на опрос не будет касаться таймеров */
+      NULL; /* Important. Next poll call will not touch timers */
   for (c = mgr->conns; c != NULL; c = c->next)
     c->is_closing = 1;
   ttg_net_mgr_poll(mgr, 0);
   tt_log_debug("All connections closed");
   if (mgr->epoll_fd >= 0)
     close(mgr->epoll_fd), mgr->epoll_fd = -1;
-  // mg_tls_ctx_free(mgr);
+  /* mg_tls_ctx_free(mgr); */
 }
 
 void ttg_net_mgr_poll(struct ttg_mgr* mgr, int ms) {
@@ -141,7 +141,7 @@ void ttg_net_mgr_poll(struct ttg_mgr* mgr, int ms) {
   uint64_t now;
 
   ttg_sock_iotest(mgr, ms);
-  now = util_millis();
+  now = ttg_util_millis();
 
   tt_timer_poll(&mgr->timers, now);
 
@@ -154,11 +154,11 @@ void ttg_net_mgr_poll(struct ttg_mgr* mgr, int ms) {
       ttg_event_call(c, TTG_EVENT_READ, &n);
     }
 
-    // tt_log_debug"%lu %c%c %c%c%c%c%c %lu", c->id, c->is_readable ? 'r' : '-',
-    //            c->is_writable ? 'w' : '-', c->is_tls ? 'T' : 't',
-    //            c->is_connecting ? 'C' : 'c', c->is_tls_hs ? 'H' : 'h',
-    //            c->is_resolving ? 'R' : 'r', c->is_closing ? 'C' : 'c',
-    //            /* c->rtls.len */ 0);
+    tt_log_debug("%lu %c%c %c%c%c%c%c %lu", c->id, c->is_readable ? 'r' : '-',
+               c->is_writable ? 'w' : '-', c->is_tls ? 'T' : 't',
+               c->is_connecting ? 'C' : 'c', c->is_tls_hs ? 'H' : 'h',
+               c->is_resolving ? 'R' : 'r', c->is_closing ? 'C' : 'c',
+               /* c->rtls.len */ 0);
 
     if (c->is_resolving || c->is_closing) {
       /* Do nothing */
@@ -173,7 +173,7 @@ void ttg_net_mgr_poll(struct ttg_mgr* mgr, int ms) {
         ttg_sock_read_conn(c);
       if (c->is_writable)
         ttg_sock_write_conn(c);
-      // if (c->is_tls && !c->is_tls_hs && c->send.len == 0) mg_tls_flush(c);
+      /* if (c->is_tls && !c->is_tls_hs && c->send.len == 0) mg_tls_flush(c); */
     }
 
     if (c->is_draining && c->send.len == 0)

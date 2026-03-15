@@ -3,17 +3,16 @@
 
 #include <stddef.h>
 
-#include "common/utils/str.h"
-
-struct url {
+#include "str.h"
+struct ttg_url {
   size_t key, user, pass, host, port, uri, end;
 };
 
-unsigned short ttg_url_port(const char* url);
-int ttg_url_is_ssl(const char* url);
-struct tt_util_string ttg_url_host(const char* url);
-struct tt_util_string ttg_url_user(const char* url);
-struct tt_util_string ttg_url_pass(const char* url);
-const char* ttg_url_uri(const char* url);
+unsigned short ttg_url_port(const char*);
+int ttg_url_is_ssl(const char*);
+struct ttg_str ttg_url_host(const char*);
+struct ttg_str ttg_url_user(const char*);
+struct ttg_str ttg_url_pass(const char*);
+const char* ttg_url_uri(const char*);
 
-#endif  // SRC_S_URL_H
+#endif /* TTG_URL_H */

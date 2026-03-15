@@ -2,7 +2,7 @@
 #define TINY_CLI_READER_H
 
 #include "common/proto/v1.h"
-#include "common/ring/reader.h"
+#include "common/ringbuf.h"
 
 /* Wrapper around tt_ring_reader for tiny-cli */
 struct ttc_reader {

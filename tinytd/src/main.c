@@ -3,8 +3,8 @@
 #include <stdlib.h>
 
 #include "collector.h"
-#include "common/config/paths.h"
-#include "common/sink/log.h"
+#include "common/config.h"
+#include "common/log.h"
 #include "config.h"
 #include "runtime.h"
 #include "writer.h"

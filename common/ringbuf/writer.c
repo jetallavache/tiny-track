@@ -5,7 +5,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "common/sink/log.h"
+#include "common/log.h"
 #include "layout.h"
 #include "seqlock.h"
 #include "shm.h"
@@ -33,7 +33,7 @@ int tt_ring_writer_init(struct tt_ring_writer* ctx, const char* live_path,
   if ((intptr_t)(ctx->live_addr = tt_shm_create(live_path, ctx->total_size,
                                                 file_mode)) < 0) {
     tt_log_err("Failed to create live mmap (%s)",
-               tt_shm_err((intptr_t)ctx->live_addr));
+               tt_shm_error_code_str((intptr_t)ctx->live_addr));
     return TT_WRITER_ERR_LIVE_CREATE;
   }
 
@@ -41,7 +41,7 @@ int tt_ring_writer_init(struct tt_ring_writer* ctx, const char* live_path,
   if ((intptr_t)(ctx->shadow_addr = tt_shm_create(shadow_path, ctx->total_size,
                                                   file_mode)) < 0) {
     tt_log_err("Failed to create shadow mmap (%s)",
-               tt_shm_err((intptr_t)ctx->shadow_addr));
+               tt_shm_error_code_str((intptr_t)ctx->shadow_addr));
     tt_shm_dealloc(ctx->live_addr, ctx->total_size);
     return TT_WRITER_ERR_SHADOW_CREATE;
   }
@@ -119,7 +119,7 @@ int tt_ring_writer_write_l1(struct tt_ring_writer* ctx,
 
   sample->timestamp = hdr->last_update_ts;
 
-  /* Seqlock: начало записи */
+  /* Seqlock: begin write */
   tt_seqlock_write_begin(&meta->seq);
 
   uint32_t head = meta->head;
@@ -132,7 +132,7 @@ int tt_ring_writer_write_l1(struct tt_ring_writer* ctx,
 
   meta->head = (head + 1) % meta->capacity;
 
-  /* Seqlock: конец записи */
+  /* Seqlock: end write */
   tt_seqlock_write_end(&meta->seq);
 
   msync(ctx->live_addr, ctx->total_size, MS_ASYNC);

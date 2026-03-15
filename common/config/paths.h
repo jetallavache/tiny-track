@@ -1,14 +1,14 @@
 #ifndef TT_CONFIG_PATHS_H
 #define TT_CONFIG_PATHS_H
 
-/* Получить путь к live mmap файлу
- * Приоритет: env -> config -> default */
+/* Get path to the live mmap file
+ * Priority: env -> config -> default */
 const char* tt_config_live_path(void);
 
-/* Получить путь к shadow mmap файлу */
+/* Get path to the shadow mmap file */
 const char* tt_config_shadow_path(void);
 
-/* Получить путь к конфигу */
+/* Get path to the config file */
 const char* tt_config_file_path(void);
 
 #endif /* TT_CONFIG_PATHS_H */

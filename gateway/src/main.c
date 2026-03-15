@@ -4,7 +4,7 @@
 #include <string.h>
 #include <time.h>
 
-#include "common/sink/log.h"
+#include "common/log.h"
 #include "common/timer.h"
 #include "event.h"
 #include "http.h"
@@ -15,13 +15,13 @@
 
 static const char* s_listen_on = "ws://localhost:4026";
 static const char* s_mmap_path = "/tmp/tinytd-live.dat";
-static struct tt_gateway_reader g_reader;
+static struct ttg_reader g_reader;
 
 /* Send metrics to WebSocket client */
 static void send_metrics(struct ttg_conn* c) {
   struct tt_proto_metrics m;
 
-  if (tt_gateway_reader_get_latest(&g_reader, &m) != 0) {
+  if (ttg_reader_get_latest(&g_reader, &m) != 0) {
     return; /* No data available */
   }
 
@@ -98,13 +98,13 @@ static void fn(struct ttg_conn* c, int ev, void* ev_data) {
   } else if (ev == TTG_EVENT_HTTP_MSG) {
     struct ttg_http_message* hm = (struct ttg_http_message*)ev_data;
 
-    if (str_match(hm->uri, str("/websocket"), NULL)) {
+    if (ttg_str_match(hm->uri, str("/websocket"), NULL)) {
       /* Upgrade to websocket */
       ttg_ws_upgrade(c, hm, NULL);
-    } else if (str_match(hm->uri, str("/api/metrics/live"), NULL)) {
+    } else if (ttg_str_match(hm->uri, str("/api/metrics/live"), NULL)) {
       /* REST API: get latest metrics */
       struct tt_proto_metrics m;
-      if (tt_gateway_reader_get_latest(&g_reader, &m) == 0) {
+      if (ttg_reader_get_latest(&g_reader, &m) == 0) {
         char buf[512];
         snprintf(buf, sizeof(buf),
                  "{\"cpu\":%u,\"mem\":%u,\"load1\":%u,\"rx\":%u,\"tx\":%u}",
@@ -140,7 +140,7 @@ int main(void) {
   tt_log_notice("tinytrack gateway starting...");
 
   /* Open mmap reader */
-  if (tt_gateway_reader_open(&g_reader, s_mmap_path) != 0) {
+  if (ttg_reader_open(&g_reader, s_mmap_path) != 0) {
     tt_log_err("Failed to open mmap: %s", s_mmap_path);
     return 1;
   }
@@ -159,7 +159,7 @@ int main(void) {
   }
 
   ttg_net_mgr_free(&mgr);
-  tt_gateway_reader_close(&g_reader);
+  ttg_reader_close(&g_reader);
   tt_log_notice("tinytrack gateway shutting down...");
 
   return 0;

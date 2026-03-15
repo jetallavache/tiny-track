@@ -4,8 +4,8 @@
 #include <string.h>
 
 #include "commands.h"
-#include "common/config/paths.h"
-#include "common/sink/log.h"
+#include "common/config.h"
+#include "common/log.h"
 
 static void print_usage(void) {
   printf("Usage: tiny-cli [command] [options]\n\n");
@@ -53,8 +53,8 @@ int main(int argc, char** argv) {
   const char* env_live = getenv("TINYTRACK_LIVE_PATH");
   tt_log_info("ENV: TINYTRACK_LIVE_PATH=%s", env_live ? env_live : "(not set)");
 
-  // /* Clean up old files if they exist (for debugging) */
-  // unlink(path);
+  /* /* Clean up old files if they exist (for debugging) */ */
+  /* unlink(path); */
 
   /* Parse options */
   for (int i = 2; i < argc; i++) {

@@ -9,9 +9,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "common/sink/log.h"
-#include "common/utils/b64.h"
-#include "common/utils/util.h"
+#include "common/log.h"
+#include "b64.h"
+#include "util.h"
 #include "http.h"
 #include "printf.h"
 #include "sock.h"
@@ -40,24 +40,24 @@ size_t ttg_ws_printf(struct ttg_conn* c, int op, const char* fmt, ...) {
   return len;
 }
 
-static void ws_handshake(struct ttg_conn* c, const struct tt_util_string* wskey,
-                         const struct tt_util_string* wsproto, const char* fmt,
+static void ws_handshake(struct ttg_conn* c, const struct ttg_str* wskey,
+                         const struct ttg_str* wsproto, const char* fmt,
                          va_list* ap) {
   const char* magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
   unsigned char sha[20], b64_sha[30];
 
-  // OpenSSL_add_all_algorithms();
-  // ERR_load_crypto_strings();
-  // EVP_MD_CTX *hashctx;
-  // hashctx = EVP_MD_CTX_create();
-  // const EVP_MD *hashptr = EVP_get_digestbyname("SHA1");
-  // EVP_MD_CTX_init(hashctx);
-  // EVP_DigestInit_ex(hashctx, hashptr, NULL);
-  // EVP_DigestUpdate(hashctx, wskey->buf, wskey->len);
-  // EVP_DigestUpdate(hashctx, magic, sizeof(magic);
-  // EVP_DigestFinal_ex(hashctx, sha, NULL);
-  // // EVP_MD_CTX_cleanup(hashctx);
-  // EVP_MD_CTX_free(hashctx);
+  /* OpenSSL_add_all_algorithms(); */
+  /* ERR_load_crypto_strings(); */
+  /* EVP_MD_CTX *hashctx; */
+  /* hashctx = EVP_MD_CTX_create(); */
+  /* const EVP_MD *hashptr = EVP_get_digestbyname("SHA1"); */
+  /* EVP_MD_CTX_init(hashctx); */
+  /* EVP_DigestInit_ex(hashctx, hashptr, NULL); */
+  /* EVP_DigestUpdate(hashctx, wskey->buf, wskey->len); */
+  /* EVP_DigestUpdate(hashctx, magic, sizeof(magic); */
+  /* EVP_DigestFinal_ex(hashctx, sha, NULL); */
+  /*  /* EVP_MD_CTX_cleanup(hashctx); */ */
+  /* EVP_MD_CTX_free(hashctx); */
 
   SHA_CTX sha_ctx;
   SHA1_Init(&sha_ctx);
@@ -65,7 +65,7 @@ static void ws_handshake(struct ttg_conn* c, const struct tt_util_string* wskey,
   SHA1_Update(&sha_ctx, (unsigned char*)magic, 36);
   SHA1_Final(sha, &sha_ctx);
 
-  b64_encode(sha, sizeof(sha), (char*)b64_sha, sizeof(b64_sha));
+  ttg_b64_encode(sha, sizeof(sha), (char*)b64_sha, sizeof(b64_sha));
   ttg_xprintf(ttg_pfn_iobuf, &c->send,
               "HTTP/1.1 101 Switching Protocols\r\n"
               "Upgrade: websocket\r\n"
@@ -90,8 +90,8 @@ static size_t ws_process(uint8_t* buf, size_t len, struct ws_msg* msg) {
   size_t i, n = 0, mask_len = 0;
   memset(msg, 0, sizeof(*msg));
   if (len >= 2) {
-    n = buf[1] & 0x7f;               /* Длина фрейма */
-    mask_len = buf[1] & 128 ? 4 : 0; /* Последний бит -это бит маск */
+    n = buf[1] & 0x7f;               /* Frame length */
+    mask_len = buf[1] & 128 ? 4 : 0; /* Last bit is the mask bit */
     msg->flags = buf[0];
     if (n < 126 && len >= mask_len) {
       msg->data_len = n;
@@ -104,8 +104,8 @@ static size_t ws_process(uint8_t* buf, size_t len, struct ws_msg* msg) {
       msg->data_len = (size_t)(((uint64_t)be32(buf + 2) << 32) + be32(buf + 6));
     }
   }
-  // Sanity check, and integer overflow protection for the boundary check below
-  // data_len should not be larger than 1 Gb
+  /* Sanity check, and integer overflow protection for the boundary check below */
+  /* data_len should not be larger than 1 Gb */
   if (msg->data_len > 1024 * 1024 * 1024)
     return 0;
   if (msg->header_len + msg->data_len > len)
@@ -139,8 +139,8 @@ static size_t mkhdr(size_t len, int op, bool is_client, uint8_t* buf) {
     n = 10;
   }
   if (is_client) {
-    buf[1] |= 1 << 7;  // Set masking flag
-    util_random(&buf[n], 4);
+    buf[1] |= 1 << 7;  /* Set masking flag */
+    ttg_util_random(&buf[n], 4);
     n += 4;
   }
   return n;
@@ -170,7 +170,7 @@ size_t ttg_ws_send(struct ttg_conn* c, const void* buf, size_t len, int op) {
 static bool ttg_ws_client_handshake(struct ttg_conn* c) {
   int n = ttg_http_get_request_len(c->recv.buf, c->recv.len);
   if (n < 0) {
-    ttg_event_error(c, "not http");  // Some just, not an HTTP request
+    ttg_event_error(c, "not http");  /* Some just, not an HTTP request */
   } else if (n > 0) {
     if (n < 15 || memcmp(c->recv.buf + 9, "101", 3) != 0) {
       ttg_event_error(c, "ws handshake error");
@@ -185,16 +185,16 @@ static bool ttg_ws_client_handshake(struct ttg_conn* c) {
     }
     ttg_iobuf_del(&c->recv, 0, (size_t)n);
   } else {
-    return true;  // Request is not yet received, quit event handler
+    return true;  /* Request is not yet received, quit event handler */
   }
-  return false;  // Continue event handler
+  return false;  /* Continue event handler */
 }
 
 static void ttg_ws_cb(struct ttg_conn* c, int ev, void* ev_data) {
   struct ws_msg msg;
   size_t ofs = (size_t)c->pfn_data;
 
-  //   assert(ofs < c->recv.len);
+  /*   assert(ofs < c->recv.len); */
   if (ev == TTG_EVENT_READ) {
     if (c->is_client && !c->is_websocket && ttg_ws_client_handshake(c))
       return;
@@ -226,25 +226,25 @@ static void ttg_ws_cb(struct ttg_conn* c, int ev, void* ev_data) {
         case TTG_WS_OP_CLOSE:
           tt_log_debug("%lu WS CLOSE", c->id);
           ttg_event_call(c, TTG_EVENT_WS_CTL, &m);
-          // Echo the payload of the received CLOSE message back to the sender
+          /* Echo the payload of the received CLOSE message back to the sender */
           ttg_ws_send(c, m.data.buf, m.data.len, TTG_WS_OP_CLOSE);
           c->is_draining = 1;
           break;
         default:
-          // Per RFC6455, close conn when an unknown op is recvd
+          /* Per RFC6455, close conn when an unknown op is recvd */
           ttg_event_error(c, "unknown WS op %d", op);
           break;
       }
 
-      // Handle fragmented frames: strip header, keep in c->recv
+      /* Handle fragmented frames: strip header, keep in c->recv */
       if (final == 0 || op == 0) {
         if (op)
-          ofs++, len--, msg.header_len--;              // First frame
-        ttg_iobuf_del(&c->recv, ofs, msg.header_len);  // Strip header
+          ofs++, len--, msg.header_len--;  /* First frame */
+        ttg_iobuf_del(&c->recv, ofs, msg.header_len);  /* Strip header */
         len -= msg.header_len;
         ofs += len;
         c->pfn_data = (void*)ofs;
-        // tt_log_info("FRAG %d [%.*s]", (int) ofs, (int) ofs, c->recv.buf);
+        /* tt_log_info("FRAG %d [%.*s]", (int) ofs, (int) ofs, c->recv.buf); */
       }
       /* Remove non-fragmented frame */
       if (final && op)
@@ -252,7 +252,7 @@ static void ttg_ws_cb(struct ttg_conn* c, int ev, void* ev_data) {
       /* Last chunk of the fragmented frame */
       if (final && !op && (ofs > 0)) {
         m.flags = c->recv.buf[0];
-        m.data = str_n((char*)&c->recv.buf[1], (size_t)(ofs - 1));
+        m.data = strl((char*)&c->recv.buf[1], (size_t)(ofs - 1));
         ttg_event_call(c, TTG_EVENT_WS_MSG, &m);
         ttg_iobuf_del(&c->recv, 0, ofs);
         ofs = 0;
@@ -264,14 +264,14 @@ static void ttg_ws_cb(struct ttg_conn* c, int ev, void* ev_data) {
 }
 
 struct ttg_conn* ttg_ws_connect(struct ttg_mgr* mgr, const char* url,
-                                ttg_event_handler_t fn, void* fn_data,
+                                ttg_event_handler fn, void* fn_data,
                                 const char* fmt, ...) {
   struct ttg_conn* c = ttg_net_connect(mgr, url, fn, fn_data);
   if (c != NULL) {
     char nonce[16], key[30];
-    struct tt_util_string host = ttg_url_host(url);
-    util_random(nonce, sizeof(nonce));
-    b64_encode((unsigned char*)nonce, sizeof(nonce), key, sizeof(key));
+    struct ttg_str host = ttg_url_host(url);
+    ttg_util_random(nonce, sizeof(nonce));
+    ttg_b64_encode((unsigned char*)nonce, sizeof(nonce), key, sizeof(key));
     ttg_xprintf(ttg_pfn_iobuf, &c->send,
                 "GET %s HTTP/1.1\r\n"
                 "Upgrade: websocket\r\n"
@@ -295,14 +295,14 @@ struct ttg_conn* ttg_ws_connect(struct ttg_mgr* mgr, const char* url,
 
 void ttg_ws_upgrade(struct ttg_conn* c, struct ttg_http_message* hm,
                     const char* fmt, ...) {
-  struct tt_util_string* wskey = ttg_http_get_header(hm, "Sec-WebSocket-Key");
+  struct ttg_str* wskey = ttg_http_get_header(hm, "Sec-WebSocket-Key");
   c->pfn = ttg_ws_cb;
   c->pfn_data = NULL;
   if (wskey == NULL) {
     ttg_http_reply(c, 426, "", "WS upgrade expected\n");
     c->is_draining = 1;
   } else {
-    struct tt_util_string* wsproto =
+    struct ttg_str* wsproto =
         ttg_http_get_header(hm, "Sec-WebSocket-Protocol");
     va_list ap;
     va_start(ap, fmt);
@@ -318,12 +318,12 @@ size_t ttg_ws_wrap(struct ttg_conn* c, size_t len, int op) {
   uint8_t header[14], *p;
   size_t header_len = mkhdr(len, op, c->is_client, header);
 
-  // NOTE: order of operations is important!
+  /* NOTE: order of operations is important! */
   if (ttg_iobuf_add(&c->send, c->send.len, NULL, header_len) != 0) {
-    p = &c->send.buf[c->send.len - len];         // p points to data
-    memmove(p, p - header_len, len);             // Shift data
-    memcpy(p - header_len, header, header_len);  // Prepend header
-    ttg_ws_mask(c, len);                         // Mask data
+    p = &c->send.buf[c->send.len - len];  /* p points to data */
+    memmove(p, p - header_len, len);  /* Shift data */
+    memcpy(p - header_len, header, header_len);  /* Prepend header */
+    ttg_ws_mask(c, len);  /* Mask data */
   }
   return c->send.len;
 }

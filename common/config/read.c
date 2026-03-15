@@ -1,4 +1,4 @@
-#include "reader.h"
+#include "read.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -21,7 +21,7 @@ bool tt_config_read_bool(const char* filepath, const char* key,
     return default_val;
   }
 
-  /* Поддержка различных форматов */
+  /* Support various formats */
   if (strcasecmp(buf, "true") == 0 || strcasecmp(buf, "yes") == 0 ||
       strcasecmp(buf, "on") == 0 || strcmp(buf, "1") == 0) {
     return true;
@@ -71,7 +71,7 @@ tt_log_level_t tt_config_parse_log_level(const char* level_str) {
   if (strcasecmp(level_str, "debug") == 0)
     return TT_LOG_DEBUG;
 
-  /* Попробовать как число */
+  /* Try as a number */
   int level = atoi(level_str);
   if (level >= TT_LOG_EMERG && level <= TT_LOG_DEBUG) {
     return (tt_log_level_t)level;

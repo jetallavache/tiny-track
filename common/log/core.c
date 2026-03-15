@@ -4,8 +4,8 @@
 #include <string.h>
 #include <time.h>
 
-#include "log.h"
-#include "log_internal.h"
+#include "common/log.h"
+#include "common/log_internal.h"
 
 static tt_log_state_t g_log_state = {.backend = TT_LOG_BACKEND_STDERR,
                                      .min_level = TT_LOG_INFO,
@@ -22,7 +22,7 @@ int tt_log_init(const tt_log_config_t* config) {
 
   tt_log_backend_t backend = config->backend;
 
-  /* Автовыбор backend */
+  /* Auto-select backend */
   if (backend == TT_LOG_BACKEND_AUTO) {
 #ifdef HAVE_SYSTEMD
     if (tt_log_journal_available()) {
@@ -38,7 +38,7 @@ int tt_log_init(const tt_log_config_t* config) {
 
   g_log_state.backend = backend;
 
-  /* Инициализация выбранного backend */
+  /* Initialize selected backend */
   switch (backend) {
 #ifdef HAVE_SYSTEMD
     case TT_LOG_BACKEND_JOURNAL:

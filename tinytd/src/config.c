@@ -4,11 +4,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "common/config/paths.h"
-#include "common/config/reader.h"
+#include "common/config.h"
+#include "common/config.h"
 
 void ttd_config_set_defaults(struct ttd_config* cfg) {
-  /* [deamon] */
+  /* [daemon] */
   strcpy(cfg->user, "tinytd");
   strcpy(cfg->group, "tinytd");
   strcpy(cfg->pid_file, "/tmp/tinytd.pid");
@@ -20,7 +20,7 @@ void ttd_config_set_defaults(struct ttd_config* cfg) {
   strcpy(cfg->du_path, "/tmp");
 
   /* [storage] */
-  /* Использовать пути из config system */
+  /* Use paths from config system */
   strncpy(cfg->live_path, tt_config_live_path(), sizeof(cfg->live_path) - 1);
   strncpy(cfg->shadow_path, tt_config_shadow_path(),
           sizeof(cfg->shadow_path) - 1);
@@ -42,23 +42,23 @@ void ttd_config_set_defaults(struct ttd_config* cfg) {
 }
 
 int ttd_config_load(const char* path, struct ttd_config* cfg) {
-  /* Установить дефолты */
+  /* Set defaults */
   ttd_config_set_defaults(cfg);
 
-  /* Если файл не указан, использовать системный */
+  /* If no path given, use system default */
   if (!path) {
     path = tt_config_file_path();
   }
 
-  /* Попробовать открыть файл */
+  /* Try to open the file */
   FILE* f = fopen(path, "r");
   if (!f) {
-    /* Файл не найден - использовать дефолты */
+    /* File not found - use defaults */
     return 0;
   }
   fclose(f);
 
-  /* [deamon] */
+  /* [daemon] */
   tt_config_read_str(path, "daemon.user", cfg->user, sizeof(cfg->user),
                      "tinytd");
   tt_config_read_str(path, "daemon.group", cfg->group, sizeof(cfg->group),

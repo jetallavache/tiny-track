@@ -5,41 +5,26 @@
 #include <string.h>
 #include <sys/time.h>
 
-#include "common/sink/log.h"
+#include "common/log.h"
 #include "printf.h"
 
-/*
-#define MG_U8P(ADDR) ((uint8_t *)(ADDR))
-
-#define S_LOAD_BE16(p) \
-  ((uint16_t)(((uint16_t)MG_U8P(p)[0] << 8U) | MG_U8P(p)[1]))
-#define S_LOAD_BE32(p)                          \
-  ((uint32_t)(((uint32_t)MG_U8P(p)[0] << 24U) | \
-              ((uint32_t)MG_U8P(p)[1] << 16U) | \
-              ((uint32_t)MG_U8P(p)[2] << 8U) | MG_U8P(p)[3]))
-
-uint16_t ntohs(uint16_t net) { return S_LOAD_BE16(&net); }
-
-uint32_t ntohl(uint32_t net) { return S_LOAD_BE32(&net); }
-*/
-
-static bool atone(struct tt_util_string str, struct ttg_addr* addr) {
+static bool atone(struct ttg_str str, struct ttg_addr* addr) {
   if (str.len > 0)
     return false;
   memset(addr->ip, 0, sizeof(addr->ip));
   return true;
 }
 
-static bool atonl(struct tt_util_string str, struct ttg_addr* addr) {
+static bool atonl(struct ttg_str str, struct ttg_addr* addr) {
   /* uint32_t localhost = ntohl(0x7f000001); */
   uint32_t localhost = htonl(0x7f000001);
-  if (str_casecmp(str, str("localhost")) != 0)
+  if (ttg_str_casecmp(str, str("localhost")) != 0)
     return false;
   memcpy(addr->ip, &localhost, sizeof(uint32_t));
   return true;
 }
 
-static bool aton4(struct tt_util_string str, struct ttg_addr* addr) {
+static bool aton4(struct ttg_str str, struct ttg_addr* addr) {
   uint8_t data[4] = {0, 0, 0, 0};
   size_t i, num_dots = 0;
   for (i = 0; i < str.len; i++) {
@@ -62,7 +47,7 @@ static bool aton4(struct tt_util_string str, struct ttg_addr* addr) {
   return true;
 }
 
-bool aton(struct tt_util_string str, struct ttg_addr* addr) {
+bool aton(struct ttg_str str, struct ttg_addr* addr) {
   return atone(str, addr) || atonl(str, addr) || aton4(str, addr);
 }
 
@@ -89,16 +74,22 @@ bool ttg_sock_send(struct ttg_conn* c, const void* buf, size_t len) {
 }
 
 void ttg_sock_set_nonblocking(TTG_SOCK_TYPE fd) {
-  fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);  // Non-blocking mode
-  fcntl(fd, F_SETFD, FD_CLOEXEC);
-  // int flags = fcntl(fd, F_GETFL, 0);
-  // if (flags == -1) {
-  //     perror("fcntl F_GETFL");
-  //     return;
-  // }
-  // if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
-  //     perror("fcntl F_SETFL");
-  // }
+  int flags;
+
+  if ((flags = fcntl(fd, F_GETFL, 0)) < 0) {
+    tt_log_err("Failure to receive fcntl flags (%s)", strerror(errno));
+    return;
+  }
+
+  if ((fcntl(fd, F_SETFL, flags | O_NONBLOCK)) < 0) { /* Non-blocking mode */
+    tt_log_err("Failure to set non-blocking mode (%s)", strerror(errno));
+    return;
+  }
+
+  if ((fcntl(fd, F_SETFD, FD_CLOEXEC)) < 0) {
+    tt_log_err("Failure to set descriptor flags (%s)", strerror(errno));
+    return;
+  }
 }
 
 bool ttg_sock_open_listener(struct ttg_conn* c, const char* url) {
@@ -116,19 +107,19 @@ bool ttg_sock_open_listener(struct ttg_conn* c, const char* url) {
 
     if ((fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) ==
         TTG_INVALID_SOCKET) {
-      tt_log_err("socket: %d", S_SOCK_ERR(-1));
+      tt_log_err("socket: %d", TTG_SOCK_ERR(-1));
     } else if ((rc = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (char*)&on,
                                 sizeof(on))) != 0) {
-      tt_log_err("setsockopt(SO_REUSEADDR): %d", S_SOCK_ERR(rc));
+      tt_log_err("setsockopt(SO_REUSEADDR): %d", TTG_SOCK_ERR(rc));
     } else if ((rc = bind(fd, &usa.sa, slen)) != 0) {
-      tt_log_err("bind: %d", S_SOCK_ERR(rc));
-    } else if ((rc = listen(fd, S_SOCK_LISTEN_BACKLOG_SIZE)) != 0) {
-      tt_log_err("listen: %d", S_SOCK_ERR(rc));
+      tt_log_err("bind: %d", TTG_SOCK_ERR(rc));
+    } else if ((rc = listen(fd, TTG_SOCK_LISTEN_BACKLOG_SIZE)) != 0) {
+      tt_log_err("listen: %d", TTG_SOCK_ERR(rc));
     } else {
       setlocaddr(fd, &c->local);
       ttg_sock_set_nonblocking(fd);
       c->fd = S2PTR(fd);
-      // S_EPOLL_ADD(c);
+      /* TTG_EPOLL_ADD(c); */
 
       do {
         struct epoll_event ev = {EPOLLIN | EPOLLERR | EPOLLHUP, {c}};
@@ -150,7 +141,7 @@ static TTG_SOCK_TYPE raccept(TTG_SOCK_TYPE sock, union usa* usa,
   do {
     memset(usa, 0, sizeof(*usa));
     fd = accept(sock, &usa->sa, len);
-  } while (S_SOCK_INTR(fd));
+  } while (TTG_SOCK_INTR(fd));
   return fd;
 }
 
@@ -173,7 +164,7 @@ void ttg_sock_accept_conn(struct ttg_mgr* mgr, struct ttg_conn* lsn) {
   socklen_t sa_len = sizeof(usa);
   TTG_SOCK_TYPE fd = raccept(FD(lsn), &usa, &sa_len);
   if (fd == TTG_INVALID_SOCKET) {
-    tt_log_err("%lu accept failed, errno %d", lsn->id, S_SOCK_ERR(-1));
+    tt_log_err("%lu accept failed, errno %d", lsn->id, TTG_SOCK_ERR(-1));
   } else if ((c = ttg_net_alloc_conn(mgr)) == NULL) {
     tt_log_err("%lu OOM", lsn->id);
     closesocket(fd);
@@ -181,7 +172,7 @@ void ttg_sock_accept_conn(struct ttg_mgr* mgr, struct ttg_conn* lsn) {
     tomgaddr(&usa, &c->remote);
     LIST_ADD_HEAD(struct ttg_conn, &mgr->conns, c);
     c->fd = S2PTR(fd);
-    S_EPOLL_ADD(c);
+    TTG_EPOLL_ADD(c);
     ttg_sock_set_nonblocking(FD(c));
     setsockopts(c);
     c->is_accepted = 1;
@@ -191,7 +182,7 @@ void ttg_sock_accept_conn(struct ttg_mgr* mgr, struct ttg_conn* lsn) {
     c->pfn_data = lsn->pfn_data;
     c->fn = lsn->fn;
     c->fn_data = lsn->fn_data;
-    // c->is_tls = lsn->is_tls;
+    /* c->is_tls = lsn->is_tls; */
     tt_log_debug("%lu %ld accepted %M -> %M", c->id, c->fd, s_print_ip_port,
                  &c->remote, s_print_ip_port, &c->local);
     ttg_event_call(c, TTG_EVENT_OPEN, NULL);
@@ -209,8 +200,8 @@ void ttg_sock_connect_conn(struct ttg_conn* c) {
     c->is_connecting = 0;
     setlocaddr(FD(c), &c->local);
     ttg_event_call(c, TTG_EVENT_CONNECT, NULL);
-    S_EPOLL_MOD(c, 0);
-    // if (c->is_tls_hs) mg_tls_handshake(c);
+    TTG_EPOLL_MOD(c, 0);
+    /* if (c->is_tls_hs) mg_tls_handshake(c); */
     if (!c->is_tls_hs)
       c->is_tls = 0; /* user did not call mg_tls_init() */
   } else {
@@ -221,14 +212,14 @@ void ttg_sock_connect_conn(struct ttg_conn* c) {
 static long iorecv(struct ttg_conn* c, void* buf, size_t len) {
   long n = recv(FD(c), (char*)buf, len, MSG_NONBLOCKING);
 
-  tt_log_debug("%lu %ld %d", c->id, n, S_SOCK_ERR(n));
+  tt_log_debug("%lu %ld %d", c->id, n, TTG_SOCK_ERR(n));
 
-  if (S_SOCK_PENDING(n))
-    return S_IO_WAIT;
-  if (S_SOCK_RESET(n))
-    return S_IO_RESET;
+  if (TTG_SOCK_PENDING(n))
+    return TTG_IO_WAIT;
+  if (TTG_SOCK_RESET(n))
+    return TTG_IO_RESET;
   if (n <= 0)
-    return S_IO_ERR;
+    return TTG_IO_ERR;
 
   return n;
 }
@@ -236,20 +227,20 @@ static long iorecv(struct ttg_conn* c, void* buf, size_t len) {
 long iosend(struct ttg_conn* c, const void* buf, size_t len) {
   long n = send(FD(c), (char*)buf, len, MSG_NONBLOCKING);
 
-  tt_log_debug("%lu %ld %d", c->id, n, S_SOCK_ERR(n));
+  tt_log_debug("%lu %ld %d", c->id, n, TTG_SOCK_ERR(n));
 
-  if (S_SOCK_PENDING(n))
-    return S_IO_WAIT;
-  if (S_SOCK_RESET(n))
-    return S_IO_RESET;
+  if (TTG_SOCK_PENDING(n))
+    return TTG_IO_WAIT;
+  if (TTG_SOCK_RESET(n))
+    return TTG_IO_RESET;
   if (n <= 0)
-    return S_IO_ERR;
+    return TTG_IO_ERR;
   return n;
 }
 
 static bool ioalloc(struct ttg_conn* c, struct ttg_iobuf* io) {
   bool res = false;
-  if (io->len >= S_MAX_RECV_SIZE) {
+  if (io->len >= TTG_MAX_RECV_SIZE) {
     ttg_event_error(c, "MG_MAX_RECV_SIZE");
   } else if (io->size <= io->len &&
              !ttg_iobuf_resize(io, io->size + TTG_IO_SIZE)) {
@@ -261,10 +252,10 @@ static bool ioalloc(struct ttg_conn* c, struct ttg_iobuf* io) {
 }
 
 static void iolog(struct ttg_conn* c, char* buf, long n, bool r) {
-  if (n == S_IO_WAIT) {
-    // Do nothing
+  if (n == TTG_IO_WAIT) {
+    /* Do nothing */
   } else if (n <= 0) {
-    c->is_closing = 1;  // Termination. Don't call mg_error()
+    c->is_closing = 1;  /* Termination. Don't call mg_error() */
   } else if (n > 0) {
     if (c->is_hexdumping) {
       tt_log_info("\n-- %lu %M %s %M %ld", c->id, s_print_ip_port, &c->local,
@@ -276,9 +267,9 @@ static void iolog(struct ttg_conn* c, char* buf, long n, bool r) {
       ttg_event_call(c, TTG_EVENT_READ, &n);
     } else {
       ttg_iobuf_del(&c->send, 0, (size_t)n);
-      // if (c->send.len == 0) mg_iobuf_resize(&c->send, 0);
+      /* if (c->send.len == 0) mg_iobuf_resize(&c->send, 0); */
       if (c->send.len == 0) {
-        S_EPOLL_MOD(c, 0);
+        TTG_EPOLL_MOD(c, 0);
       }
       ttg_event_call(c, TTG_EVENT_WRITE, &n);
     }
@@ -291,38 +282,12 @@ void ttg_sock_read_conn(struct ttg_conn* c) {
     size_t len = c->recv.size - c->recv.len;
     long n = -1;
     if (c->is_tls) {
-      //   // Do not read to the raw TLS buffer if it already has enough.
-      //   // This is to prevent overflowing c->rtls if our reads are slow
-      //   long m;
-      //   if (c->rtls.len < 16 * 1024 + 40) {  // TLS record, header, MAC,
-      //   padding
-      //     if (!ioalloc(c, &c->rtls)) return;
-      //     n = iorecv(c, (char *) &c->rtls.buf[c->rtls.len],
-      //                  c->rtls.size - c->rtls.len);
-      //     if (n > 0) c->rtls.len += (size_t) n;
-      //   }
-      //   // there can still be > 16K from last iteration, always mg_tls_recv()
-      //   m = c->is_tls_hs ? (long) S_IO_WAIT : mg_tls_recv(c, buf, len);
-      //   if (n == S_IO_ERR || n == S_IO_RESET) {  // Windows, see #3031
-      //     if (c->rtls.len == 0 || m < 0) {
-      //       // Close only when we have fully drained both rtls and TLS
-      //       buffers c->is_closing = 1;  // or there's nothing we can do about
-      //       it. if (m < 0) m = MG_IO_ERR; // but return last record data, see
-      //       #3104
-      //     } else { // see #2885
-      //       // TLS buffer is capped to max record size, even though, there
-      //       can
-      //       // be more than one record, give TLS a chance to process them.
-      //     }
-      //   } else if (c->is_tls_hs) {
-      //     mg_tls_handshake(c);
-      //   }
-      //   n = m;
+      /* TODO: It's good to think about how we will integrate tls into the implementation. */
     } else {
       n = iorecv(c, buf, len);
     }
     tt_log_debug("%lu %ld %lu:%lu:%lu %ld err %d", c->id, c->fd, c->send.len,
-                 c->recv.len, /* c->rtls.len */ 0, n, S_SOCK_ERR(n));
+                 c->recv.len, 0, n, TTG_SOCK_ERR(n));
     iolog(c, buf, n, true);
   }
 }
@@ -331,12 +296,12 @@ void ttg_sock_write_conn(struct ttg_conn* c) {
   char* buf = (char*)c->send.buf;
   size_t len = c->send.len;
 
-  //   long n = c->is_tls ? mg_tls_send(c, buf, len) : mg_io_send(c, buf, len);
+  /*   long n = c->is_tls ? mg_tls_send(c, buf, len) : mg_io_send(c, buf, len); */
   long n = iosend(c, buf, len);
 
   tt_log_debug("%lu %ld snd %ld/%ld rcv %ld/%ld n=%ld err=%d", c->id, c->fd,
                (long)c->send.len, (long)c->send.size, (long)c->recv.len,
-               (long)c->recv.size, n, S_SOCK_ERR(n));
+               (long)c->recv.size, n, TTG_SOCK_ERR(n));
   iolog(c, buf, n, false);
 }
 
@@ -364,10 +329,10 @@ void ttg_sock_iotest(struct ttg_mgr* mgr, int ms) {
   size_t max = 1;
   for (struct ttg_conn* c = mgr->conns; c != NULL; c = c->next) {
     c->is_readable = c->is_writable = 0;
-    // if (c->rtls.len > 0 || mg_tls_pending(c) > 0)
-    //   ms = 1, c->is_readable = 1;
+    /* if (c->rtls.len > 0 || mg_tls_pending(c) > 0) */
+    /*   ms = 1, c->is_readable = 1; */
     if (can_write(c))
-      S_EPOLL_MOD(c, 1);
+      TTG_EPOLL_MOD(c, 1);
     if (c->is_closing)
       ms = 1;
     max++;
@@ -383,7 +348,7 @@ void ttg_sock_iotest(struct ttg_mgr* mgr, int ms) {
       bool wr = evs[i].events & EPOLLOUT;
       c->is_readable = can_read(c) && rd ? 1U : 0;
       c->is_writable = can_write(c) && wr ? 1U : 0;
-      // if (c->rtls.len > 0 || mg_tls_pending(c) > 0 ) c->is_readable = 1;
+      /* if (c->rtls.len > 0 || mg_tls_pending(c) > 0 ) c->is_readable = 1; */
     }
   }
   (void)skip_iotest;

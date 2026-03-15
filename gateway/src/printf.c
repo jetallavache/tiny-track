@@ -59,7 +59,7 @@ static size_t s_dtoa(char* dst, size_t dstlen, double d, int width, bool tz) {
   if (d < 0.0)
     d = -d, buf[s++] = '-';
 
-  // Round
+  /* Round */
   saved = d;
   if (tz) {
     mul = 1.0;
@@ -76,22 +76,22 @@ static size_t s_dtoa(char* dst, size_t dstlen, double d, int width, bool tz) {
 
   d += t;
 
-  // Calculate exponent, and 'mul' for scientific representation
+  /* Calculate exponent, and 'mul' for scientific representation */
   mul = 1.0;
   while (d >= 10.0 && d / mul >= 10.0)
     mul *= 10.0, e++;
   while (d < 1.0 && d / mul < 1.0)
     mul /= 10.0, e--;
-  // printf(" --> %g %d %g %g\n", saved, e, t, mul);
+  /* printf(" --> %g %d %g %g\n", saved, e, t, mul); */
 
   if (tz && e >= width && width > 1) {
     n = (int)s_dtoa(buf, sizeof(buf), saved / mul, width, tz);
-    // printf(" --> %.*g %d [%.*s]\n", 10, d / t, e, n, buf);
+    /* printf(" --> %.*g %d [%.*s]\n", 10, d / t, e, n, buf); */
     n += addexp(buf + s + n, e, '+');
     return snprintf(dst, dstlen, "%.*s", n, buf);
   } else if (tz && e <= -width && width > 1) {
     n = (int)s_dtoa(buf, sizeof(buf), saved / mul, width, tz);
-    // printf(" --> %.*g %d [%.*s]\n", 10, d / mul, e, n, buf);
+    /* printf(" --> %.*g %d [%.*s]\n", 10, d / mul, e, n, buf); */
     n += addexp(buf + s + n, -e, '-');
     return snprintf(dst, dstlen, "%.*s", n, buf);
   } else {
@@ -103,14 +103,14 @@ static size_t s_dtoa(char* dst, size_t dstlen, double d, int width, bool tz) {
       d -= ch * t;
       t /= 10.0;
     }
-    // printf(" --> [%g] -> %g %g (%d) [%.*s]\n", saved, d, t, n, s + n, buf);
+    /* printf(" --> [%g] -> %g %g (%d) [%.*s]\n", saved, d, t, n, s + n, buf); */
     if (n == 0)
       buf[s++] = '0';
     while (t >= 1.0 && n + s < (int)sizeof(buf))
       buf[n++] = '0', t /= 10.0;
     if (s + n < (int)sizeof(buf))
       buf[n + s++] = '.';
-    // printf(" 1--> [%g] -> [%.*s]\n", saved, s + n, buf);
+    /* printf(" 1--> [%g] -> [%.*s]\n", saved, s + n, buf); */
     if (!tz && n > 0)
       targ_width = width + n;
     for (i = 0, t = 0.1; s + n < (int)sizeof(buf) && n < targ_width; i++) {
@@ -122,9 +122,9 @@ static size_t s_dtoa(char* dst, size_t dstlen, double d, int width, bool tz) {
   }
 
   while (tz && n > 0 && buf[s + n - 1] == '0')
-    n--;  // Trim trailing zeroes
+    n--;  /* Trim trailing zeroes */
   if (tz && n > 0 && buf[s + n - 1] == '.')
-    n--;  // Trim trailing dot
+    n--;  /* Trim trailing dot */
   n += s;
   if (n >= (int)sizeof(buf))
     n = (int)sizeof(buf) - 1;
@@ -138,9 +138,9 @@ static size_t s_lld(char* buf, int64_t val, bool is_signed, bool is_hex) {
   size_t s = 0, n, i;
   if (is_signed && val < 0)
     buf[s++] = '-', v = (uint64_t)(-val);
-  // This loop prints a number in reverse order. I guess this is because we
-  // write numbers from right to left: least significant digit comes last.
-  // Maybe because we use Arabic numbers, and Arabs write RTL?
+  /* This loop prints a number in reverse order. I guess this is because we */
+  /* write numbers from right to left: least significant digit comes last. */
+  /* Maybe because we use Arabic numbers, and Arabs write RTL? */
   if (is_hex) {
     for (n = 0; v; v >>= 4)
       buf[s + n++] = letters[v & 15];
@@ -148,13 +148,13 @@ static size_t s_lld(char* buf, int64_t val, bool is_signed, bool is_hex) {
     for (n = 0; v; v /= 10)
       buf[s + n++] = letters[v % 10];
   }
-  // Reverse a string
+  /* Reverse a string */
   for (i = 0; i < n / 2; i++) {
     char t = buf[s + i];
     buf[s + i] = buf[s + n - i - 1], buf[s + n - i - 1] = t;
   }
   if (val == 0)
-    buf[n++] = '0';  // Handle special case
+    buf[n++] = '0';  /* Handle special case */
   return n + s;
 }
 
@@ -192,7 +192,7 @@ size_t ttg_vxprintf(void (*out)(char, void*), void* param, const char* fmt,
         }
       }
       while (c == 'h')
-        c = fmt[++i];  // Treat h and hh as int
+        c = fmt[++i];  /* Treat h and hh as int */
       if (c == 'l') {
         is_long++, c = fmt[++i];
         if (c == 'l')
@@ -266,7 +266,7 @@ size_t ttg_vxprintf(void (*out)(char, void*), void* param, const char* fmt,
   return n;
 }
 
-/* Существует ли реализация xprintf в стандартных библиотеках? */
+/* Does xprintf implementation exist in standard libraries? */
 
 size_t ttg_xprintf(void (*out)(char, void*), void* ptr, const char* fmt, ...) {
   size_t len = 0;
@@ -276,27 +276,6 @@ size_t ttg_xprintf(void (*out)(char, void*), void* ptr, const char* fmt, ...) {
   va_end(ap);
   return len;
 }
-
-// size_t s_queue_vprintf(struct s_queue *q, const char *fmt, va_list *ap) {
-//   size_t len = s_snprintf(NULL, 0, fmt, ap);
-//   char *buf;
-//   if (len == 0 || s_queue_book(q, &buf, len + 1) < len + 1) {
-//     len = 0;  // Nah. Not enough space
-//   } else {
-//     len = s_vsnprintf((char *) buf, len + 1, fmt, ap);
-//     s_queue_add(q, len);
-//   }
-//   return len;
-// }
-
-// size_t s_queue_printf(struct s_queue *q, const char *fmt, ...) {
-//   va_list ap;
-//   size_t len;
-//   va_start(ap, fmt);
-//   len = s_queue_vprintf(q, fmt, &ap);
-//   va_end(ap);
-//   return len;
-// }
 
 static void s_pfn_iobuf_private(char ch, void* param, bool expand) {
   struct ttg_iobuf* io = (struct ttg_iobuf*)param;
@@ -359,26 +338,14 @@ static size_t print_ip4(void (*out)(char, void*), void* arg, uint8_t* p) {
   return ttg_xprintf(out, arg, "%d.%d.%d.%d", p[0], p[1], p[2], p[3]);
 }
 
-// static size_t print_ip6(void (*out)(char, void *), void *arg, uint16_t *p) {
-//   return ttg_xprintf(out, arg, "[%x:%x:%x:%x:%x:%x:%x:%x]", s_ntohs(p[0]),
-//                     s_ntohs(p[1]), s_ntohs(p[2]), s_ntohs(p[3]),
-//                     s_ntohs(p[4]), s_ntohs(p[5]), s_ntohs(p[6]),
-//                     s_ntohs(p[7]));
-// }
-
 size_t s_print_ip4(void (*out)(char, void*), void* arg, va_list* ap) {
   uint8_t* p = va_arg(*ap, uint8_t*);
   return print_ip4(out, arg, p);
 }
 
-// size_t s_print_ip6(void (*out)(char, void *), void *arg, va_list *ap) {
-//   uint16_t *p = va_arg(*ap, uint16_t *);
-//   return print_ip6(out, arg, p);
-// }
-
 size_t s_print_ip(void (*out)(char, void*), void* arg, va_list* ap) {
   struct ttg_addr* addr = va_arg(*ap, struct ttg_addr*);
-  //   if (addr->is_ip6) return print_ip6(out, arg, (uint16_t *) addr->ip);
+  /*   if (addr->is_ip6) return print_ip6(out, arg, (uint16_t *) addr->ip); */
   return print_ip4(out, arg, (uint8_t*)&addr->ip);
 }
 

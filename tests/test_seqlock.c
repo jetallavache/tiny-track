@@ -23,7 +23,7 @@ typedef struct {
   uint64_t inconsistent;
 } reader_stats;
 
-/* Writer thread: пишет монотонно возрастающие значения */
+/* Writer thread: writes monotonically increasing values */
 static void *writer_thread(void *arg) {
   struct tt_ring_writer *writer = arg;
   struct tt_proto_metrics sample = {0};
@@ -44,7 +44,7 @@ static void *writer_thread(void *arg) {
   return NULL;
 }
 
-/* Reader thread: проверяет консистентность данных */
+/* Reader thread: checks data consistency */
 static void *reader_thread(void *arg) {
   reader_stats *stats = arg;
   struct tt_ring_reader reader;
@@ -59,7 +59,7 @@ static void *reader_thread(void *arg) {
     if (tt_ring_reader_get_latest(&reader, &sample) == TT_READER_OK) {
       stats->reads++;
 
-      /* Проверка консистентности: все поля должны быть из одного sample */
+      /* Consistency check: all fields must come from the same sample */
       if (sample.cpu_usage != sample.mem_usage ||
           sample.net_rx != sample.net_tx ||
           (sample.net_rx & 0xFFFF) != sample.cpu_usage) {
@@ -93,26 +93,26 @@ int main(void) {
   pthread_t reader_tids[NUM_READERS];
   reader_stats stats[NUM_READERS] = {0};
 
-  /* Запуск writer */
+  /* Start writer */
   pthread_create(&writer_tid, NULL, writer_thread, &writer);
 
-  /* Запуск readers */
+  /* Start readers */
   for (int i = 0; i < NUM_READERS; i++) {
     stats[i].id = i;
     pthread_create(&reader_tids[i], NULL, reader_thread, &stats[i]);
   }
 
-  /* Ждем */
+  /* Wait */
   sleep(TEST_DURATION_SEC);
   running = 0;
 
-  /* Завершение */
+  /* Shutdown */
   pthread_join(writer_tid, NULL);
   for (int i = 0; i < NUM_READERS; i++) {
     pthread_join(reader_tids[i], NULL);
   }
 
-  /* Результаты */
+  /* Results */
   printf("Results:\n");
   printf("--------\n");
 

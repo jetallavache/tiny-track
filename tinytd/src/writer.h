@@ -2,7 +2,7 @@
 #define TTD_WRITER_H
 
 #include "common/proto/v1.h"
-#include "common/ring/writer.h"
+#include "common/ringbuf.h"
 #include "config.h"
 
 /* Wrapper around tt_ring_writer for tinytd */

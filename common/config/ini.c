@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Убрать пробелы в начале и конце */
+/* Trim leading and trailing whitespace */
 static char* trim(char* str) {
   char* end;
   while (isspace((unsigned char)*str))
@@ -30,7 +30,7 @@ int tt_config_ini_read(const char* filepath, const char* key, char* buf,
   char search_section[64] = "";
   char search_key[64] = "";
 
-  /* Разбить ключ на section.key */
+  /* Split key into section.key */
   const char* dot = strchr(key, '.');
   if (dot) {
     size_t section_len = dot - key;
@@ -48,12 +48,12 @@ int tt_config_ini_read(const char* filepath, const char* key, char* buf,
   while (fgets(line, sizeof(line), f)) {
     char* trimmed = trim(line);
 
-    /* Пропустить пустые строки и комментарии */
+    /* Skip empty lines and comments */
     if (trimmed[0] == '\0' || trimmed[0] == '#' || trimmed[0] == ';') {
       continue;
     }
 
-    /* Секция [name] */
+    /* Section [name] */
     if (trimmed[0] == '[') {
       char* end = strchr(trimmed, ']');
       if (end) {
@@ -63,28 +63,28 @@ int tt_config_ini_read(const char* filepath, const char* key, char* buf,
       continue;
     }
 
-    /* Ключ = значение */
+    /* Key = value */
     char* eq = strchr(trimmed, '=');
     if (eq) {
       *eq = '\0';
       char* k = trim(trimmed);
       char* v = trim(eq + 1);
 
-      /* Проверка совпадения */
+      /* Check for match */
       int section_match = (search_section[0] == '\0' ||
                            strcmp(current_section, search_section) == 0);
       int key_match = (strcmp(k, search_key) == 0);
 
       if (section_match && key_match) {
-        /* Копировать в буфер пользователя */
+        /* Copy into user buffer */
         strncpy(buf, v, bufsize - 1);
         buf[bufsize - 1] = '\0';
         fclose(f);
-        return 0; /* Успех */
+        return 0; /* Success */
       }
     }
   }
 
   fclose(f);
-  return -1; /* Не найдено */
+  return -1; /* Not found */
 }

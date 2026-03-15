@@ -1,7 +1,7 @@
 #include "writer.h"
 
-#include "common/ring/writer.h"
-#include "common/sink/log.h"
+#include "common/ringbuf.h"
+#include "common/log.h"
 
 int ttd_writer_init(struct ttd_writer* ctx, struct ttd_config* cfg) {
   int ret = tt_ring_writer_init(&ctx->ring, cfg->live_path, cfg->shadow_path,

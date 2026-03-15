@@ -6,7 +6,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#include "common/sink/log.h"
+#include "common/log.h"
 #include "common/timer.h"
 
 static uint64_t now_ms(void) {

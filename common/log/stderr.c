@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <time.h>
 
-#include "log_internal.h"
+#include "common/log_internal.h"
 
 static const char* tt_log_level_str(tt_log_level_t level) {
   switch (level) {
@@ -46,7 +46,7 @@ void tt_log_stderr_write(tt_log_state_t* state, tt_log_level_t level,
           tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec,
           state->ident, tt_log_level_str(level));
 
-  /* Метаданные для DEBUG */
+  /* Metadata for DEBUG */
   if (file && func) {
     fprintf(out, "[%s:%d:%s] ", file, line, func);
   }

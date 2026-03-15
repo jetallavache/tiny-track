@@ -60,7 +60,7 @@ static void bench_reader_throughput(void) {
   tt_ring_writer_init(&writer, "/tmp/tinytd-bench-live", "/tmp/tinytd-bench-shadow",
                       3600, 1440, 672, 0644);
 
-  /* Заполняем данными */
+  /* Fill with data */
   for (int i = 0; i < 100; i++) {
     sample.cpu_usage = i;
     tt_ring_writer_write_l1(&writer, &sample);
@@ -122,7 +122,7 @@ static void bench_concurrent_readers(void) {
   tt_ring_writer_init(&writer, "/tmp/tinytd-bench-live", "/tmp/tinytd-bench-shadow",
                       3600, 1440, 672, 0644);
 
-  /* Заполняем данными */
+  /* Fill with data */
   for (int i = 0; i < 100; i++) {
     sample.cpu_usage = i;
     tt_ring_writer_write_l1(&writer, &sample);
@@ -190,7 +190,7 @@ static void bench_seqlock_contention(void) {
 
   pthread_create(&writer_thread, NULL, writer_func, NULL);
 
-  /* Reader с подсчетом retry */
+  /* Reader with retry counting */
   struct tt_ring_reader reader;
   struct tt_proto_metrics out;
   tt_ring_reader_open(&reader, "/tmp/tinytd-bench-live");
@@ -199,7 +199,7 @@ static void bench_seqlock_contention(void) {
   int retries = 0;
 
   for (int i = 0; i < total_reads; i++) {
-    /* Эмуляция retry подсчета через повторные чтения */
+    /* Emulate retry counting via repeated reads */
     tt_ring_reader_get_latest(&reader, &out);
   }
 

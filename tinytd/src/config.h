@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "common/sink/log.h"
+#include "common/log.h"
 
 struct ttd_config {
   /* Daemon */

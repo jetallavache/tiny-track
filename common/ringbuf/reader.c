@@ -4,14 +4,14 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "common/sink/log.h"
+#include "common/log.h"
 #include "layout.h"
 #include "seqlock.h"
 #include "shm.h"
 
 int tt_ring_reader_open(struct tt_ring_reader* ctx, const char* path) {
   if ((intptr_t)(ctx->addr = tt_shm_read(path, &ctx->size)) < 0) {
-    tt_log_err("Failed to read mmap (%s)", tt_shm_err((intptr_t)ctx->addr));
+    tt_log_err("Failed to read mmap (%s)", tt_shm_error_code_str((intptr_t)ctx->addr));
     return TT_READER_ERR_READ;
   }
 
@@ -63,7 +63,7 @@ int tt_ring_reader_get_latest(struct tt_ring_reader* ctx,
     return TT_READER_ERR_STALE;
   }
 
-  /* Seqlock: читаем с retry */
+  /* Seqlock: read with retry */
   uint32_t seq;
   do {
     seq = tt_seqlock_read_begin(&ctx->l1_meta->seq);
@@ -108,7 +108,7 @@ int tt_ring_reader_get_history(struct tt_ring_reader* ctx, int level,
   if (!meta)
     return TT_READER_ERR_INVALID;
 
-  /* Seqlock: читаем с retry */
+  /* Seqlock: read with retry */
   uint32_t seq;
   int actual_count;
   do {
