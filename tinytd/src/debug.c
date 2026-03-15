@@ -5,6 +5,7 @@
 #ifdef TTD_DEBUG
 
 #include <stdio.h>
+#include <sys/resource.h>
 #include <time.h>
 
 #include "common/ringbuf.h"
@@ -63,8 +64,8 @@ void ttd_debug_dump_l1(const void* live_addr, uint32_t l1_capacity) {
   }
 }
 
-void ttd_debug_dump_agg(int level, const struct tt_metrics* agg,
-                        uint32_t head, uint32_t capacity) {
+void ttd_debug_dump_agg(int level, const struct tt_metrics* agg, uint32_t head,
+                        uint32_t capacity) {
   char ts[16];
   fprintf(stderr, "[DBG L%d agg] head=%u/%u:\n", level, head, capacity);
 
@@ -75,6 +76,17 @@ void ttd_debug_dump_agg(int level, const struct tt_metrics* agg,
           ts, agg->cpu_usage / 100.0, agg->mem_usage / 100.0, agg->net_rx,
           agg->net_tx, agg->load_1min / 100.0, agg->load_5min / 100.0,
           agg->load_15min / 100.0, agg->du_usage / 100.0);
+}
+
+void ttd_debug_dump_rusage(void) {
+  struct rusage ru;
+  if (getrusage(RUSAGE_SELF, &ru) < 0) return;
+  fprintf(stderr,
+          "[DBG rusage ] minflt=%ld majflt=%ld"
+          "  nvcsw=%ld nivcsw=%ld  inblock=%ld oublock=%ld\n",
+          ru.ru_minflt, ru.ru_majflt,
+          ru.ru_nvcsw, ru.ru_nivcsw,
+          ru.ru_inblock, ru.ru_oublock);
 }
 
 #endif /* TTD_DEBUG */

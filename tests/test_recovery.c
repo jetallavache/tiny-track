@@ -220,6 +220,89 @@ int main(void) {
   kill(pid2, SIGTERM);
   waitpid(pid2, NULL, 0);
 
+  /* ------------------------------------------------------------------ */
+  printf("\nPhase 4: corrupt live file, verify shadow restores it\n");
+
+  /* Start daemon again to get a fresh shadow */
+  pid_t pid3 = fork();
+  if (pid3 == 0) { execl(TINYTD_BIN, "tinytd", TEST_CONF, NULL); exit(1); }
+  usleep(3000000);
+  kill(pid3, SIGKILL);
+  waitpid(pid3, NULL, 0);
+
+  /* Corrupt the first 64 bytes of live (header) */
+  {
+    int fd = open(LIVE_PATH, O_RDWR);
+    if (fd >= 0) {
+      uint8_t zeros[64] = {0};
+      pwrite(fd, zeros, sizeof(zeros), 0);
+      close(fd);
+      printf("  live file header zeroed\n");
+    }
+  }
+
+  /* Restart — should recover from shadow despite corrupted live */
+  pid_t pid4 = fork();
+  if (pid4 == 0) { execl(TINYTD_BIN, "tinytd", TEST_CONF, NULL); exit(1); }
+  usleep(2000000);
+
+  {
+    size_t live_sz2;
+    void* live2 = map_file(LIVE_PATH, &live_sz2);
+    if (live2) {
+      const struct ttr_header* hdr = (const struct ttr_header*)live2;
+      CHECK("live magic restored after corruption", hdr->magic == TTR_MAGIC);
+      CHECK("live version restored after corruption", hdr->version == TTR_VERSION);
+      munmap(live2, live_sz2);
+    } else {
+      printf("  [" FAIL "] could not map live after corruption test\n");
+      tests_failed += 2; tests_run += 2;
+    }
+  }
+
+  kill(pid4, SIGTERM);
+  waitpid(pid4, NULL, 0);
+
+  /* ------------------------------------------------------------------ */
+  printf("\nPhase 5: kill -KILL during shadow-sync window\n");
+
+  unlink(LIVE_PATH);
+  unlink(SHADOW_PATH);
+
+  /* Start fresh, let shadow accumulate */
+  pid_t pid5 = fork();
+  if (pid5 == 0) { execl(TINYTD_BIN, "tinytd", TEST_CONF, NULL); exit(1); }
+  usleep(2500000); /* wait for at least 2 shadow syncs */
+
+  /* Save shadow state before kill */
+  size_t sh_sz;
+  void* sh_before = map_file(SHADOW_PATH, &sh_sz);
+  uint32_t sh_head = 0;
+  if (sh_before) {
+    const struct ttr_meta* m =
+        (const struct ttr_meta*)((uint8_t*)sh_before + TTR_HEADER_SIZE +
+                                 TTR_CONSUMER_TABLE_SIZE);
+    sh_head = m->head;
+    munmap(sh_before, sh_sz);
+  }
+
+  kill(pid5, SIGKILL); /* kill exactly during potential sync */
+  waitpid(pid5, NULL, 0);
+
+  /* Shadow must still be valid (CRC check) */
+  {
+    size_t sz;
+    void* sh = map_file(SHADOW_PATH, &sz);
+    int valid = 0;
+    if (sh) {
+      const struct ttr_header* hdr = (const struct ttr_header*)sh;
+      valid = (hdr->magic == TTR_MAGIC && hdr->last_update_ts > 0);
+      munmap(sh, sz);
+    }
+    CHECK("shadow valid after kill-during-sync", valid);
+    CHECK("shadow had accumulated data before kill", sh_head >= 2);
+  }
+
 done:
   /* Cleanup */
   unlink(LIVE_PATH);

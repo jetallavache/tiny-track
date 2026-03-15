@@ -1,8 +1,10 @@
 #include "writer.h"
 
 #include <alloca.h>
+#include <errno.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/time.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -22,33 +24,45 @@ static uint32_t adler32(const void* buf, size_t len) {
   const uint8_t* p = (const uint8_t*)buf;
   uint32_t a = 1, b = 0;
   for (size_t i = 0; i < len; i++) {
-    if (i >= 8 && i < 12) continue;
+    if (i >= 8 && i < 12)
+      continue;
     a = (a + p[i]) % 65521;
-    b = (b + a)    % 65521;
+    b = (b + a) % 65521;
   }
   return (b << 16) | a;
 }
 
 static void mark_dirty(struct ttr_writer* ctx, size_t off, size_t len) {
-  if (ctx->dirty_min > off)  ctx->dirty_min = off;
-  if (ctx->dirty_max < off + len) ctx->dirty_max = off + len;
+  if (ctx->dirty_min > off)
+    ctx->dirty_min = off;
+  if (ctx->dirty_max < off + len)
+    ctx->dirty_max = off + len;
 }
 
-static void init_meta(struct ttr_meta* m, uint32_t capacity, uint32_t cell_size) {
+static void init_meta(struct ttr_meta* m, uint32_t capacity,
+                      uint32_t cell_size) {
   m->seq = m->head = m->tail = 0;
-  m->capacity  = capacity;
+  m->capacity = capacity;
   m->cell_size = cell_size;
-  m->first_ts  = m->last_ts = 0;
+  m->first_ts = m->last_ts = 0;
 }
 
 static struct ttr_meta* level_meta(const struct ttr_writer* ctx, int level) {
   size_t cs = ctx->cfg.cell_size;
   uint8_t* base = (uint8_t*)ctx->live_addr;
   switch (level) {
-    case 1: return (struct ttr_meta*)(base + TTR_HEADER_SIZE + TTR_CONSUMER_TABLE_SIZE);
-    case 2: return (struct ttr_meta*)(base + ttr_layout_l2_meta_offset(ctx->cfg.l1_capacity, cs));
-    case 3: return (struct ttr_meta*)(base + ttr_layout_l3_meta_offset(ctx->cfg.l1_capacity, ctx->cfg.l2_capacity, cs));
-    default: return NULL;
+    case 1:
+      return (struct ttr_meta*)(base + TTR_HEADER_SIZE +
+                                TTR_CONSUMER_TABLE_SIZE);
+    case 2:
+      return (struct ttr_meta*)(base + ttr_layout_l2_meta_offset(
+                                           ctx->cfg.l1_capacity, cs));
+    case 3:
+      return (struct ttr_meta*)(base + ttr_layout_l3_meta_offset(
+                                           ctx->cfg.l1_capacity,
+                                           ctx->cfg.l2_capacity, cs));
+    default:
+      return NULL;
   }
 }
 
@@ -56,37 +70,48 @@ static uint8_t* level_data(const struct ttr_writer* ctx, int level) {
   size_t cs = ctx->cfg.cell_size;
   uint8_t* base = (uint8_t*)ctx->live_addr;
   switch (level) {
-    case 1: return base + ttr_layout_l1_offset();
-    case 2: return base + ttr_layout_l2_offset(ctx->cfg.l1_capacity, cs);
-    case 3: return base + ttr_layout_l3_offset(ctx->cfg.l1_capacity, ctx->cfg.l2_capacity, cs);
-    default: return NULL;
+    case 1:
+      return base + ttr_layout_l1_offset();
+    case 2:
+      return base + ttr_layout_l2_offset(ctx->cfg.l1_capacity, cs);
+    case 3:
+      return base + ttr_layout_l3_offset(ctx->cfg.l1_capacity,
+                                         ctx->cfg.l2_capacity, cs);
+    default:
+      return NULL;
   }
 }
 
 static size_t level_meta_offset(const struct ttr_writer* ctx, int level) {
   size_t cs = ctx->cfg.cell_size;
   switch (level) {
-    case 2: return ttr_layout_l2_meta_offset(ctx->cfg.l1_capacity, cs);
-    case 3: return ttr_layout_l3_meta_offset(ctx->cfg.l1_capacity, ctx->cfg.l2_capacity, cs);
-    default: return 0;
+    case 2:
+      return ttr_layout_l2_meta_offset(ctx->cfg.l1_capacity, cs);
+    case 3:
+      return ttr_layout_l3_meta_offset(ctx->cfg.l1_capacity,
+                                       ctx->cfg.l2_capacity, cs);
+    default:
+      return 0;
   }
 }
 
 static size_t level_data_offset(const struct ttr_writer* ctx, int level) {
   size_t cs = ctx->cfg.cell_size;
   switch (level) {
-    case 2: return ttr_layout_l2_offset(ctx->cfg.l1_capacity, cs);
-    case 3: return ttr_layout_l3_offset(ctx->cfg.l1_capacity, ctx->cfg.l2_capacity, cs);
-    default: return 0;
+    case 2:
+      return ttr_layout_l2_offset(ctx->cfg.l1_capacity, cs);
+    case 3:
+      return ttr_layout_l3_offset(ctx->cfg.l1_capacity, ctx->cfg.l2_capacity,
+                                  cs);
+    default:
+      return 0;
   }
 }
 
-/* ------------------------------------------------------------------ */
-
 static int shadow_is_valid(const void* addr, size_t size) {
   const struct ttr_header* hdr = (const struct ttr_header*)addr;
-  if (hdr->magic != TTR_MAGIC || hdr->version != TTR_VERSION
-      || hdr->last_update_ts == 0)
+  if (hdr->magic != TTR_MAGIC || hdr->version != TTR_VERSION ||
+      hdr->last_update_ts == 0)
     return 0;
   if (hdr->crc32 != 0 && hdr->crc32 != adler32(addr, size)) {
     tt_log_err("Shadow checksum mismatch: stored=0x%08x computed=0x%08x",
@@ -105,7 +130,7 @@ int ttr_writer_recover_from_shadow(struct ttr_writer* ctx) {
   }
   memcpy(ctx->live_addr, ctx->shadow_addr, ctx->total_size);
   struct ttr_header* hdr = (struct ttr_header*)ctx->live_addr;
-  hdr->writer_pid     = getpid();
+  hdr->writer_pid = getpid();
   hdr->last_update_ts = get_timestamp_ms();
   ctx->dirty_min = 0;
   ctx->dirty_max = ctx->total_size;
@@ -114,21 +139,22 @@ int ttr_writer_recover_from_shadow(struct ttr_writer* ctx) {
   return 1;
 }
 
-int ttr_writer_init(struct ttr_writer* ctx, const struct ttr_writer_config* cfg) {
-  ctx->cfg       = *cfg;
+int ttr_writer_init(struct ttr_writer* ctx,
+                    const struct ttr_writer_config* cfg) {
+  ctx->cfg = *cfg;
   ctx->dirty_min = SIZE_MAX;
   ctx->dirty_max = 0;
   ctx->total_size = tt_layout_total_size(cfg->l1_capacity, cfg->l2_capacity,
                                          cfg->l3_capacity, cfg->cell_size);
 
-  if ((intptr_t)(ctx->live_addr = ttr_shm_create(cfg->live_path, ctx->total_size,
-                                                  cfg->file_mode)) < 0) {
+  if ((intptr_t)(ctx->live_addr = ttr_shm_create(
+                     cfg->live_path, ctx->total_size, cfg->file_mode)) < 0) {
     tt_log_err("Failed to create live mmap (%s)",
                tt_shm_strerror((intptr_t)ctx->live_addr));
     return TTR_WRITER_ERR_LIVE_CREATE;
   }
-  if ((intptr_t)(ctx->shadow_addr = ttr_shm_create(cfg->shadow_path, ctx->total_size,
-                                                    cfg->file_mode)) < 0) {
+  if ((intptr_t)(ctx->shadow_addr = ttr_shm_create(
+                     cfg->shadow_path, ctx->total_size, cfg->file_mode)) < 0) {
     tt_log_err("Failed to create shadow mmap (%s)",
                tt_shm_strerror((intptr_t)ctx->shadow_addr));
     ttr_shm_dealloc(ctx->live_addr, ctx->total_size);
@@ -136,11 +162,13 @@ int ttr_writer_init(struct ttr_writer* ctx, const struct ttr_writer_config* cfg)
   }
 
   if (ttr_writer_recover_from_shadow(ctx))
-    return TTR_WRITER_OK;
+    goto done;
 
   struct ttr_header* hdr = (struct ttr_header*)ctx->live_addr;
-  hdr->magic = TTR_MAGIC;  hdr->version = TTR_VERSION;
-  hdr->writer_pid = getpid();  hdr->num_consumers = 0;
+  hdr->magic = TTR_MAGIC;
+  hdr->version = TTR_VERSION;
+  hdr->writer_pid = getpid();
+  hdr->num_consumers = 0;
   hdr->last_update_ts = hdr->last_shadow_sync_ts = get_timestamp_ms();
 
   init_meta(level_meta(ctx, 1), cfg->l1_capacity, cfg->cell_size);
@@ -150,6 +178,20 @@ int ttr_writer_init(struct ttr_writer* ctx, const struct ttr_writer_config* cfg)
   msync(ctx->live_addr, ctx->total_size, MS_SYNC);
   ctx->dirty_min = 0;
   ctx->dirty_max = ctx->total_size;
+
+done:
+  /* Hint kernel: L1 is accessed randomly (latest sample), L2/L3 sequentially */
+  madvise(level_data(ctx, 1), cfg->l1_capacity * cfg->cell_size, MADV_RANDOM);
+  madvise(level_data(ctx, 2), cfg->l2_capacity * cfg->cell_size, MADV_SEQUENTIAL);
+  madvise(level_data(ctx, 3), cfg->l3_capacity * cfg->cell_size, MADV_SEQUENTIAL);
+
+  {
+    const struct ttr_header* hdr2 = (const struct ttr_header*)ctx->live_addr;
+    tt_log_info("ringbuf ready: size=%zu crc=%s last_sync_ts=%llu",
+                ctx->total_size,
+                cfg->enable_crc ? "on" : "off",
+                (unsigned long long)hdr2->last_shadow_sync_ts);
+  }
   return TTR_WRITER_OK;
 }
 
@@ -169,7 +211,8 @@ int ttr_writer_write_l1(struct ttr_writer* ctx, const void* sample) {
   uint32_t head = meta->head;
   memcpy(data + head * cs, sample, cs);
   meta->last_ts = hdr->last_update_ts;
-  if (meta->first_ts == 0) meta->first_ts = meta->last_ts;
+  if (meta->first_ts == 0)
+    meta->first_ts = meta->last_ts;
   meta->head = (head + 1) % meta->capacity;
   ttr_seqlock_write_end(&meta->seq);
 
@@ -182,15 +225,17 @@ int ttr_writer_write_l1(struct ttr_writer* ctx, const void* sample) {
 }
 
 /* Aggregate src_level → dst_level using ctx->cfg.aggregate callback */
-static int ring_aggregate(struct ttr_writer* ctx, int src_level, int dst_level) {
+static int ring_aggregate(struct ttr_writer* ctx, int src_level,
+                          int dst_level) {
   size_t cs = ctx->cfg.cell_size;
   struct ttr_meta* src = level_meta(ctx, src_level);
-  uint8_t* src_data    = level_data(ctx, src_level);
+  uint8_t* src_data = level_data(ctx, src_level);
   struct ttr_meta* dst = level_meta(ctx, dst_level);
-  uint8_t* dst_data    = level_data(ctx, dst_level);
+  uint8_t* dst_data = level_data(ctx, dst_level);
 
   uint32_t available = src->head;
-  if (available == 0) return TTR_WRITER_ERR_NODATA;
+  if (available == 0)
+    return TTR_WRITER_ERR_NODATA;
 
   uint32_t n = available < src->capacity ? available : src->capacity;
 
@@ -207,7 +252,8 @@ static int ring_aggregate(struct ttr_writer* ctx, int src_level, int dst_level) 
   uint32_t head = dst->head;
   memcpy(dst_data + head * cs, agg, cs);
   dst->last_ts = get_timestamp_ms();
-  if (dst->first_ts == 0) dst->first_ts = dst->last_ts;
+  if (dst->first_ts == 0)
+    dst->first_ts = dst->last_ts;
   dst->head = (head + 1) % dst->capacity;
   ttr_seqlock_write_end(&dst->seq);
 
@@ -238,22 +284,34 @@ int ttr_writer_shadow_sync(struct ttr_writer* ctx) {
 
   size_t off = ctx->dirty_min;
   size_t len = ctx->dirty_max - ctx->dirty_min;
+
+  struct timeval t0, t1;
+  gettimeofday(&t0, NULL);
+
   memcpy((uint8_t*)ctx->shadow_addr + off, (uint8_t*)ctx->live_addr + off, len);
 
   uint64_t now = get_timestamp_ms();
-  ((struct ttr_header*)ctx->live_addr)->last_shadow_sync_ts   = now;
+  ((struct ttr_header*)ctx->live_addr)->last_shadow_sync_ts = now;
   ((struct ttr_header*)ctx->shadow_addr)->last_shadow_sync_ts = now;
 
   ((struct ttr_header*)ctx->shadow_addr)->crc32 =
       ctx->cfg.enable_crc ? adler32(ctx->shadow_addr, ctx->total_size) : 0;
 
-  msync(ctx->shadow_addr, ctx->total_size, MS_SYNC);
+  if (msync(ctx->shadow_addr, ctx->total_size, MS_SYNC) < 0)
+    tt_log_err("shadow_sync: msync failed: %s", strerror(errno));
+
+  gettimeofday(&t1, NULL);
+  long us = (t1.tv_sec - t0.tv_sec) * 1000000L + (t1.tv_usec - t0.tv_usec);
+  tt_log_debug("shadow_sync: copied %zu bytes in %ld us", len, us);
+
   ctx->dirty_min = ctx->total_size;
   ctx->dirty_max = 0;
   return TTR_WRITER_OK;
 }
 
 void ttr_writer_cleanup(struct ttr_writer* ctx) {
-  if (ctx->live_addr)   ttr_shm_dealloc(ctx->live_addr,   ctx->total_size);
-  if (ctx->shadow_addr) ttr_shm_dealloc(ctx->shadow_addr, ctx->total_size);
+  if (ctx->live_addr)
+    ttr_shm_dealloc(ctx->live_addr, ctx->total_size);
+  if (ctx->shadow_addr)
+    ttr_shm_dealloc(ctx->shadow_addr, ctx->total_size);
 }

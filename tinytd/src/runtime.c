@@ -142,6 +142,7 @@ void ttd_runtime_poll(struct ttd_runtime* rt, int timeout_ms) {
   if (tt_timer_expired(&rt->next_shadow,
                        rt->cfg->shadow_sync_interval_sec * 1000, now)) {
     ttd_writer_shadow_sync(rt->writer);
+    ttd_debug_dump_rusage();
   }
 }
 
