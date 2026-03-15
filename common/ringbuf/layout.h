@@ -57,17 +57,6 @@ struct ttr_meta {
   uint8_t padding[20];   /* Padding to 64 bytes */
 };
 
-/* Full mmap file layout */
-struct ttr_layout {
-  struct ttr_header header;
-  struct ttr_consumer_table consumers;
-
-  /* L1: 1 hour @ 1s interval */
-  struct ttr_meta l1_meta;
-  uint8_t l1_data[]; /* Dynamic size */
-
-  /* L2 and L3 follow L1_data */
-};
 
 /* Offset calculation */
 static inline size_t ttr_layout_l1_offset(void) {
