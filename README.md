@@ -64,7 +64,10 @@ ARCHITECTURE
 DOCUMENTATION
 -------------
 
-See INSTALL for installation instructions.
+* docs/INSTALL.md   - Installation instructions
+* docs/BUILD.md     - Building from source
+* docs/HACKING.md   - Developer guide
+
 See man pages: tinytd(8), tiny-cli(1), tinytrack(8)
 
 LICENSE
