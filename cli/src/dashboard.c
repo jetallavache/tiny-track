@@ -70,7 +70,7 @@ typedef struct {
 static void init_colors(void) {
   start_color();
   use_default_colors();
-  init_pair(CP_HEADER,    COLOR_BLACK,  COLOR_CYAN);
+  init_pair(CP_HEADER,    COLOR_WHITE,  COLOR_BLUE);  /* high contrast */
   init_pair(CP_OK,        COLOR_GREEN,  -1);
   init_pair(CP_WARN,      COLOR_YELLOW, -1);
   init_pair(CP_CRIT,      COLOR_RED,    -1);
@@ -270,8 +270,9 @@ static void draw_tsdb(WINDOW* w, int row, int cols,
 
   const struct ttr_meta* metas[3] = { r->l1_meta, r->l2_meta, r->l3_meta };
 
-  int bar_w = cols - 40;
+  int bar_w = cols - 15 - 38; /* 15=label, 38=stats field */
   if (bar_w < 10) bar_w = 10;
+  if (bar_w > 40) bar_w = 40;
 
   for (int i = 0; i < 3; i++) {
     const struct ttr_meta* m = metas[i];
@@ -347,15 +348,19 @@ int ttc_cmd_dashboard(const struct ttc_ctx* ctx) {
   dash_state st = {0};
   st.mode = 0;
 
-  st.reader_ok = ttc_reader_open(&st.reader, ctx->mmap_path) == TTR_READER_OK;
-
   /* ncurses init */
   initscr();
   cbreak();
   noecho();
   keypad(stdscr, TRUE);
-  nodelay(stdscr, TRUE);
   curs_set(0);
+
+  /* halfdelay: getch() blocks at most N tenths of a second.
+   * This gives ~100ms input latency while still refreshing at interval. */
+  int tenths = ctx->interval_ms / 100;
+  if (tenths < 1)  tenths = 1;
+  if (tenths > 255) tenths = 255;
+  halfdelay(tenths);
 
   if (has_colors()) init_colors();
 
@@ -372,12 +377,18 @@ int ttc_cmd_dashboard(const struct ttc_ctx* ctx) {
       getmaxyx(stdscr, rows, cols);
     }
 
-    /* Read latest metrics */
+    /* Re-open reader every cycle to detect daemon start/stop */
+    if (!st.reader_ok) {
+      st.reader_ok =
+          ttc_reader_open(&st.reader, ctx->mmap_path) == TTR_READER_OK;
+    }
+
+    /* Read latest metrics; close reader if stale/error */
     if (st.reader_ok) {
       struct tt_metrics m;
-      if (ttc_reader_get_latest(&st.reader, &m) == TTR_READER_OK) {
+      int err = ttc_reader_get_latest(&st.reader, &m);
+      if (err == TTR_READER_OK) {
         st.latest = m;
-        /* Append to history ring */
         if (st.hist_count < HISTORY_LEN) {
           st.hist[st.hist_count++] = m;
         } else {
@@ -385,23 +396,26 @@ int ttc_cmd_dashboard(const struct ttc_ctx* ctx) {
                   (HISTORY_LEN - 1) * sizeof(struct tt_metrics));
           st.hist[HISTORY_LEN - 1] = m;
         }
+      } else if (err == TTR_READER_ERR_STALE) {
+        /* Daemon stopped — close reader, will retry next cycle */
+        ttc_reader_close(&st.reader);
+        st.reader_ok = 0;
       }
     }
 
     /* Draw */
     erase();
 
-    draw_header(stdscr, cols,
-                st.reader_ok && st.latest.timestamp > 0);
+    draw_header(stdscr, cols, st.reader_ok);
 
     if (st.mode == 0) {
-      draw_metrics(stdscr, 2, cols, &st.latest,
-                   st.hist, st.hist_count);
+      draw_metrics(stdscr, 2, cols, &st.latest, st.hist, st.hist_count);
     } else {
       if (st.reader_ok)
         draw_tsdb(stdscr, 2, cols, &st.reader.ring);
       else
-        mvprintw(4, 2, "Cannot open mmap: %s", ctx->mmap_path);
+        mvprintw(4, 2, "Daemon not running. Waiting for %s ...",
+                 ctx->mmap_path);
     }
 
     draw_hints(stdscr, rows, cols, st.mode);
@@ -410,14 +424,12 @@ int ttc_cmd_dashboard(const struct ttc_ctx* ctx) {
 
     refresh();
 
-    /* Input (non-blocking) */
+    /* Input: halfdelay makes getch() return ERR after `tenths` * 100ms */
     int ch = getch();
-    if (ch == 'q' || ch == 27 /* ESC */) break;
+    if (ch == 'q' || ch == 27) break;
     if (ch == '\t') st.mode = (st.mode + 1) % 2;
     if (ch == '?')  st.show_help = !st.show_help;
-    if (ch == 'r')  ; /* just redraw */
-
-    usleep(ctx->interval_ms * 1000);
+    /* ERR = timeout, just loop */
   }
 
   if (st.reader_ok) ttc_reader_close(&st.reader);
