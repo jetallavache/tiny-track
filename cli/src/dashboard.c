@@ -222,6 +222,45 @@ static void draw_metrics(WINDOW* w, int row, int cols,
             m->nr_running, m->nr_total);
 }
 
+/* Compute a human-readable label for a ring level from its actual metadata.
+ * Uses first_ts/last_ts to derive the real sample interval when data exists,
+ * otherwise falls back to capacity-only description. */
+static void fmt_ring_label(const struct ttr_meta* m, int level,
+                           char* buf, size_t len) {
+  uint32_t filled = m->head < m->capacity ? m->head : m->capacity;
+
+  /* Derive interval from timestamps if we have at least 2 samples */
+  if (filled >= 2 && m->last_ts > m->first_ts) {
+    uint64_t span_ms = m->last_ts - m->first_ts;
+    uint64_t interval_ms = span_ms / (filled - 1);
+    uint64_t total_ms = (uint64_t)m->capacity * interval_ms;
+
+    /* Format interval */
+    char ivl[16], total[16];
+    if (interval_ms < 1000)
+      snprintf(ivl, sizeof(ivl), "%llums", (unsigned long long)interval_ms);
+    else if (interval_ms < 60000)
+      snprintf(ivl, sizeof(ivl), "%llds", (unsigned long long)(interval_ms / 1000));
+    else if (interval_ms < 3600000)
+      snprintf(ivl, sizeof(ivl), "%lldm", (unsigned long long)(interval_ms / 60000));
+    else
+      snprintf(ivl, sizeof(ivl), "%lldh", (unsigned long long)(interval_ms / 3600000));
+
+    /* Format total window */
+    if (total_ms < 3600000)
+      snprintf(total, sizeof(total), "%lldm", (unsigned long long)(total_ms / 60000));
+    else if (total_ms < 86400000)
+      snprintf(total, sizeof(total), "%lldh", (unsigned long long)(total_ms / 3600000));
+    else
+      snprintf(total, sizeof(total), "%lldd", (unsigned long long)(total_ms / 86400000));
+
+    snprintf(buf, len, "L%d %s@%s", level, total, ivl);
+  } else {
+    /* No data yet — show capacity only */
+    snprintf(buf, len, "L%d %u slots", level, m->capacity);
+  }
+}
+
 static void draw_tsdb(WINDOW* w, int row, int cols,
                       const struct ttr_reader* r) {
   wattron(w, COLOR_PAIR(CP_TITLE) | A_BOLD);
@@ -229,41 +268,41 @@ static void draw_tsdb(WINDOW* w, int row, int cols,
   wattroff(w, COLOR_PAIR(CP_TITLE) | A_BOLD);
   row++;
 
-  struct { const struct ttr_meta* meta; const char* label; } levels[] = {
-    { r->l1_meta, "L1  1h @ 1s " },
-    { r->l2_meta, "L2 24h @ 1m " },
-    { r->l3_meta, "L3  7d @15m " },
-  };
+  const struct ttr_meta* metas[3] = { r->l1_meta, r->l2_meta, r->l3_meta };
 
   int bar_w = cols - 40;
   if (bar_w < 10) bar_w = 10;
 
   for (int i = 0; i < 3; i++) {
-    const struct ttr_meta* m = levels[i].meta;
+    const struct ttr_meta* m = metas[i];
     uint32_t filled = m->head < m->capacity ? m->head : m->capacity;
     double pct = m->capacity > 0 ? (double)filled / m->capacity * 100.0 : 0.0;
 
-    char first[16], last[16];
+    char label[24], first[16], last[16];
+    fmt_ring_label(m, i + 1, label, sizeof(label));
     ttc_fmt_ts(m->first_ts, first, sizeof(first));
     ttc_fmt_ts(m->last_ts,  last,  sizeof(last));
 
-    mvwprintw(w, row, 1, "%s", levels[i].label);
-    draw_bar(w, row, 13, bar_w, pct, 70, 90);
+    /* Label column: fixed 14 chars */
+    wattron(w, A_BOLD);
+    mvwprintw(w, row, 1, "%-14s", label);
+    wattroff(w, A_BOLD);
+    draw_bar(w, row, 15, bar_w, pct, 70, 90);
     wattron(w, COLOR_PAIR(CP_DIM));
-    mvwprintw(w, row, 13 + bar_w + 2, "%3.0f%% %4u/%-4u  %s→%s",
+    mvwprintw(w, row, 15 + bar_w + 2, "%3.0f%% %4u/%-4u  %s->%s",
               pct, filled, m->capacity, first, last);
     wattroff(w, COLOR_PAIR(CP_DIM));
-
     row++;
 
-    /* Show write head position as a caret on a second line */
+    /* Write head caret */
     if (m->capacity > 0 && bar_w > 2) {
       int caret_pos = (int)((double)m->head / m->capacity * bar_w);
       if (caret_pos >= bar_w) caret_pos = bar_w - 1;
-      mvwprintw(w, row, 1, "             ");
-      mvwaddch(w, row, 14 + caret_pos, '^');
+      wattron(w, COLOR_PAIR(CP_WARN));
+      mvwprintw(w, row, 15 + caret_pos, "^");
+      wattroff(w, COLOR_PAIR(CP_WARN));
       wattron(w, COLOR_PAIR(CP_DIM));
-      mvwprintw(w, row, 14 + caret_pos + 2, "head=%u", m->head);
+      mvwprintw(w, row, 15 + caret_pos + 2, "head=%u", m->head);
       wattroff(w, COLOR_PAIR(CP_DIM));
       row++;
     }
