@@ -2,12 +2,41 @@
 
 #include <string.h>
 #include <time.h>
-#include <unistd.h>
 
 #include "common/log.h"
 #include "layout.h"
 #include "seqlock.h"
 #include "shm.h"
+
+static void init_level_ptrs(struct ttr_reader* ctx) {
+  uint8_t* base = (uint8_t*)ctx->addr;
+  uint32_t l1cap  = 0, cs = 0;
+
+  ctx->l1_meta = (struct ttr_meta*)(base + TTR_HEADER_SIZE + TTR_CONSUMER_TABLE_SIZE);
+  ctx->l1_data = base + ttr_layout_l1_offset();
+
+  l1cap = ctx->l1_meta->capacity;
+  cs    = ctx->l1_meta->cell_size;
+
+  ctx->l2_meta = (struct ttr_meta*)(base + ttr_layout_l2_meta_offset(l1cap, cs));
+  ctx->l2_data = base + ttr_layout_l2_offset(l1cap, cs);
+
+  ctx->l3_meta = (struct ttr_meta*)(base + ttr_layout_l3_meta_offset(l1cap, ctx->l2_meta->capacity, cs));
+  ctx->l3_data = base + ttr_layout_l3_offset(l1cap, ctx->l2_meta->capacity, cs);
+}
+
+static int level_ptrs(const struct ttr_reader* ctx, int level,
+                      struct ttr_meta** meta, uint8_t** data) {
+  switch (level) {
+    case 1: *meta = ctx->l1_meta; *data = ctx->l1_data; break;
+    case 2: *meta = ctx->l2_meta; *data = ctx->l2_data; break;
+    case 3: *meta = ctx->l3_meta; *data = ctx->l3_data; break;
+    default: return TTR_READER_ERR_INVALID;
+  }
+  return *meta ? TTR_READER_OK : TTR_READER_ERR_INVALID;
+}
+
+/* ------------------------------------------------------------------ */
 
 int ttr_reader_open(struct ttr_reader* ctx, const char* path) {
   if (!ctx || !path) {
@@ -15,147 +44,83 @@ int ttr_reader_open(struct ttr_reader* ctx, const char* path) {
     return TTR_READER_ERR_INVALID;
   }
   if ((intptr_t)(ctx->addr = ttr_shm_read(path, &ctx->size)) < 0) {
-    tt_log_err("Failed to read mmap (%s)",
-               tt_shm_strerror((intptr_t)ctx->addr));
+    tt_log_err("Failed to read mmap (%s)", tt_shm_strerror((intptr_t)ctx->addr));
     return TTR_READER_ERR_READ;
   }
 
-  struct ttr_header* hdr = (struct ttr_header*)ctx->addr;
-  if (hdr->magic != TTR_MAGIC) {
+  const struct ttr_header* hdr = (const struct ttr_header*)ctx->addr;
+  int err = (hdr->magic   != TTR_MAGIC)   ? TTR_READER_ERR_MAGIC
+          : (hdr->version != TTR_VERSION) ? TTR_READER_ERR_VERSION
+          : TTR_READER_OK;
+  if (err != TTR_READER_OK) {
     ttr_shm_dealloc(ctx->addr, ctx->size);
-    return TTR_READER_ERR_MAGIC;
+    return err;
   }
 
-  if (hdr->version != TTR_VERSION) {
-    ttr_shm_dealloc(ctx->addr, ctx->size);
-    return TTR_READER_ERR_VERSION;
-  }
-
-  ctx->l1_meta = (struct ttr_meta*)((uint8_t*)ctx->addr + TTR_HEADER_SIZE +
-                                    TTR_CONSUMER_TABLE_SIZE);
-  ctx->l1_data = (uint8_t*)ctx->addr + ttr_layout_l1_offset();
-
-  ctx->l2_meta =
-      (struct ttr_meta*)((uint8_t*)ctx->addr +
-                         ttr_layout_l2_meta_offset(ctx->l1_meta->capacity,
-                                                   ctx->l1_meta->cell_size));
-  ctx->l2_data =
-      (uint8_t*)ctx->addr +
-      ttr_layout_l2_offset(ctx->l1_meta->capacity, ctx->l1_meta->cell_size);
-
-  ctx->l3_meta =
-      (struct ttr_meta*)((uint8_t*)ctx->addr +
-                         ttr_layout_l3_meta_offset(ctx->l1_meta->capacity,
-                                                   ctx->l2_meta->capacity,
-                                                   ctx->l1_meta->cell_size));
-  ctx->l3_data =
-      (uint8_t*)ctx->addr + ttr_layout_l3_offset(ctx->l1_meta->capacity,
-                                                 ctx->l2_meta->capacity,
-                                                 ctx->l1_meta->cell_size);
-
+  init_level_ptrs(ctx);
   return TTR_READER_OK;
 }
 
 int ttr_reader_get_latest(struct ttr_reader* ctx, void* out, size_t out_size) {
-  if (!ctx || !out) {
-    tt_log_err("ttr_reader_get_latest: NULL argument");
+  if (!ctx || !out || !ctx->l1_meta) {
+    tt_log_err("ttr_reader_get_latest: invalid argument");
     return TTR_READER_ERR_INVALID;
   }
-  if (!ctx->l1_meta)
-    return TTR_READER_ERR_INVALID;
 
-  struct ttr_header* hdr = (struct ttr_header*)ctx->addr;
-  uint64_t now_ms = time(NULL) * 1000;
-
-  if (now_ms - hdr->last_update_ts > 3000) {
+  const struct ttr_header* hdr = (const struct ttr_header*)ctx->addr;
+  if ((uint64_t)time(NULL) * 1000 - hdr->last_update_ts > 3000)
     return TTR_READER_ERR_STALE;
-  }
 
-  size_t cell_size = ctx->l1_meta->cell_size;
-  size_t copy_size = out_size < cell_size ? out_size : cell_size;
+  struct ttr_meta* meta = ctx->l1_meta;
+  size_t cs = meta->cell_size;
+  size_t copy_size = out_size < cs ? out_size : cs;
 
-  /* Seqlock: read with retry */
   uint32_t seq;
   do {
-    seq = ttr_seqlock_read_begin(&ctx->l1_meta->seq);
-
-    uint32_t head = ctx->l1_meta->head;
-    if (head == 0)
-      return TTR_READER_ERR_NODATA;
-
-    uint32_t last_idx =
-        (head - 1 + ctx->l1_meta->capacity) % ctx->l1_meta->capacity;
-
-    memcpy(out, ctx->l1_data + last_idx * cell_size, copy_size);
-
-  } while (ttr_seqlock_read_retry(&ctx->l1_meta->seq, seq));
+    seq = ttr_seqlock_read_begin(&meta->seq);
+    uint32_t head = meta->head;
+    if (head == 0) return TTR_READER_ERR_NODATA;
+    uint32_t idx = (head - 1 + meta->capacity) % meta->capacity;
+    memcpy(out, ctx->l1_data + idx * cs, copy_size);
+  } while (ttr_seqlock_read_retry(&meta->seq, seq));
 
   return TTR_READER_OK;
 }
 
 int ttr_reader_get_history(struct ttr_reader* ctx, int level,
                            void* out, size_t out_size, int count) {
-  if (!ctx || !out) {
-    tt_log_err("ttr_reader_get_history: NULL argument");
+  if (!ctx || !out || count <= 0) {
+    tt_log_err("ttr_reader_get_history: invalid argument");
     return TTR_READER_ERR_INVALID;
   }
-  if (count <= 0)
-    return TTR_READER_ERR_INVALID;
+
   struct ttr_meta* meta;
   uint8_t* data;
+  int err = level_ptrs(ctx, level, &meta, &data);
+  if (err != TTR_READER_OK) return err;
 
-  switch (level) {
-    case 1:
-      meta = ctx->l1_meta;
-      data = ctx->l1_data;
-      break;
-    case 2:
-      meta = ctx->l2_meta;
-      data = ctx->l2_data;
-      break;
-    case 3:
-      meta = ctx->l3_meta;
-      data = ctx->l3_data;
-      break;
-    default:
-      return TTR_READER_ERR_INVALID;
-  }
+  size_t cs = meta->cell_size;
+  size_t copy_size = out_size < cs ? out_size : cs;
+  int actual;
 
-  if (!meta)
-    return TTR_READER_ERR_INVALID;
-
-  /* Seqlock: read with retry */
   uint32_t seq;
-  int actual_count;
   do {
     seq = ttr_seqlock_read_begin(&meta->seq);
-
     uint32_t head = meta->head;
-    uint32_t available = head;
-
-    if (available == 0)
-      return TTR_READER_ERR_NODATA;
-    if ((uint32_t)count > available)
-      count = available;
-
+    if (head == 0) return TTR_READER_ERR_NODATA;
+    if ((uint32_t)count > head) count = (int)head;
     for (int i = 0; i < count; i++) {
       uint32_t idx = (head - count + i + meta->capacity) % meta->capacity;
-      memcpy((uint8_t*)out + i * meta->cell_size,
-             data + idx * meta->cell_size,
-             out_size < meta->cell_size ? out_size : meta->cell_size);
+      memcpy((uint8_t*)out + i * cs, data + idx * cs, copy_size);
     }
-
-    actual_count = count;
-
+    actual = count;
   } while (ttr_seqlock_read_retry(&meta->seq, seq));
 
-  return actual_count;
+  return actual;
 }
 
 void ttr_reader_close(struct ttr_reader* ctx) {
-  if (!ctx)
-    return;
-  if (ctx->addr) {
+  if (ctx && ctx->addr) {
     ttr_shm_dealloc(ctx->addr, ctx->size);
     ctx->addr = NULL;
   }
@@ -163,21 +128,13 @@ void ttr_reader_close(struct ttr_reader* ctx) {
 
 const char* ttr_reader_strerror(int errcode) {
   switch (errcode) {
-    case TTR_READER_OK:
-      return "Success";
-    case TTR_READER_ERR_READ:
-      return "Error opening mmap-area";
-    case TTR_READER_ERR_MAGIC:
-      return "Invalid magic number";
-    case TTR_READER_ERR_VERSION:
-      return "Unsupported version";
-    case TTR_READER_ERR_NODATA:
-      return "No data available";
-    case TTR_READER_ERR_INVALID:
-      return "Invalid parameters";
-    case TTR_READER_ERR_STALE:
-      return "Data is stale (daemon not running)";
-    default:
-      return "Unknown error";
+    case TTR_READER_OK:          return "Success";
+    case TTR_READER_ERR_READ:    return "Error opening mmap-area";
+    case TTR_READER_ERR_MAGIC:   return "Invalid magic number";
+    case TTR_READER_ERR_VERSION: return "Unsupported version";
+    case TTR_READER_ERR_NODATA:  return "No data available";
+    case TTR_READER_ERR_INVALID: return "Invalid parameters";
+    case TTR_READER_ERR_STALE:   return "Data is stale (daemon not running)";
+    default:                     return "Unknown error";
   }
 }

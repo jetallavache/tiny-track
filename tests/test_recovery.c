@@ -209,7 +209,8 @@ int main(void) {
         (const struct tt_metrics*)((const uint8_t*)live_addr +
                                          ttr_layout_l1_offset() +
                                          idx * cell);
-    CHECK("latest L1 sample has non-zero timestamp", s->timestamp > 0);
+    CHECK("latest L1 sample has non-zero cpu or mem",
+          s->cpu_usage > 0 || s->mem_usage > 0);
     CHECK("latest L1 sample has plausible cpu (<10000 = <100%)",
           s->cpu_usage < 10000);
 

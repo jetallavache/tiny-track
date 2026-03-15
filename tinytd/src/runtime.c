@@ -4,6 +4,7 @@
 #include <string.h>
 #include <sys/epoll.h>
 #include <sys/time.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "common/log.h"
@@ -117,6 +118,7 @@ void ttd_runtime_poll(struct ttd_runtime* rt, int timeout_ms) {
                  (void*)rt, (void*)rt->writer); */
 
     struct tt_metrics sample = {0};
+    sample.timestamp = (uint64_t)time(NULL) * 1000;
     collect_metrics(rt->state, &sample);
 
     ttd_debug_dump_collector(&sample);
