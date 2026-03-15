@@ -6,8 +6,7 @@ int ttc_reader_open(struct ttc_reader* ctx, const char* path) {
   return ttr_reader_open(&ctx->ring, path);
 }
 
-int ttc_reader_get_latest(struct ttc_reader* ctx,
-                          struct tt_metrics* out) {
+int ttc_reader_get_latest(struct ttc_reader* ctx, struct tt_metrics* out) {
   return ttr_reader_get_latest(&ctx->ring, out, sizeof(*out));
 }
 
