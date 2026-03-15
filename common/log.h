@@ -5,7 +5,7 @@
 #include <stdbool.h>
 
 /* Log levels (compatible with syslog/systemd) */
-typedef enum {
+enum tt_log_level {
   TT_LOG_EMERG = 0,
   TT_LOG_ALERT = 1,
   TT_LOG_CRIT = 2,
@@ -14,39 +14,39 @@ typedef enum {
   TT_LOG_NOTICE = 5,
   TT_LOG_INFO = 6,
   TT_LOG_DEBUG = 7
-} tt_log_level_t;
+};
 
 /* Backend types */
-typedef enum {
+enum tt_log_backend {
   TT_LOG_BACKEND_STDERR,  /* Output to stderr (for CLI) */
   TT_LOG_BACKEND_STDOUT,  /* Output to stdout (for Docker) */
   TT_LOG_BACKEND_SYSLOG,  /* Traditional syslog */
   TT_LOG_BACKEND_JOURNAL, /* systemd journal (preferred for daemon) */
   TT_LOG_BACKEND_AUTO     /* Auto-select: journal -> syslog -> stderr */
-} tt_log_backend_t;
+};
 
 /* Logging configuration */
-typedef struct {
-  tt_log_backend_t backend;
-  tt_log_level_t min_level; /* Minimum level for output */
-  const char* ident;        /* Application identifier */
-  bool async;               /* Async write (buffering) */
-} tt_log_config_t;
+struct tt_log_config {
+  enum tt_log_backend backend;
+  enum tt_log_level min_level; /* Minimum level for output */
+  const char* ident;           /* Application identifier */
+  bool async;                  /* Async write (buffering) */
+};
 
 /* Initialize logging system */
-int tt_log_init(const tt_log_config_t* config);
+int tt_log_init(const struct tt_log_config* config);
 
 /* Main logging function */
-void tt_log(tt_log_level_t level, const char* fmt, ...)
+void tt_log(enum tt_log_level level, const char* fmt, ...)
     __attribute__((format(printf, 2, 3)));
 
 /* Logging with metadata (file, line, func) */
-void tt_log_meta(tt_log_level_t level, const char* file, int line,
+void tt_log_meta(enum tt_log_level level, const char* file, int line,
                  const char* func, const char* fmt, ...)
     __attribute__((format(printf, 5, 6)));
 
 /* Structured logging (for journal) */
-void tt_log_structured(tt_log_level_t level, const char* message, ...);
+void tt_log_structured(enum tt_log_level level, const char* message, ...);
 
 /* Shutdown (flush buffers) */
 void tt_log_shutdown(void);

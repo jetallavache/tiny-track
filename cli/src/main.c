@@ -41,7 +41,7 @@ int main(int argc, char** argv) {
   int eval = 0;
 
   /* Setup logging */
-  tt_log_config_t log_cfg = {.backend = TT_LOG_BACKEND_STDOUT,
+  struct tt_log_config log_cfg = {.backend = TT_LOG_BACKEND_STDOUT,
                              .min_level = TT_LOG_INFO,
                              .ident = "tiny-cli",
                              .async = false};

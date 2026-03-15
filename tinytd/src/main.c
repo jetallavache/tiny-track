@@ -31,7 +31,7 @@ int main(int argc, char** argv) {
   }
 
   /* Setup logging */
-  tt_log_config_t log_cfg = {.backend = TT_LOG_BACKEND_STDOUT,
+  struct tt_log_config log_cfg = {.backend = TT_LOG_BACKEND_STDOUT,
                              .min_level = cfg.log_level,
                              .ident = "tinytd",
                              .async = false};

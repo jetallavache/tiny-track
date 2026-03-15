@@ -8,15 +8,15 @@ bool tt_log_syslog_available(void) {
   return true; /* syslog is always available on POSIX */
 }
 
-int tt_log_syslog_init(tt_log_state_t* state) {
+int tt_log_syslog_init(struct tt_log_state* state) {
   openlog(state->ident, LOG_PID | LOG_NDELAY, LOG_DAEMON);
   return 0;
 }
 
-void tt_log_syslog_write(tt_log_state_t* state, tt_log_level_t level,
+void tt_log_syslog_write(struct tt_log_state* state, enum tt_log_level level,
                          const char* file, int line, const char* func,
                          const char* fmt, va_list args) {
-  /* tt_log_level_t is compatible with syslog priority */
+  /* enum tt_log_level is compatible with syslog priority */
   int priority = (int)level;
 
   char buf[1024];
@@ -31,6 +31,6 @@ void tt_log_syslog_write(tt_log_state_t* state, tt_log_level_t level,
   syslog(priority, "%s", buf);
 }
 
-void tt_log_syslog_shutdown(tt_log_state_t* state) {
+void tt_log_syslog_shutdown(struct tt_log_state* state) {
   closelog();
 }

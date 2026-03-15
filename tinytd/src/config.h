@@ -11,7 +11,7 @@ struct ttd_config {
   char user[32];
   char group[32];
   char pid_file[256];
-  tt_log_level_t log_level;
+  enum tt_log_level log_level;
 
   /* Collection */
   uint32_t interval_ms;

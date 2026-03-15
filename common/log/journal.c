@@ -11,12 +11,12 @@ bool tt_log_journal_available(void) {
   return (access("/run/systemd/journal", F_OK) == 0);
 }
 
-int tt_log_journal_init(tt_log_state_t* state) {
+int tt_log_journal_init(struct tt_log_state* state) {
   /* No special initialization required for journal */
   return 0;
 }
 
-void tt_log_journal_write(tt_log_state_t* state, tt_log_level_t level,
+void tt_log_journal_write(struct tt_log_state* state, enum tt_log_level level,
                           const char* file, int line, const char* func,
                           const char* fmt, va_list args) {
   char buf[1024];
@@ -33,7 +33,7 @@ void tt_log_journal_write(tt_log_state_t* state, tt_log_level_t level,
   }
 }
 
-void tt_log_journal_shutdown(tt_log_state_t* state) {
+void tt_log_journal_shutdown(struct tt_log_state* state) {
   /* No cleanup needed for journal */
 }
 

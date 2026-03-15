@@ -7,11 +7,11 @@
 #include "common/log.h"
 #include "common/log_internal.h"
 
-static tt_log_state_t g_log_state = {.backend = TT_LOG_BACKEND_STDERR,
+static struct tt_log_state g_log_state = {.backend = TT_LOG_BACKEND_STDERR,
                                      .min_level = TT_LOG_INFO,
                                      .initialized = false};
 
-int tt_log_init(const tt_log_config_t* config) {
+int tt_log_init(const struct tt_log_config* config) {
   if (g_log_state.initialized) {
     tt_log_shutdown();
   }
@@ -20,7 +20,7 @@ int tt_log_init(const tt_log_config_t* config) {
   g_log_state.ident =
       config->ident ? strdup(config->ident) : strdup("tinytrack");
 
-  tt_log_backend_t backend = config->backend;
+  enum tt_log_backend backend = config->backend;
 
   /* Auto-select backend */
   if (backend == TT_LOG_BACKEND_AUTO) {
@@ -66,7 +66,7 @@ int tt_log_init(const tt_log_config_t* config) {
   return 0;
 }
 
-void tt_log(tt_log_level_t level, const char* fmt, ...) {
+void tt_log(enum tt_log_level level, const char* fmt, ...) {
   if (!g_log_state.initialized || level > g_log_state.min_level) {
     return;
   }
@@ -92,7 +92,7 @@ void tt_log(tt_log_level_t level, const char* fmt, ...) {
   va_end(args);
 }
 
-void tt_log_meta(tt_log_level_t level, const char* file, int line,
+void tt_log_meta(enum tt_log_level level, const char* file, int line,
                  const char* func, const char* fmt, ...) {
   if (!g_log_state.initialized || level > g_log_state.min_level) {
     return;

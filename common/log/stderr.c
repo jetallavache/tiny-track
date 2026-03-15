@@ -3,7 +3,7 @@
 
 #include "common/log_internal.h"
 
-static const char* tt_log_level_str(tt_log_level_t level) {
+static const char* tt_log_level_str(enum tt_log_level level) {
   switch (level) {
     case TT_LOG_EMERG:
       return "EMERG";
@@ -26,13 +26,13 @@ static const char* tt_log_level_str(tt_log_level_t level) {
   }
 }
 
-int tt_log_stderr_init(tt_log_state_t* state) {
+int tt_log_stderr_init(struct tt_log_state* state) {
   state->backend_data =
       (state->backend == TT_LOG_BACKEND_STDOUT) ? (void*)stdout : (void*)stderr;
   return 0;
 }
 
-void tt_log_stderr_write(tt_log_state_t* state, tt_log_level_t level,
+void tt_log_stderr_write(struct tt_log_state* state, enum tt_log_level level,
                          const char* file, int line, const char* func,
                          const char* fmt, va_list args) {
   FILE* out = (FILE*)state->backend_data;
@@ -56,7 +56,7 @@ void tt_log_stderr_write(tt_log_state_t* state, tt_log_level_t level,
   fflush(out);
 }
 
-void tt_log_stderr_shutdown(tt_log_state_t* state) {
+void tt_log_stderr_shutdown(struct tt_log_state* state) {
   FILE* out = (FILE*)state->backend_data;
   fflush(out);
 }

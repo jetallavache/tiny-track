@@ -50,7 +50,7 @@ int tt_config_read_str(const char* filepath, const char* key, char* buf,
   return 0;
 }
 
-tt_log_level_t tt_config_parse_log_level(const char* level_str) {
+enum tt_log_level tt_config_parse_log_level(const char* level_str) {
   if (!level_str)
     return TT_LOG_INFO;
 
@@ -75,7 +75,7 @@ tt_log_level_t tt_config_parse_log_level(const char* level_str) {
   /* Try as a number */
   int level = atoi(level_str);
   if (level >= TT_LOG_EMERG && level <= TT_LOG_DEBUG) {
-    return (tt_log_level_t)level;
+    return (enum tt_log_level)level;
   }
 
   return TT_LOG_INFO; /* default */
