@@ -16,6 +16,19 @@ static uint64_t get_timestamp_ms(void) {
   return (uint64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
 }
 
+/* Adler32 over buf[0..len), skipping the crc32 field itself (bytes 8..11) */
+static uint32_t adler32(const void* buf, size_t len) {
+  const uint8_t* p = (const uint8_t*)buf;
+  uint32_t a = 1, b = 0;
+  for (size_t i = 0; i < len; i++) {
+    /* Skip the crc32 field in ttr_header (offset 8, 4 bytes) */
+    if (i >= 8 && i < 12) continue;
+    a = (a + p[i]) % 65521;
+    b = (b + a)    % 65521;
+  }
+  return (b << 16) | a;
+}
+
 static void mark_dirty(struct ttr_writer* ctx, size_t off, size_t len) {
   if (ctx->dirty_min > off)
     ctx->dirty_min = off;
@@ -23,16 +36,23 @@ static void mark_dirty(struct ttr_writer* ctx, size_t off, size_t len) {
     ctx->dirty_max = off + len;
 }
 
-static int shadow_is_valid(const void* shadow_addr, size_t expected_size) {
+static int shadow_is_valid(const void* shadow_addr, size_t size) {
   const struct ttr_header* hdr = (const struct ttr_header*)shadow_addr;
   if (hdr->magic != TTR_MAGIC)
     return 0;
   if (hdr->version != TTR_VERSION)
     return 0;
-  /* Sanity: last_update_ts must be non-zero */
   if (hdr->last_update_ts == 0)
     return 0;
-  (void)expected_size;
+  /* Verify checksum if stored */
+  if (hdr->crc32 != 0) {
+    uint32_t expected = adler32(shadow_addr, size);
+    if (hdr->crc32 != expected) {
+      tt_log_err("Shadow checksum mismatch: stored=0x%08x computed=0x%08x",
+                 hdr->crc32, expected);
+      return 0;
+    }
+  }
   return 1;
 }
 
@@ -81,7 +101,7 @@ int ttr_writer_init(struct ttr_writer* ctx, const char* live_path,
   if ((intptr_t)(ctx->live_addr = ttr_shm_create(live_path, ctx->total_size,
                                                  file_mode)) < 0) {
     tt_log_err("Failed to create live mmap (%s)",
-               tt_shm_errorstr((intptr_t)ctx->live_addr));
+               tt_shm_strerror((intptr_t)ctx->live_addr));
     return TTR_WRITER_ERR_LIVE_CREATE;
   }
 
@@ -89,7 +109,7 @@ int ttr_writer_init(struct ttr_writer* ctx, const char* live_path,
   if ((intptr_t)(ctx->shadow_addr = ttr_shm_create(shadow_path, ctx->total_size,
                                                    file_mode)) < 0) {
     tt_log_err("Failed to create shadow mmap (%s)",
-               tt_shm_errorstr((intptr_t)ctx->shadow_addr));
+               tt_shm_strerror((intptr_t)ctx->shadow_addr));
     ttr_shm_dealloc(ctx->live_addr, ctx->total_size);
     return TTR_WRITER_ERR_SHADOW_CREATE;
   }
@@ -390,12 +410,17 @@ int ttr_writer_shadow_sync(struct ttr_writer* ctx) {
 
   memcpy((uint8_t*)ctx->shadow_addr + off,
          (uint8_t*)ctx->live_addr + off, len);
-  msync((uint8_t*)ctx->shadow_addr + off, len, MS_SYNC);
 
   /* Update last_shadow_sync_ts in both live and shadow headers */
   uint64_t now = get_timestamp_ms();
   ((struct ttr_header*)ctx->live_addr)->last_shadow_sync_ts = now;
   ((struct ttr_header*)ctx->shadow_addr)->last_shadow_sync_ts = now;
+
+  /* Compute and store checksum over the complete shadow */
+  uint32_t crc = adler32(ctx->shadow_addr, ctx->total_size);
+  ((struct ttr_header*)ctx->shadow_addr)->crc32 = crc;
+
+  msync(ctx->shadow_addr, ctx->total_size, MS_SYNC);
 
   /* Reset dirty range */
   ctx->dirty_min = ctx->total_size;
