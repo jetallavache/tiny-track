@@ -46,7 +46,7 @@ static int xisnan(double x) {
          0x7ff00000;
 }
 
-static size_t s_dtoa(char* dst, size_t dstlen, double d, int width, bool tz) {
+static size_t dtoa(char* dst, size_t dstlen, double d, int width, bool tz) {
   char buf[40];
   int i, s = 0, n = 0, e = 0;
   double t, mul, saved;
@@ -85,12 +85,12 @@ static size_t s_dtoa(char* dst, size_t dstlen, double d, int width, bool tz) {
   /* printf(" --> %g %d %g %g\n", saved, e, t, mul); */
 
   if (tz && e >= width && width > 1) {
-    n = (int)s_dtoa(buf, sizeof(buf), saved / mul, width, tz);
+    n = (int)dtoa(buf, sizeof(buf), saved / mul, width, tz);
     /* printf(" --> %.*g %d [%.*s]\n", 10, d / t, e, n, buf); */
     n += addexp(buf + s + n, e, '+');
     return snprintf(dst, dstlen, "%.*s", n, buf);
   } else if (tz && e <= -width && width > 1) {
-    n = (int)s_dtoa(buf, sizeof(buf), saved / mul, width, tz);
+    n = (int)dtoa(buf, sizeof(buf), saved / mul, width, tz);
     /* printf(" --> %.*g %d [%.*s]\n", 10, d / mul, e, n, buf); */
     n += addexp(buf + s + n, -e, '-');
     return snprintf(dst, dstlen, "%.*s", n, buf);
@@ -132,7 +132,7 @@ static size_t s_dtoa(char* dst, size_t dstlen, double d, int width, bool tz) {
   return snprintf(dst, dstlen, "%s", buf);
 }
 
-static size_t s_lld(char* buf, int64_t val, bool is_signed, bool is_hex) {
+static size_t lld(char* buf, int64_t val, bool is_signed, bool is_hex) {
   const char* letters = "0123456789abcdef";
   uint64_t v = (uint64_t)val;
   size_t s = 0, n, i;
@@ -209,16 +209,16 @@ size_t ttg_vxprintf(void (*out)(char, void*), void* param, const char* fmt,
           double v = va_arg(*ap, double);
           if (pr == ~0U)
             pr = 6;
-          k = s_dtoa(tmp, sizeof(tmp), v, (int)pr, c == 'g');
+          k = dtoa(tmp, sizeof(tmp), v, (int)pr, c == 'g');
         } else if (is_long == 2) {
           int64_t v = va_arg(*ap, int64_t);
-          k = s_lld(tmp, v, s, h);
+          k = lld(tmp, v, s, h);
         } else if (is_long == 1) {
           long v = va_arg(*ap, long);
-          k = s_lld(tmp, s ? (int64_t)v : (int64_t)(unsigned long)v, s, h);
+          k = lld(tmp, s ? (int64_t)v : (int64_t)(unsigned long)v, s, h);
         } else {
           int v = va_arg(*ap, int);
-          k = s_lld(tmp, s ? (int64_t)v : (int64_t)(unsigned)v, s, h);
+          k = lld(tmp, s ? (int64_t)v : (int64_t)(unsigned)v, s, h);
         }
         for (j = 0; j < xl && w > 0; j++)
           w--;
@@ -277,7 +277,7 @@ size_t ttg_xprintf(void (*out)(char, void*), void* ptr, const char* fmt, ...) {
   return len;
 }
 
-static void s_pfn_iobuf_private(char ch, void* param, bool expand) {
+static void pfn_iobuf_private(char ch, void* param, bool expand) {
   struct ttg_iobuf* io = (struct ttg_iobuf*)param;
   if (expand && io->len + 2 > io->size)
     ttg_iobuf_resize(io, io->len + 2);
@@ -289,17 +289,17 @@ static void s_pfn_iobuf_private(char ch, void* param, bool expand) {
   }
 }
 
-static void s_putchar_iobuf_static(char ch, void* param) {
-  s_pfn_iobuf_private(ch, param, false);
+static void putchar_iobuf_static(char ch, void* param) {
+  pfn_iobuf_private(ch, param, false);
 }
 
 void ttg_pfn_iobuf(char ch, void* param) {
-  s_pfn_iobuf_private(ch, param, true);
+  pfn_iobuf_private(ch, param, true);
 }
 
 size_t ttg_vsnprintf(char* buf, size_t len, const char* fmt, va_list* ap) {
   struct ttg_iobuf io = {(uint8_t*)buf, len, 0, 0};
-  size_t n = ttg_vxprintf(s_putchar_iobuf_static, &io, fmt, ap);
+  size_t n = ttg_vxprintf(putchar_iobuf_static, &io, fmt, ap);
   if (n < len)
     buf[n] = '\0';
   return n;
@@ -362,7 +362,6 @@ static size_t print_mac_(void (*out)(char, void*), void* arg, va_list* ap) {
   return ttg_xprintf(out, arg, "%02x:%02x:%02x:%02x:%02x:%02x", p[0], p[1],
                      p[2], p[3], p[4], p[5]);
 }
-*/
 
 static char esc(int c, bool esc) {
   const char *p, *esc1 = "\b\f\n\r\t\\\"", *esc2 = "bfnrt\\\"";
@@ -410,7 +409,6 @@ static size_t bcpy(void (*out)(char, void*), void* arg, uint8_t* buf,
   return n;
 }
 
-/* Unused - kept for reference
 static size_t print_hex_(void (*out)(char, void*), void* arg, va_list* ap) {
   size_t bl = (size_t)va_arg(*ap, int);
   uint8_t* p = va_arg(*ap, uint8_t*);

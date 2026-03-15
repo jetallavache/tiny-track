@@ -101,7 +101,7 @@ static bool ttg_http_parse_headers(const char* s, const char* end,
       return false;  /* Invalid UTF-8 */
     if (*s++ != ':')
       return false;  /* Invalid, not followed by : */
-    /* if (clen(s, end) == 0) return false;  /* Invalid UTF-8 */ */
+    /* if (clen(s, end) == 0) return false;  /* Invalid UTF-8 */
     while (s < end && (s[0] == ' ' || s[0] == '\t'))
       s++;  /* Skip spaces */
     if ((s = skiptorn(s, end, &v)) == NULL)
@@ -426,7 +426,7 @@ static void http_cb(struct ttg_conn* c, int ev, void* ev_data) {
         /* prematurely, see #2592 */
         tt_log_err("HTTP parse, %lu bytes", c->recv.len);
         c->is_draining = 1;
-        /* ttg_hexdump(buf, c->recv.len - ofs > 16 ? 16 : c->recv.len - ofs);  /* */ */
+        /* ttg_hexdump(buf, c->recv.len - ofs > 16 ? 16 : c->recv.len - ofs); */
         /* LOG??? */
         c->recv.len = 0;
         return;

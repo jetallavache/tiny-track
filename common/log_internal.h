@@ -1,5 +1,5 @@
-#ifndef TT_SINK_LOG_INTERNAL_H
-#define TT_SINK_LOG_INTERNAL_H
+#ifndef TT_LOG_INTERNAL_H
+#define TT_LOG_INTERNAL_H
 
 #include <stdbool.h>
 
@@ -39,4 +39,4 @@ void tt_log_journal_write(tt_log_state_t* state, tt_log_level_t level,
 void tt_log_journal_shutdown(tt_log_state_t* state);
 #endif
 
-#endif /* TT_SINK_LOG_INTERNAL_H */
+#endif /* TT_LOG_INTERNAL_H */

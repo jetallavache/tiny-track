@@ -21,13 +21,13 @@ void ttg_pfn_iobuf(char ch, void* param);  /* param: struct ttg_iobuf * */
 
 /* Unused public functions - kept for reference
 void ttg_pfn_stdout(char c, void* param);
-size_t s_print_base64(void (*out)(char, void*), void* arg, va_list* ap);
-size_t s_print_esc(void (*out)(char, void*), void* arg, va_list* ap);
-size_t s_print_hex(void (*out)(char, void*), void* arg, va_list* ap);
-size_t s_print_ip(void (*out)(char, void*), void* arg, va_list* ap);
-size_t s_print_ip4(void (*out)(char, void*), void* arg, va_list* ap);
-size_t s_print_mac(void (*out)(char, void*), void* arg, va_list* ap);
-#define S_ESC(str) s_print_esc, 0, (str)
+size_t print_base64(void (*out)(char, void*), void* arg, va_list* ap);
+size_t print_esc(void (*out)(char, void*), void* arg, va_list* ap);
+size_t print_hex(void (*out)(char, void*), void* arg, va_list* ap);
+size_t print_ip(void (*out)(char, void*), void* arg, va_list* ap);
+size_t print_ip4(void (*out)(char, void*), void* arg, va_list* ap);
+size_t print_mac(void (*out)(char, void*), void* arg, va_list* ap);
+#define ESC(str) print_esc, 0, (str)
 */
 
 #endif  /* TTG_PRINTF_H */

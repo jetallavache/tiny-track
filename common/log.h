@@ -1,5 +1,5 @@
-#ifndef TT_SINK_LOG_H
-#define TT_SINK_LOG_H
+#ifndef TT_LOG_H
+#define TT_LOG_H
 
 #include <stdarg.h>
 #include <stdbool.h>
@@ -67,4 +67,4 @@ void tt_log_shutdown(void);
   tt_log_meta(TT_LOG_DEBUG, __FILE__, __LINE__, __func__, __VA_ARGS__)
 #endif
 
-#endif /* TT_SINK_LOG_H */
+#endif /* TT_LOG_H */

@@ -53,7 +53,7 @@ int main(int argc, char** argv) {
   const char* env_live = getenv("TINYTRACK_LIVE_PATH");
   tt_log_info("ENV: TINYTRACK_LIVE_PATH=%s", env_live ? env_live : "(not set)");
 
-  /* /* Clean up old files if they exist (for debugging) */ */
+  /* Clean up old files if they exist (for debugging) */
   /* unlink(path); */
 
   /* Parse options */

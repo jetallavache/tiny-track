@@ -13,15 +13,21 @@
 #include "reader.h"
 #include "ws.h"
 
-static const char* s_listen_on = "ws://localhost:4026";
-static const char* s_mmap_path = "/tmp/tinytd-live.dat";
-static struct ttg_reader g_reader;
+static const char* ttg_listen_on = "ws://localhost:4026";
+static const char* ttg_mmap_path = "/dev/shm/tinytd-live.dat";
+static struct ttg_reader ttg_reader;
+static volatile sig_atomic_t running = 1;
+
+static void signal_handler(int sig) {
+  (void)sig;
+  running = 0;
+}
 
 /* Send metrics to WebSocket client */
 static void send_metrics(struct ttg_conn* c) {
   struct tt_proto_metrics m;
 
-  if (ttg_reader_get_latest(&g_reader, &m) != 0) {
+  if (ttg_reader_get_latest(&ttg_reader, &m) != 0) {
     return; /* No data available */
   }
 
@@ -104,7 +110,7 @@ static void fn(struct ttg_conn* c, int ev, void* ev_data) {
     } else if (ttg_str_match(hm->uri, str("/api/metrics/live"), NULL)) {
       /* REST API: get latest metrics */
       struct tt_proto_metrics m;
-      if (ttg_reader_get_latest(&g_reader, &m) == 0) {
+      if (ttg_reader_get_latest(&ttg_reader, &m) == 0) {
         char buf[512];
         snprintf(buf, sizeof(buf),
                  "{\"cpu\":%u,\"mem\":%u,\"load1\":%u,\"rx\":%u,\"tx\":%u}",
@@ -139,27 +145,31 @@ int main(void) {
   tt_log_init(&log_cfg);
   tt_log_notice("tinytrack gateway starting...");
 
+  /* Setup signal handlers */
+  signal(SIGTERM, signal_handler);
+  signal(SIGINT, signal_handler);
+
   /* Open mmap reader */
-  if (ttg_reader_open(&g_reader, s_mmap_path) != 0) {
-    tt_log_err("Failed to open mmap: %s", s_mmap_path);
+  if (ttg_reader_open(&ttg_reader, ttg_mmap_path) != 0) {
+    tt_log_err("Failed to open mmap: %s", ttg_mmap_path);
     return 1;
   }
-  tt_log_info("Opened mmap: %s", s_mmap_path);
+  tt_log_info("Opened mmap: %s", ttg_mmap_path);
 
   /* Timer for broadcasting metrics (check every 500ms) */
   ttg_net_timer_add(&mgr, 500, TIMER_REPEAT, timer_fn, &mgr);
 
-  tt_log_info("WS listener on %s/websocket", s_listen_on);
-  tt_log_info("HTTP API on %s/api/metrics/live", s_listen_on);
+  tt_log_info("WS listener on %s/websocket", ttg_listen_on);
+  tt_log_info("HTTP API on %s/api/metrics/live", ttg_listen_on);
 
-  ttg_http_listen(&mgr, s_listen_on, fn, NULL);
+  ttg_http_listen(&mgr, ttg_listen_on, fn, NULL);
 
-  for (;;) {
+  while (running) {
     ttg_net_mgr_poll(&mgr, 500);
   }
 
   ttg_net_mgr_free(&mgr);
-  ttg_reader_close(&g_reader);
+  ttg_reader_close(&ttg_reader);
   tt_log_notice("tinytrack gateway shutting down...");
 
   return 0;

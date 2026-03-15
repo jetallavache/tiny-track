@@ -56,7 +56,7 @@ static void ws_handshake(struct ttg_conn* c, const struct ttg_str* wskey,
   /* EVP_DigestUpdate(hashctx, wskey->buf, wskey->len); */
   /* EVP_DigestUpdate(hashctx, magic, sizeof(magic); */
   /* EVP_DigestFinal_ex(hashctx, sha, NULL); */
-  /*  /* EVP_MD_CTX_cleanup(hashctx); */ */
+  /*  /* EVP_MD_CTX_cleanup(hashctx); */
   /* EVP_MD_CTX_free(hashctx); */
 
   SHA_CTX sha_ctx;

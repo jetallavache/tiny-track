@@ -17,7 +17,7 @@ static struct ttg_url urlparse(const char* url) {
       u.host = i + 1;
       u.port = 0;
       /* } else if (url[i] == ']') { */
-      /*   u.port = 0;  /* IPv6 URLs, like http:  /* [::1]/bar */ */ */
+      /*   u.port = 0;  /* IPv6 URLs, like http:  /* [::1]/bar */
     } else if (url[i] == ':' && u.port == 0 && u.uri == 0) {
       u.port = i + 1;
     } else if (url[i] == '@' && u.user == 0 && u.pass == 0 && u.uri == 0) {
