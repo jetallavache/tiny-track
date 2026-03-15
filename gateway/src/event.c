@@ -18,7 +18,7 @@ void ttg_event_error(struct ttg_conn* c, const char* fmt, ...) {
   char buf[64];
   va_list ap;
   va_start(ap, fmt);
-  s_vsnprintf(buf, sizeof(buf), fmt, &ap);
+  ttg_vsnprintf(buf, sizeof(buf), fmt, &ap);
   va_end(ap);
   tt_log_err("%lu %ld %s", c->id, c->fd, buf);
   c->is_closing = 1; /* Set is_closing before sending TTG_EVENT_ERROR */

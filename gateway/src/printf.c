@@ -297,7 +297,7 @@ void ttg_pfn_iobuf(char ch, void* param) {
   s_pfn_iobuf_private(ch, param, true);
 }
 
-size_t s_vsnprintf(char* buf, size_t len, const char* fmt, va_list* ap) {
+size_t ttg_vsnprintf(char* buf, size_t len, const char* fmt, va_list* ap) {
   struct ttg_iobuf io = {(uint8_t*)buf, len, 0, 0};
   size_t n = ttg_vxprintf(s_putchar_iobuf_static, &io, fmt, ap);
   if (n < len)
@@ -305,60 +305,64 @@ size_t s_vsnprintf(char* buf, size_t len, const char* fmt, va_list* ap) {
   return n;
 }
 
-size_t s_snprintf(char* buf, size_t len, const char* fmt, ...) {
+static size_t snprintf_(char* buf, size_t len, const char* fmt, ...) {
   va_list ap;
   size_t n;
   va_start(ap, fmt);
-  n = s_vsnprintf(buf, len, fmt, &ap);
+  n = ttg_vsnprintf(buf, len, fmt, &ap);
   va_end(ap);
   return n;
 }
 
-char* s_vmprintf(const char* fmt, va_list* ap) {
+static char* vmprintf_(const char* fmt, va_list* ap) {
   struct ttg_iobuf io = {0, 0, 0, 256};
   ttg_vxprintf(ttg_pfn_iobuf, &io, fmt, ap);
   return (char*)io.buf;
 }
 
-char* s_mprintf(const char* fmt, ...) {
+static char* mprintf_(const char* fmt, ...) {
   char* s;
   va_list ap;
   va_start(ap, fmt);
-  s = s_vmprintf(fmt, &ap);
+  s = vmprintf_(fmt, &ap);
   va_end(ap);
   return s;
 }
 
-void ttg_pfn_stdout(char c, void* param) {
+/* Unused - kept for reference
+static void pfn_stdout_(char c, void* param) {
   putchar(c);
   (void)param;
 }
+*/
 
 static size_t print_ip4(void (*out)(char, void*), void* arg, uint8_t* p) {
   return ttg_xprintf(out, arg, "%d.%d.%d.%d", p[0], p[1], p[2], p[3]);
 }
 
-size_t s_print_ip4(void (*out)(char, void*), void* arg, va_list* ap) {
+static size_t print_ip4_(void (*out)(char, void*), void* arg, va_list* ap) {
   uint8_t* p = va_arg(*ap, uint8_t*);
   return print_ip4(out, arg, p);
 }
 
-size_t s_print_ip(void (*out)(char, void*), void* arg, va_list* ap) {
+static size_t print_ip_(void (*out)(char, void*), void* arg, va_list* ap) {
   struct ttg_addr* addr = va_arg(*ap, struct ttg_addr*);
   /*   if (addr->is_ip6) return print_ip6(out, arg, (uint16_t *) addr->ip); */
   return print_ip4(out, arg, (uint8_t*)&addr->ip);
 }
 
-size_t s_print_ip_port(void (*out)(char, void*), void* arg, va_list* ap) {
+size_t ttg_print_ip_port(void (*out)(char, void*), void* arg, va_list* ap) {
   struct ttg_addr* a = va_arg(*ap, struct ttg_addr*);
-  return ttg_xprintf(out, arg, "%M:%hu", s_print_ip, a, ntohs(a->port));
+  return ttg_xprintf(out, arg, "%M:%hu", print_ip_, a, ntohs(a->port));
 }
 
-size_t s_print_mac(void (*out)(char, void*), void* arg, va_list* ap) {
+/* Unused - kept for reference
+static size_t print_mac_(void (*out)(char, void*), void* arg, va_list* ap) {
   uint8_t* p = va_arg(*ap, uint8_t*);
   return ttg_xprintf(out, arg, "%02x:%02x:%02x:%02x:%02x:%02x", p[0], p[1],
                      p[2], p[3], p[4], p[5]);
 }
+*/
 
 static char esc(int c, bool esc) {
   const char *p, *esc1 = "\b\f\n\r\t\\\"", *esc2 = "bfnrt\\\"";
@@ -406,7 +410,8 @@ static size_t bcpy(void (*out)(char, void*), void* arg, uint8_t* buf,
   return n;
 }
 
-size_t s_print_hex(void (*out)(char, void*), void* arg, va_list* ap) {
+/* Unused - kept for reference
+static size_t print_hex_(void (*out)(char, void*), void* arg, va_list* ap) {
   size_t bl = (size_t)va_arg(*ap, int);
   uint8_t* p = va_arg(*ap, uint8_t*);
   const char* hex = "0123456789abcdef";
@@ -417,16 +422,17 @@ size_t s_print_hex(void (*out)(char, void*), void* arg, va_list* ap) {
   }
   return 2 * bl;
 }
-size_t s_print_base64(void (*out)(char, void*), void* arg, va_list* ap) {
+static size_t print_base64_(void (*out)(char, void*), void* arg, va_list* ap) {
   size_t len = (size_t)va_arg(*ap, int);
   uint8_t* buf = va_arg(*ap, uint8_t*);
   return bcpy(out, arg, buf, len);
 }
 
-size_t s_print_esc(void (*out)(char, void*), void* arg, va_list* ap) {
+static size_t print_esc_(void (*out)(char, void*), void* arg, va_list* ap) {
   size_t len = (size_t)va_arg(*ap, int);
   char* p = va_arg(*ap, char*);
   if (len == 0)
     len = p == NULL ? 0 : strlen(p);
   return qcpy(out, arg, p, len);
 }
+*/

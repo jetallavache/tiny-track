@@ -183,8 +183,8 @@ void ttg_sock_accept_conn(struct ttg_mgr* mgr, struct ttg_conn* lsn) {
     c->fn = lsn->fn;
     c->fn_data = lsn->fn_data;
     /* c->is_tls = lsn->is_tls; */
-    tt_log_debug("%lu %ld accepted %M -> %M", c->id, c->fd, s_print_ip_port,
-                 &c->remote, s_print_ip_port, &c->local);
+    tt_log_debug("%lu %ld accepted %M -> %M", c->id, c->fd, ttg_print_ip_port,
+                 &c->remote, ttg_print_ip_port, &c->local);
     ttg_event_call(c, TTG_EVENT_OPEN, NULL);
     ttg_event_call(c, TTG_EVENT_ACCEPT, NULL);
     if (!c->is_tls_hs)
@@ -258,8 +258,8 @@ static void iolog(struct ttg_conn* c, char* buf, long n, bool r) {
     c->is_closing = 1;  /* Termination. Don't call mg_error() */
   } else if (n > 0) {
     if (c->is_hexdumping) {
-      tt_log_info("\n-- %lu %M %s %M %ld", c->id, s_print_ip_port, &c->local,
-                  r ? "<-" : "->", s_print_ip_port, &c->remote, n);
+      tt_log_info("\n-- %lu %M %s %M %ld", c->id, ttg_print_ip_port, &c->local,
+                  r ? "<-" : "->", ttg_print_ip_port, &c->remote, n);
       /* out_hexdump(buf, (size_t)n); */
     }
     if (r) {
