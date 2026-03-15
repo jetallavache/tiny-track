@@ -9,8 +9,8 @@
 
 /* Default paths */
 #define TT_DEFAULT_LIVE_PATH "/dev/shm/tinytd-live.dat"
-#define TT_DEFAULT_SHADOW_PATH "/dev/shm/tinytd-shadow.dat"
-#define TT_DEFAULT_CONFIG_PATH "./etc/tinytrack.conf"
+#define TT_DEFAULT_SHADOW_PATH "/usr/lib/tinytrack/tinytd-shadow.dat"
+#define TT_DEFAULT_CONFIG_PATH "/etc/tinytrack.conf"
 
 /* Path cache (to avoid reading config on every call) */
 static const char* cached_live_path = NULL;

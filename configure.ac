@@ -3,6 +3,10 @@ AC_CONFIG_SRCDIR([tinytd/src/main.c])
 AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign subdir-objects])
 
+# Переопределяем sysconfdir на /etc
+sysconfdir=/etc
+AC_SUBST([sysconfdir])
+
 # Checks for programs
 AC_PROG_CC
 AC_PROG_RANLIB
@@ -36,14 +40,27 @@ AC_CHECK_LIB([ncurses], [initscr], [],
 AC_CHECK_LIB([crypto], [SHA256_Init], [], 
     [AC_MSG_WARN([libcrypto not found, gateway will not be built])])
 
+PKG_PROG_PKG_CONFIG
+
 # Check for systemd
 AC_ARG_WITH([systemdsystemunitdir],
-    AS_HELP_STRING([--with-systemdsystemunitdir=DIR], [Directory for systemd service files]),
-    [], [with_systemdsystemunitdir=$($PKG_CONFIG --variable=systemdsystemunitdir systemd)])
-if test "x$with_systemdsystemunitdir" != "xno"; then
-    AC_SUBST([systemdsystemunitdir], [$with_systemdsystemunitdir])
-fi
-AM_CONDITIONAL([HAVE_SYSTEMD], [test "x$with_systemdsystemunitdir" != "xno"])
+    [AS_HELP_STRING([--with-systemdsystemunitdir=DIR], 
+        [Directory for systemd service files])],
+    [],
+    [with_systemdsystemunitdir=auto])
+
+AS_IF([test "x$with_systemdsystemunitdir" = "xyes" -o "x$with_systemdsystemunitdir" = "xauto"], [
+    PKG_CHECK_EXISTS([systemd], [
+        systemdsystemunitdir=`$PKG_CONFIG --variable=systemdsystemunitdir systemd`
+    ], [
+        systemdsystemunitdir=/usr/lib/systemd/system
+    ])
+], [test "x$with_systemdsystemunitdir" != "xno"], [
+    systemdsystemunitdir="$with_systemdsystemunitdir"
+])
+
+AC_SUBST([systemdsystemunitdir])
+AM_CONDITIONAL([HAVE_SYSTEMD], [test -n "$systemdsystemunitdir"])
 
 # Optional features
 AC_ARG_ENABLE([debug],
