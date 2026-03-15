@@ -7,11 +7,17 @@
 #include "debug.h"
 
 int ttd_writer_init(struct ttd_writer* ctx, struct ttd_config* cfg) {
-  int ret = ttr_writer_init(&ctx->ring, cfg->live_path, cfg->shadow_path,
-                            cfg->l1_capacity, cfg->l2_capacity,
-                            cfg->l3_capacity,
-                            sizeof(struct tt_metrics), cfg->file_mode,
-                            tt_metrics_aggregate);
+  struct ttr_writer_config ring_cfg = {
+    .live_path   = cfg->live_path,
+    .shadow_path = cfg->shadow_path,
+    .l1_capacity = cfg->l1_capacity,
+    .l2_capacity = cfg->l2_capacity,
+    .l3_capacity = cfg->l3_capacity,
+    .cell_size   = sizeof(struct tt_metrics),
+    .file_mode   = cfg->file_mode,
+    .aggregate   = tt_metrics_aggregate,
+  };
+  int ret = ttr_writer_init(&ctx->ring, &ring_cfg);
   if (ret < 0) {
     tt_log_err("Failed to initialize ring writer");
     return ret;

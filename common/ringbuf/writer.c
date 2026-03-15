@@ -82,35 +82,30 @@ int ttr_writer_recover_from_shadow(struct ttr_writer* ctx) {
   return 1;
 }
 
-int ttr_writer_init(struct ttr_writer* ctx, const char* live_path,
-                    const char* shadow_path, uint32_t l1_capacity,
-                    uint32_t l2_capacity, uint32_t l3_capacity,
-                    size_t cell_size, mode_t file_mode,
-                    ttr_aggregate_fn aggregate) {
-  ctx->l1_capacity = l1_capacity;
-  ctx->l2_capacity = l2_capacity;
-  ctx->l3_capacity = l3_capacity;
-  ctx->cell_size = cell_size;
-  ctx->file_mode = file_mode;
-  ctx->aggregate = aggregate;
-  /* dirty range: empty state = min > max */
-  ctx->dirty_min = SIZE_MAX;
-  ctx->dirty_max = 0;
+int ttr_writer_init(struct ttr_writer* ctx, const struct ttr_writer_config* cfg) {
+  ctx->l1_capacity = cfg->l1_capacity;
+  ctx->l2_capacity = cfg->l2_capacity;
+  ctx->l3_capacity = cfg->l3_capacity;
+  ctx->cell_size   = cfg->cell_size;
+  ctx->file_mode   = cfg->file_mode;
+  ctx->aggregate   = cfg->aggregate;
+  ctx->dirty_min   = SIZE_MAX;
+  ctx->dirty_max   = 0;
 
-  ctx->total_size =
-      tt_layout_total_size(l1_capacity, l2_capacity, l3_capacity, cell_size);
+  ctx->total_size = tt_layout_total_size(cfg->l1_capacity, cfg->l2_capacity,
+                                         cfg->l3_capacity, cfg->cell_size);
 
   /* Create live mmap */
-  if ((intptr_t)(ctx->live_addr = ttr_shm_create(live_path, ctx->total_size,
-                                                 file_mode)) < 0) {
+  if ((intptr_t)(ctx->live_addr = ttr_shm_create(cfg->live_path, ctx->total_size,
+                                                  cfg->file_mode)) < 0) {
     tt_log_err("Failed to create live mmap (%s)",
                tt_shm_strerror((intptr_t)ctx->live_addr));
     return TTR_WRITER_ERR_LIVE_CREATE;
   }
 
   /* Create shadow mmap */
-  if ((intptr_t)(ctx->shadow_addr = ttr_shm_create(shadow_path, ctx->total_size,
-                                                   file_mode)) < 0) {
+  if ((intptr_t)(ctx->shadow_addr = ttr_shm_create(cfg->shadow_path, ctx->total_size,
+                                                    cfg->file_mode)) < 0) {
     tt_log_err("Failed to create shadow mmap (%s)",
                tt_shm_strerror((intptr_t)ctx->shadow_addr));
     ttr_shm_dealloc(ctx->live_addr, ctx->total_size);
@@ -137,33 +132,33 @@ int ttr_writer_init(struct ttr_writer* ctx, const char* live_path,
   l1_meta->seq = 0;
   l1_meta->head = 0;
   l1_meta->tail = 0;
-  l1_meta->capacity = l1_capacity;
-  l1_meta->cell_size = cell_size;
+  l1_meta->capacity = cfg->l1_capacity;
+  l1_meta->cell_size = cfg->cell_size;
   l1_meta->first_ts = 0;
   l1_meta->last_ts = 0;
 
   /* Initialize L2 metadata */
   struct ttr_meta* l2_meta =
       (struct ttr_meta*)((uint8_t*)ctx->live_addr +
-                         ttr_layout_l2_meta_offset(l1_capacity, cell_size));
+                         ttr_layout_l2_meta_offset(cfg->l1_capacity, cfg->cell_size));
   l2_meta->seq = 0;
   l2_meta->head = 0;
   l2_meta->tail = 0;
-  l2_meta->capacity = l2_capacity;
-  l2_meta->cell_size = cell_size;
+  l2_meta->capacity = cfg->l2_capacity;
+  l2_meta->cell_size = cfg->cell_size;
   l2_meta->first_ts = 0;
   l2_meta->last_ts = 0;
 
   /* Initialize L3 metadata */
   struct ttr_meta* l3_meta =
       (struct ttr_meta*)((uint8_t*)ctx->live_addr +
-                         ttr_layout_l3_meta_offset(l1_capacity, l2_capacity,
-                                                   cell_size));
+                         ttr_layout_l3_meta_offset(cfg->l1_capacity, cfg->l2_capacity,
+                                                   cfg->cell_size));
   l3_meta->seq = 0;
   l3_meta->head = 0;
   l3_meta->tail = 0;
-  l3_meta->capacity = l3_capacity;
-  l3_meta->cell_size = cell_size;
+  l3_meta->capacity = cfg->l3_capacity;
+  l3_meta->cell_size = cfg->cell_size;
   l3_meta->first_ts = 0;
   l3_meta->last_ts = 0;
 
@@ -292,7 +287,7 @@ int ttr_writer_aggregate_l3(struct ttr_writer* ctx) {
   struct ttr_meta* l3_meta =
       (struct ttr_meta*)((uint8_t*)ctx->live_addr +
                          ttr_layout_l3_meta_offset(ctx->l1_capacity,
-                                                   ctx->l2_capacity, cell_size));
+                                                   ctx->l2_capacity, cfg->cell_size));
   uint8_t* l3_data = (uint8_t*)ctx->live_addr +
                      ttr_layout_l3_offset(ctx->l1_capacity, ctx->l2_capacity,
                                           cell_size);
@@ -327,7 +322,7 @@ int ttr_writer_aggregate_l3(struct ttr_writer* ctx) {
 
   mark_dirty(ctx,
              ttr_layout_l3_meta_offset(ctx->l1_capacity, ctx->l2_capacity,
-                                       cell_size), TTR_META_SIZE);
+                                       cfg->cell_size), TTR_META_SIZE);
   mark_dirty(ctx,
              ttr_layout_l3_offset(ctx->l1_capacity, ctx->l2_capacity,
                                   cell_size) + head * cell_size, cell_size);

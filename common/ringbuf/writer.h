@@ -37,11 +37,18 @@ struct ttr_writer {
   size_t dirty_max;
 };
 
-int ttr_writer_init(struct ttr_writer* ctx, const char* live_path,
-                    const char* shadow_path, uint32_t l1_capacity,
-                    uint32_t l2_capacity, uint32_t l3_capacity,
-                    size_t cell_size, mode_t file_mode,
-                    ttr_aggregate_fn aggregate);
+struct ttr_writer_config {
+  const char* live_path;
+  const char* shadow_path;
+  uint32_t l1_capacity;
+  uint32_t l2_capacity;
+  uint32_t l3_capacity;
+  size_t cell_size;
+  mode_t file_mode;
+  ttr_aggregate_fn aggregate;
+};
+
+int ttr_writer_init(struct ttr_writer* ctx, const struct ttr_writer_config* cfg);
 int ttr_writer_write_l1(struct ttr_writer* ctx, const void* sample);
 int ttr_writer_aggregate_l2(struct ttr_writer* ctx);
 int ttr_writer_aggregate_l3(struct ttr_writer* ctx);
