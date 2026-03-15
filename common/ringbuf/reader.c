@@ -10,6 +10,10 @@
 #include "shm.h"
 
 int ttr_reader_open(struct ttr_reader* ctx, const char* path) {
+  if (!ctx || !path) {
+    tt_log_err("ttr_reader_open: NULL argument");
+    return TTR_READER_ERR_INVALID;
+  }
   if ((intptr_t)(ctx->addr = ttr_shm_read(path, &ctx->size)) < 0) {
     tt_log_err("Failed to read mmap (%s)",
                tt_shm_errorstr((intptr_t)ctx->addr));
@@ -54,6 +58,10 @@ int ttr_reader_open(struct ttr_reader* ctx, const char* path) {
 
 int ttr_reader_get_latest(struct ttr_reader* ctx,
                           struct tt_proto_metrics* out) {
+  if (!ctx || !out) {
+    tt_log_err("ttr_reader_get_latest: NULL argument");
+    return TTR_READER_ERR_INVALID;
+  }
   if (!ctx->l1_meta)
     return TTR_READER_ERR_INVALID;
 
@@ -86,6 +94,12 @@ int ttr_reader_get_latest(struct ttr_reader* ctx,
 
 int ttr_reader_get_history(struct ttr_reader* ctx, int level,
                            struct tt_proto_metrics* out, int count) {
+  if (!ctx || !out) {
+    tt_log_err("ttr_reader_get_history: NULL argument");
+    return TTR_READER_ERR_INVALID;
+  }
+  if (count <= 0)
+    return TTR_READER_ERR_INVALID;
   struct ttr_meta* meta;
   uint8_t* data;
 
@@ -137,6 +151,8 @@ int ttr_reader_get_history(struct ttr_reader* ctx, int level,
 }
 
 void ttr_reader_close(struct ttr_reader* ctx) {
+  if (!ctx)
+    return;
   if (ctx->addr) {
     ttr_shm_dealloc(ctx->addr, ctx->size);
     ctx->addr = NULL;

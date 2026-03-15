@@ -156,11 +156,10 @@ int ttr_writer_init(struct ttr_writer* ctx, const char* live_path,
 int ttr_writer_write_l1(struct ttr_writer* ctx,
                         struct tt_proto_metrics* sample) {
   if (!ctx || !ctx->live_addr || !sample) {
-    return -1;
+    tt_log_err("ttr_writer_write_l1: NULL argument (ctx=%p, sample=%p)",
+               (void*)ctx, (void*)sample);
+    return TTR_WRITER_ERR_NULL;
   }
-
-  volatile uint8_t test = *((uint8_t*)ctx->live_addr);
-  (void)test;
 
   size_t cell_size = sizeof(struct tt_proto_metrics);
 
@@ -202,8 +201,10 @@ int ttr_writer_write_l1(struct ttr_writer* ctx,
 }
 
 int ttr_writer_aggregate_l2(struct ttr_writer* ctx) {
-  if (!ctx || !ctx->live_addr)
-    return -1;
+  if (!ctx || !ctx->live_addr) {
+    tt_log_err("ttr_writer_aggregate_l2: NULL ctx or live_addr");
+    return TTR_WRITER_ERR_NULL;
+  }
 
   size_t cell_size = sizeof(struct tt_proto_metrics);
 
@@ -220,8 +221,10 @@ int ttr_writer_aggregate_l2(struct ttr_writer* ctx) {
                      ttr_layout_l2_offset(ctx->l1_capacity, cell_size);
 
   uint32_t available = l1_meta->head;
-  if (available == 0)
-    return 0;
+  if (available == 0) {
+    tt_log_debug("ttr_writer_aggregate_l2: no L1 data yet");
+    return TTR_WRITER_ERR_NODATA;
+  }
 
   /* Average all available L1 samples (up to capacity) */
   uint32_t n = available < l1_meta->capacity ? available : l1_meta->capacity;
@@ -286,8 +289,10 @@ int ttr_writer_aggregate_l2(struct ttr_writer* ctx) {
 }
 
 int ttr_writer_aggregate_l3(struct ttr_writer* ctx) {
-  if (!ctx || !ctx->live_addr)
-    return -1;
+  if (!ctx || !ctx->live_addr) {
+    tt_log_err("ttr_writer_aggregate_l3: NULL ctx or live_addr");
+    return TTR_WRITER_ERR_NULL;
+  }
 
   size_t cell_size = sizeof(struct tt_proto_metrics);
 
@@ -307,8 +312,10 @@ int ttr_writer_aggregate_l3(struct ttr_writer* ctx) {
       ttr_layout_l3_offset(ctx->l1_capacity, ctx->l2_capacity, cell_size);
 
   uint32_t available = l2_meta->head;
-  if (available == 0)
-    return 0;
+  if (available == 0) {
+    tt_log_debug("ttr_writer_aggregate_l3: no L2 data yet");
+    return TTR_WRITER_ERR_NODATA;
+  }
 
   uint32_t n = available < l2_meta->capacity ? available : l2_meta->capacity;
 

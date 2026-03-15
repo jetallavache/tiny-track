@@ -11,6 +11,8 @@ enum {
   TTR_WRITER_OK = 0,
   TTR_WRITER_ERR_LIVE_CREATE = -1,
   TTR_WRITER_ERR_SHADOW_CREATE = -2,
+  TTR_WRITER_ERR_NULL = -3,
+  TTR_WRITER_ERR_NODATA = -4,
 };
 
 struct ttr_writer {
