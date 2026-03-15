@@ -21,6 +21,9 @@ struct ttr_writer {
   uint32_t l2_capacity;
   uint32_t l3_capacity;
   mode_t file_mode;
+  /* Dirty range tracking for incremental shadow_sync */
+  size_t dirty_min;
+  size_t dirty_max;
 };
 
 int ttr_writer_init(struct ttr_writer* ctx, const char* live_path,

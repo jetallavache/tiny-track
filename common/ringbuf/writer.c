@@ -16,6 +16,13 @@ static uint64_t get_timestamp_ms(void) {
   return (uint64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
 }
 
+static void mark_dirty(struct ttr_writer* ctx, size_t off, size_t len) {
+  if (ctx->dirty_min > off)
+    ctx->dirty_min = off;
+  if (ctx->dirty_max < off + len)
+    ctx->dirty_max = off + len;
+}
+
 static int shadow_is_valid(const void* shadow_addr, size_t expected_size) {
   const struct ttr_header* hdr = (const struct ttr_header*)shadow_addr;
   if (hdr->magic != TTR_MAGIC)
@@ -45,12 +52,14 @@ int ttr_writer_recover_from_shadow(struct ttr_writer* ctx) {
   hdr->writer_pid = getpid();
   hdr->last_update_ts = get_timestamp_ms();
 
+  /* Mark entire buffer dirty after recovery */
+  ctx->dirty_min = 0;
+  ctx->dirty_max = ctx->total_size;
+
   tt_log_notice("Recovered %zu bytes from shadow (last_sync_ts=%llu)",
-                ctx->total_size,
-                (unsigned long long)hdr->last_shadow_sync_ts);
+                ctx->total_size, (unsigned long long)hdr->last_shadow_sync_ts);
   return 1;
 }
-
 
 int ttr_writer_init(struct ttr_writer* ctx, const char* live_path,
                     const char* shadow_path, uint32_t l1_capacity,
@@ -60,6 +69,9 @@ int ttr_writer_init(struct ttr_writer* ctx, const char* live_path,
   ctx->l2_capacity = l2_capacity;
   ctx->l3_capacity = l3_capacity;
   ctx->file_mode = file_mode;
+  /* dirty range: empty state = min > max */
+  ctx->dirty_min = SIZE_MAX;
+  ctx->dirty_max = 0;
 
   size_t cell_size = sizeof(struct tt_proto_metrics);
   ctx->total_size =
@@ -134,6 +146,10 @@ int ttr_writer_init(struct ttr_writer* ctx, const char* live_path,
 
   msync(ctx->live_addr, ctx->total_size, MS_SYNC);
 
+  /* Mark entire buffer dirty on fresh init */
+  ctx->dirty_min = 0;
+  ctx->dirty_max = ctx->total_size;
+
   return TTR_WRITER_OK;
 }
 
@@ -174,6 +190,11 @@ int ttr_writer_write_l1(struct ttr_writer* ctx,
 
   /* Seqlock: end write */
   ttr_seqlock_write_end(&meta->seq);
+
+  /* Mark header + L1 meta + written cell as dirty */
+  mark_dirty(ctx, 0, TTR_HEADER_SIZE);
+  mark_dirty(ctx, TTR_HEADER_SIZE + TTR_CONSUMER_TABLE_SIZE, TTR_META_SIZE);
+  mark_dirty(ctx, ttr_layout_l1_offset() + head * cell_size, cell_size);
 
   msync(ctx->live_addr, ctx->total_size, MS_ASYNC);
 
@@ -255,6 +276,12 @@ int ttr_writer_aggregate_l2(struct ttr_writer* ctx) {
 
   ttr_seqlock_write_end(&l2_meta->seq);
 
+  mark_dirty(ctx, ttr_layout_l2_meta_offset(ctx->l1_capacity, cell_size),
+             TTR_META_SIZE);
+  mark_dirty(ctx, ttr_layout_l2_offset(ctx->l1_capacity, cell_size) +
+                      head * cell_size,
+             cell_size);
+
   return 0;
 }
 
@@ -335,15 +362,37 @@ int ttr_writer_aggregate_l3(struct ttr_writer* ctx) {
 
   ttr_seqlock_write_end(&l3_meta->seq);
 
+  mark_dirty(ctx,
+             ttr_layout_l3_meta_offset(ctx->l1_capacity, ctx->l2_capacity,
+                                       cell_size),
+             TTR_META_SIZE);
+  mark_dirty(ctx,
+             ttr_layout_l3_offset(ctx->l1_capacity, ctx->l2_capacity,
+                                  cell_size) + head * cell_size,
+             cell_size);
+
   return 0;
 }
 
 int ttr_writer_shadow_sync(struct ttr_writer* ctx) {
-  memcpy(ctx->shadow_addr, ctx->live_addr, ctx->total_size);
-  msync(ctx->shadow_addr, ctx->total_size, MS_SYNC);
+  if (ctx->dirty_min >= ctx->dirty_max)
+    return 0; /* nothing to sync */
 
-  struct ttr_header* hdr = (struct ttr_header*)ctx->live_addr;
-  hdr->last_shadow_sync_ts = get_timestamp_ms();
+  size_t off = ctx->dirty_min;
+  size_t len = ctx->dirty_max - ctx->dirty_min;
+
+  memcpy((uint8_t*)ctx->shadow_addr + off,
+         (uint8_t*)ctx->live_addr + off, len);
+  msync((uint8_t*)ctx->shadow_addr + off, len, MS_SYNC);
+
+  /* Update last_shadow_sync_ts in both live and shadow headers */
+  uint64_t now = get_timestamp_ms();
+  ((struct ttr_header*)ctx->live_addr)->last_shadow_sync_ts = now;
+  ((struct ttr_header*)ctx->shadow_addr)->last_shadow_sync_ts = now;
+
+  /* Reset dirty range */
+  ctx->dirty_min = ctx->total_size;
+  ctx->dirty_max = 0;
 
   return 0;
 }
