@@ -16,6 +16,42 @@ static uint64_t get_timestamp_ms(void) {
   return (uint64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
 }
 
+static int shadow_is_valid(const void* shadow_addr, size_t expected_size) {
+  const struct ttr_header* hdr = (const struct ttr_header*)shadow_addr;
+  if (hdr->magic != TTR_MAGIC)
+    return 0;
+  if (hdr->version != TTR_VERSION)
+    return 0;
+  /* Sanity: last_update_ts must be non-zero */
+  if (hdr->last_update_ts == 0)
+    return 0;
+  (void)expected_size;
+  return 1;
+}
+
+int ttr_writer_recover_from_shadow(struct ttr_writer* ctx) {
+  if (!ctx->live_addr || !ctx->shadow_addr)
+    return 0;
+
+  if (!shadow_is_valid(ctx->shadow_addr, ctx->total_size)) {
+    tt_log_info("Shadow is not valid, skipping recovery");
+    return 0;
+  }
+
+  memcpy(ctx->live_addr, ctx->shadow_addr, ctx->total_size);
+
+  /* Update header fields that must reflect the new process */
+  struct ttr_header* hdr = (struct ttr_header*)ctx->live_addr;
+  hdr->writer_pid = getpid();
+  hdr->last_update_ts = get_timestamp_ms();
+
+  tt_log_notice("Recovered %zu bytes from shadow (last_sync_ts=%llu)",
+                ctx->total_size,
+                (unsigned long long)hdr->last_shadow_sync_ts);
+  return 1;
+}
+
+
 int ttr_writer_init(struct ttr_writer* ctx, const char* live_path,
                     const char* shadow_path, uint32_t l1_capacity,
                     uint32_t l2_capacity, uint32_t l3_capacity,
@@ -45,6 +81,10 @@ int ttr_writer_init(struct ttr_writer* ctx, const char* live_path,
     ttr_shm_dealloc(ctx->live_addr, ctx->total_size);
     return TTR_WRITER_ERR_SHADOW_CREATE;
   }
+
+  /* Try to recover from shadow before initializing fresh */
+  if (ttr_writer_recover_from_shadow(ctx))
+    return TTR_WRITER_OK;
 
   /* Initialize header */
   struct ttr_header* hdr = (struct ttr_header*)ctx->live_addr;

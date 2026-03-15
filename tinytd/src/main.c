@@ -19,7 +19,7 @@ static void signal_handler(int sig) {
 int main(int argc, char** argv) {
   struct ttd_config cfg;
   struct ttd_writer writer = {0};
-  struct ttd_state collector_state = {0};
+  struct ttd_collector_state cst = {0};
   struct ttd_runtime rt = {0};
 
   /* Load config */
@@ -51,9 +51,8 @@ int main(int argc, char** argv) {
   tt_log_info("ENV: TINYTRACK_SHADOW_PATH=%s",
               env_shadow ? env_shadow : "(not set)");
 
-  /* Clean up old files if they exist (for debugging) */
+  /* Remove stale live file only (shadow is kept for recovery) */
   unlink(cfg.live_path);
-  unlink(cfg.shadow_path);
 
   /* Initialize writer */
   if (ttd_writer_init(&writer, &cfg) < 0) {
@@ -67,11 +66,11 @@ int main(int argc, char** argv) {
 
   /* Initialize collector */
   ttd_collector_init();
-  collector_state.du_path = cfg.du_path;
-  collector_state.du_inval = cfg.du_interval_sec;
+  cst.du_path = cfg.du_path;
+  cst.du_inval = cfg.du_interval_sec;
 
   /* Initialize runtime */
-  if (ttd_runtime_init(&rt, &cfg, &collector_state, &writer) < 0) {
+  if (ttd_runtime_init(&rt, &cfg, &cst, &writer) < 0) {
     ttd_collector_cleanup();
     ttd_writer_cleanup(&writer);
     return 1;

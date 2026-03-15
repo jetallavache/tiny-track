@@ -34,4 +34,7 @@ int ttr_writer_aggregate_l3(struct ttr_writer* ctx);
 int ttr_writer_shadow_sync(struct ttr_writer* ctx);
 void ttr_writer_cleanup(struct ttr_writer* ctx);
 
+/* Returns 1 if shadow was valid and live was restored, 0 otherwise */
+int ttr_writer_recover_from_shadow(struct ttr_writer* ctx);
+
 #endif /* TTR_WRITER_H */
