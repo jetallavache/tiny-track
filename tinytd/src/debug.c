@@ -67,14 +67,13 @@ void ttd_debug_dump_l1(const void* live_addr, uint32_t l1_capacity) {
 void ttd_debug_dump_agg(int level, const struct tt_metrics* agg, uint32_t head,
                         uint32_t capacity) {
   char ts[16];
-  fprintf(stderr, "[DBG L%d agg] head=%u/%u:\n", level, head, capacity);
-
   fmt_ts(agg->timestamp, ts, sizeof(ts));
   fprintf(stderr,
-          "[%3u        ] ts=%s  cpu=%5.2f%%  mem=%5.2f%%  rx=%5u  tx=%5u  "
+          "[DBG L%d agg] ts=%s  cpu=%5.2f%%  mem=%5.2f%%  rx=%5u  tx=%5u  "
           "load=%5.2f/%5.2f/%5.2f  du=%.2f%%\n",
-          ts, agg->cpu_usage / 100.0, agg->mem_usage / 100.0, agg->net_rx,
-          agg->net_tx, agg->load_1min / 100.0, agg->load_5min / 100.0,
+          level, ts, agg->cpu_usage / 100.0, agg->mem_usage / 100.0,
+          agg->net_rx, agg->net_tx,
+          agg->load_1min / 100.0, agg->load_5min / 100.0,
           agg->load_15min / 100.0, agg->du_usage / 100.0);
 }
 
