@@ -1,6 +1,6 @@
 [Unit]
 Description=TinyTrack Monitoring Daemon
-Documentation=https://github.com/yourusername/tiny-track
+Documentation=https://github.com/jetallavache/tiny-track
 After=network.target
 
 [Service]
@@ -28,7 +28,7 @@ LimitNOFILE=1024
 LimitNPROC=64
 
 # Environment
-Environment="TINYTRACK_CONFIG=/etc/tinytrack/tinytrack.conf"
+Environment="TINYTRACK_CONFIG=/etc/tinytrack.conf"
 
 [Install]
 WantedBy=multi-user.target
