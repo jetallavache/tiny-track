@@ -11,7 +11,8 @@ int tt_config_read_int(const char* filepath, const char* key, int default_val) {
   if (tt_config_ini_read(filepath, key, buf, sizeof(buf)) != 0) {
     return default_val;
   }
-  return atoi(buf);
+  /* Support octal (0644), hex (0x1A4), and decimal */
+  return (int)strtol(buf, NULL, 0);
 }
 
 bool tt_config_read_bool(const char* filepath, const char* key,
