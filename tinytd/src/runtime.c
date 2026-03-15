@@ -8,6 +8,7 @@
 
 #include "common/log.h"
 #include "common/timer.h"
+#include "debug.h"
 
 static uint64_t now_ms(void) {
   struct timeval tv;
@@ -15,7 +16,7 @@ static uint64_t now_ms(void) {
   return (uint64_t)tv.tv_sec * 1000 + tv.tv_usec / 1000;
 }
 
-static void collect_metrics(struct ttd_state* state,
+static void collect_metrics(struct ttd_collector_state* state,
                             struct tt_proto_metrics* sample) {
   if (!state || !sample) {
     tt_log_err("Invalid parameters to collect_metrics");
@@ -44,7 +45,8 @@ static void collect_metrics(struct ttd_state* state,
 }
 
 int ttd_runtime_init(struct ttd_runtime* rt, struct ttd_config* cfg,
-                     struct ttd_state* state, struct ttd_writer* writer) {
+                     struct ttd_collector_state* state,
+                     struct ttd_writer* writer) {
   if (!rt || !cfg || !state || !writer) {
     tt_log_err("Invalid parameters to ttd_runtime_init");
     return -1;
@@ -117,11 +119,11 @@ void ttd_runtime_poll(struct ttd_runtime* rt, int timeout_ms) {
     struct tt_proto_metrics sample = {0};
     collect_metrics(rt->state, &sample);
 
-    tt_log_debug("Metrics collected, writing to L1");
+    ttd_debug_dump_collector(&sample);
 
     ttd_writer_write_l1(rt->writer, &sample);
 
-    tt_log_debug("L1 write complete");
+    ttd_debug_dump_l1(rt->writer->ring.live_addr, rt->cfg->l1_capacity);
   }
 
   /* Periodic tasks */

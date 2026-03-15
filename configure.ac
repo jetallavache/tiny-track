@@ -50,6 +50,7 @@ AC_ARG_ENABLE([debug],
 
 if test "x$enable_debug" = "xyes"; then
     AC_DEFINE([DEBUG], [1], [Define to enable debug mode])
+    AC_DEFINE([TTD_DEBUG], [1], [Define to enable tinytd debug output])
     CFLAGS="$CFLAGS -g"
 fi
 
