@@ -2,25 +2,26 @@
 #define TTC_OUTPUT_H
 
 #include <stddef.h>
-#include "ctx.h"
+
 #include "common/metrics.h"
 #include "common/ringbuf/layout.h"
+#include "ctx.h"
 
 /* ANSI color codes (empty strings when color=false) */
-#define COL_RESET  "\033[0m"
-#define COL_GREEN  "\033[32m"
+#define COL_RESET "\033[0m"
+#define COL_GREEN "\033[32m"
 #define COL_YELLOW "\033[33m"
-#define COL_RED    "\033[31m"
-#define COL_BOLD   "\033[1m"
-#define COL_CYAN   "\033[36m"
-#define COL_DIM    "\033[2m"
+#define COL_RED "\033[31m"
+#define COL_BOLD "\033[1m"
+#define COL_CYAN "\033[36m"
+#define COL_DIM "\033[2m"
 
 /* Color-aware helpers */
 const char* ttc_color(const struct ttc_ctx* ctx, const char* code);
 
 /* Threshold-based color for a percentage value */
-const char* ttc_pct_color(const struct ttc_ctx* ctx, double pct,
-                           double warn, double crit);
+const char* ttc_pct_color(const struct ttc_ctx* ctx, double pct, double warn,
+                          double crit);
 
 /* Print a metrics sample in the requested format */
 void ttc_print_metrics(const struct ttc_ctx* ctx, const struct tt_metrics* m);

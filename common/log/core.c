@@ -8,8 +8,8 @@
 #include "common/log_internal.h"
 
 static struct tt_log_state g_log_state = {.backend = TT_LOG_BACKEND_STDERR,
-                                     .min_level = TT_LOG_INFO,
-                                     .initialized = false};
+                                          .min_level = TT_LOG_INFO,
+                                          .initialized = false};
 
 int tt_log_init(const struct tt_log_config* config) {
   if (g_log_state.initialized) {

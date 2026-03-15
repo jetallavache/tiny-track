@@ -72,20 +72,20 @@ void ttd_debug_dump_agg(int level, const struct tt_metrics* agg, uint32_t head,
           "[DBG L%d agg] ts=%s  cpu=%5.2f%%  mem=%5.2f%%  rx=%5u  tx=%5u  "
           "load=%5.2f/%5.2f/%5.2f  du=%.2f%%\n",
           level, ts, agg->cpu_usage / 100.0, agg->mem_usage / 100.0,
-          agg->net_rx, agg->net_tx,
-          agg->load_1min / 100.0, agg->load_5min / 100.0,
-          agg->load_15min / 100.0, agg->du_usage / 100.0);
+          agg->net_rx, agg->net_tx, agg->load_1min / 100.0,
+          agg->load_5min / 100.0, agg->load_15min / 100.0,
+          agg->du_usage / 100.0);
 }
 
 void ttd_debug_dump_rusage(void) {
   struct rusage ru;
-  if (getrusage(RUSAGE_SELF, &ru) < 0) return;
+  if (getrusage(RUSAGE_SELF, &ru) < 0)
+    return;
   fprintf(stderr,
           "[DBG rusage ] minflt=%ld majflt=%ld"
           "  nvcsw=%ld nivcsw=%ld  inblock=%ld oublock=%ld\n",
-          ru.ru_minflt, ru.ru_majflt,
-          ru.ru_nvcsw, ru.ru_nivcsw,
-          ru.ru_inblock, ru.ru_oublock);
+          ru.ru_minflt, ru.ru_majflt, ru.ru_nvcsw, ru.ru_nivcsw, ru.ru_inblock,
+          ru.ru_oublock);
 }
 
 #endif /* TTD_DEBUG */

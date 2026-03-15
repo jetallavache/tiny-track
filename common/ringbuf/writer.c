@@ -182,14 +182,15 @@ int ttr_writer_init(struct ttr_writer* ctx,
 done:
   /* Hint kernel: L1 is accessed randomly (latest sample), L2/L3 sequentially */
   madvise(level_data(ctx, 1), cfg->l1_capacity * cfg->cell_size, MADV_RANDOM);
-  madvise(level_data(ctx, 2), cfg->l2_capacity * cfg->cell_size, MADV_SEQUENTIAL);
-  madvise(level_data(ctx, 3), cfg->l3_capacity * cfg->cell_size, MADV_SEQUENTIAL);
+  madvise(level_data(ctx, 2), cfg->l2_capacity * cfg->cell_size,
+          MADV_SEQUENTIAL);
+  madvise(level_data(ctx, 3), cfg->l3_capacity * cfg->cell_size,
+          MADV_SEQUENTIAL);
 
   {
     const struct ttr_header* hdr2 = (const struct ttr_header*)ctx->live_addr;
     tt_log_info("ringbuf ready: size=%zu crc=%s last_sync_ts=%llu",
-                ctx->total_size,
-                cfg->enable_crc ? "on" : "off",
+                ctx->total_size, cfg->enable_crc ? "on" : "off",
                 (unsigned long long)hdr2->last_shadow_sync_ts);
   }
   return TTR_WRITER_OK;

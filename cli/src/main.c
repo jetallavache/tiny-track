@@ -9,29 +9,29 @@
 
 static void usage(void) {
   printf(
-    "Usage: tiny-cli [options] <command> [args]\n"
-    "\n"
-    "Options:\n"
-    "  --path PATH       mmap file path (default: $TINYTRACK_LIVE_PATH)\n"
-    "  --config PATH     config file path\n"
-    "  --pid PATH        pid file path\n"
-    "  --format FORMAT   output format: table|json|compact\n"
-    "  --interval MS     refresh interval in ms (default: 1000)\n"
-    "  --no-color        disable ANSI colors\n"
-    "  --verbose         verbose output\n"
-    "\n"
-    "Commands:\n"
-    "  status            Show daemon and ring buffer status\n"
-    "  metrics           Show live metrics (refreshes every --interval ms)\n"
-    "  history [LEVEL]   Show history: l1 (1h), l2 (24h), l3 (7d)\n"
-    "  signal SIGNAME    Send signal to daemon: hup, usr1, usr2, term\n"
-    "  service ACTION    Manage service: start, stop, restart, status, enable, disable\n"
-    "  logs              Show daemon logs (journalctl integration)\n"
-    "  debug             Diagnostics and integrity check\n"
-    "  dashboard         Interactive ncurses dashboard\n"
-    "  script FILE       Execute a script file (- for stdin)\n"
-    "  version           Show version\n"
-  );
+      "Usage: tiny-cli [options] <command> [args]\n"
+      "\n"
+      "Options:\n"
+      "  --path PATH       mmap file path (default: $TINYTRACK_LIVE_PATH)\n"
+      "  --config PATH     config file path\n"
+      "  --pid PATH        pid file path\n"
+      "  --format FORMAT   output format: table|json|compact\n"
+      "  --interval MS     refresh interval in ms (default: 1000)\n"
+      "  --no-color        disable ANSI colors\n"
+      "  --verbose         verbose output\n"
+      "\n"
+      "Commands:\n"
+      "  status            Show daemon and ring buffer status\n"
+      "  metrics           Show live metrics (refreshes every --interval ms)\n"
+      "  history [LEVEL]   Show history: l1 (1h), l2 (24h), l3 (7d)\n"
+      "  signal SIGNAME    Send signal to daemon: hup, usr1, usr2, term\n"
+      "  service ACTION    Manage service: start, stop, restart, status, "
+      "enable, disable\n"
+      "  logs              Show daemon logs (journalctl integration)\n"
+      "  debug             Diagnostics and integrity check\n"
+      "  dashboard         Interactive ncurses dashboard\n"
+      "  script FILE       Execute a script file (- for stdin)\n"
+      "  version           Show version\n");
 }
 
 int main(int argc, char** argv) {
@@ -50,9 +50,12 @@ int main(int argc, char** argv) {
       ctx.pid_file = argv[++i];
     } else if (strcmp(argv[i], "--format") == 0 && i + 1 < argc) {
       const char* f = argv[++i];
-      if (strcmp(f, "json") == 0)    ctx.format = FMT_JSON;
-      else if (strcmp(f, "compact") == 0) ctx.format = FMT_COMPACT;
-      else ctx.format = FMT_TABLE;
+      if (strcmp(f, "json") == 0)
+        ctx.format = FMT_JSON;
+      else if (strcmp(f, "compact") == 0)
+        ctx.format = FMT_COMPACT;
+      else
+        ctx.format = FMT_TABLE;
     } else if (strcmp(argv[i], "--interval") == 0 && i + 1 < argc) {
       ctx.interval_ms = atoi(argv[++i]);
     } else if (strcmp(argv[i], "--no-color") == 0) {
@@ -62,14 +65,19 @@ int main(int argc, char** argv) {
     } else if (strcmp(argv[i], "--version") == 0) {
       return ttc_cmd_version(&ctx);
     } else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
-      usage(); return 0;
+      usage();
+      return 0;
     } else {
       fprintf(stderr, "Unknown option: %s\n", argv[i]);
-      usage(); return 1;
+      usage();
+      return 1;
     }
   }
 
-  if (i >= argc) { usage(); return 1; }
+  if (i >= argc) {
+    usage();
+    return 1;
+  }
 
   const char* cmd = argv[i++];
 
@@ -82,9 +90,12 @@ int main(int argc, char** argv) {
   } else if (strcmp(cmd, "history") == 0) {
     int level = 1, count = 20;
     for (; i < argc; i++) {
-      if (strcmp(argv[i], "l1") == 0) level = 1;
-      else if (strcmp(argv[i], "l2") == 0) level = 2;
-      else if (strcmp(argv[i], "l3") == 0) level = 3;
+      if (strcmp(argv[i], "l1") == 0)
+        level = 1;
+      else if (strcmp(argv[i], "l2") == 0)
+        level = 2;
+      else if (strcmp(argv[i], "l3") == 0)
+        level = 3;
       else if (strcmp(argv[i], "--count") == 0 && i + 1 < argc)
         count = atoi(argv[++i]);
     }
@@ -99,7 +110,9 @@ int main(int argc, char** argv) {
 
   } else if (strcmp(cmd, "service") == 0) {
     if (i >= argc) {
-      fprintf(stderr, "Usage: tiny-cli service <start|stop|restart|status|enable|disable>\n");
+      fprintf(stderr,
+              "Usage: tiny-cli service "
+              "<start|stop|restart|status|enable|disable>\n");
       return 1;
     }
     return ttc_cmd_service(&ctx, argv[i]);

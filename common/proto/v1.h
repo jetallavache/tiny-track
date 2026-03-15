@@ -62,18 +62,18 @@
 /* Magic and version                                                    */
 /* ------------------------------------------------------------------ */
 
-#define TT_PROTO_MAGIC   0xAAu
-#define TT_PROTO_V1      0x01u
+#define TT_PROTO_MAGIC 0xAAu
+#define TT_PROTO_V1 0x01u
 
 /* ------------------------------------------------------------------ */
 /* Packet type codes                                                    */
 /* ------------------------------------------------------------------ */
 
-#define PKT_METRICS  0x01u  /* Live metrics snapshot  (server → client) */
-#define PKT_CONFIG   0x02u  /* Daemon configuration   (server → client) */
-#define PKT_ALERT    0x03u  /* Threshold alert        (server → client) */
-#define PKT_CMD      0x04u  /* Command request        (client → server) */
-#define PKT_ACK      0x05u  /* Command acknowledgement(server → client) */
+#define PKT_METRICS 0x01u /* Live metrics snapshot  (server → client) */
+#define PKT_CONFIG 0x02u  /* Daemon configuration   (server → client) */
+#define PKT_ALERT 0x03u   /* Threshold alert        (server → client) */
+#define PKT_CMD 0x04u     /* Command request        (client → server) */
+#define PKT_ACK 0x05u     /* Command acknowledgement(server → client) */
 
 /* ------------------------------------------------------------------ */
 /* Common header  (10 bytes, every frame starts with this)             */
@@ -81,12 +81,12 @@
 
 #pragma pack(push, 1)
 struct tt_proto_header {
-  uint8_t  magic;     /* 0xAA                                    */
-  uint8_t  version;   /* TT_PROTO_V1                             */
-  uint8_t  type;      /* PKT_* constant                          */
+  uint8_t magic;      /* 0xAA                                    */
+  uint8_t version;    /* TT_PROTO_V1                             */
+  uint8_t type;       /* PKT_* constant                          */
   uint16_t length;    /* Payload length, network byte order      */
   uint32_t timestamp; /* Unix timestamp (seconds), network order */
-  uint8_t  checksum;  /* XOR of all header bytes except this one */
+  uint8_t checksum;   /* XOR of all header bytes except this one */
 }; /* 10 bytes */
 #pragma pack(pop)
 
@@ -105,7 +105,7 @@ struct tt_proto_header {
 #pragma pack(push, 1)
 struct tt_proto_config {
   uint32_t interval_ms;   /* Metrics push interval, ms           */
-  uint8_t  alerts_enabled;/* 1 = alerts active, 0 = suppressed   */
+  uint8_t alerts_enabled; /* 1 = alerts active, 0 = suppressed   */
 }; /* 5 bytes */
 #pragma pack(pop)
 
@@ -114,14 +114,14 @@ struct tt_proto_config {
 /* Sent when a monitored metric crosses a configured threshold.        */
 /* ------------------------------------------------------------------ */
 
-#define ALERT_INFO     0x01u
-#define ALERT_WARNING  0x02u
+#define ALERT_INFO 0x01u
+#define ALERT_WARNING 0x02u
 #define ALERT_CRITICAL 0x03u
 
 #pragma pack(push, 1)
 struct tt_proto_alert {
-  uint8_t level;      /* ALERT_* constant                        */
-  char    message[128];/* Null-terminated human-readable text    */
+  uint8_t level;     /* ALERT_* constant                        */
+  char message[128]; /* Null-terminated human-readable text    */
 }; /* 129 bytes */
 #pragma pack(pop)
 
@@ -130,17 +130,17 @@ struct tt_proto_alert {
 /* Client sends a command; server replies with PKT_ACK.               */
 /* ------------------------------------------------------------------ */
 
-#define CMD_SET_INTERVAL  0x01u /* arg: interval_ms (uint32_t)     */
-#define CMD_SET_ALERTS    0x02u /* arg: alerts_enabled (uint8_t)   */
-#define CMD_GET_SNAPSHOT  0x03u /* arg: none; server sends metrics */
+#define CMD_SET_INTERVAL 0x01u /* arg: interval_ms (uint32_t)     */
+#define CMD_SET_ALERTS 0x02u   /* arg: alerts_enabled (uint8_t)   */
+#define CMD_GET_SNAPSHOT 0x03u /* arg: none; server sends metrics */
 
 #pragma pack(push, 1)
 struct tt_proto_cmd {
   uint8_t cmd_type; /* CMD_* constant                              */
   union {
-    uint32_t interval_ms;    /* CMD_SET_INTERVAL                   */
-    uint8_t  alerts_enabled; /* CMD_SET_ALERTS                     */
-    uint8_t  _pad[8];        /* Reserved, keep union size fixed    */
+    uint32_t interval_ms;   /* CMD_SET_INTERVAL                   */
+    uint8_t alerts_enabled; /* CMD_SET_ALERTS                     */
+    uint8_t _pad[8];        /* Reserved, keep union size fixed    */
   };
 }; /* 9 bytes */
 #pragma pack(pop)
@@ -149,7 +149,7 @@ struct tt_proto_cmd {
 /* PKT_ACK payload  (2 bytes)                                          */
 /* ------------------------------------------------------------------ */
 
-#define ACK_OK    0x00u
+#define ACK_OK 0x00u
 #define ACK_ERROR 0x01u
 
 #pragma pack(push, 1)

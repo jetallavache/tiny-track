@@ -32,9 +32,9 @@ int main(int argc, char** argv) {
 
   /* Setup logging */
   struct tt_log_config log_cfg = {.backend = TT_LOG_BACKEND_STDOUT,
-                             .min_level = cfg.log_level,
-                             .ident = "tinytd",
-                             .async = false};
+                                  .min_level = cfg.log_level,
+                                  .ident = "tinytd",
+                                  .async = false};
   tt_log_init(&log_cfg);
   tt_log_notice("tinytd starting...");
 

@@ -22,7 +22,8 @@ static void* mmap_fd(int fd, size_t len, int prot) {
 void* ttr_shm_create(const char* path, size_t len, int mode) {
   int fd = open(path, O_CREAT | O_RDWR, mode);
   if (fd < 0) {
-    tt_log_err("open failed: path='%s' errno=%d (%s)", path, errno, strerror(errno));
+    tt_log_err("open failed: path='%s' errno=%d (%s)", path, errno,
+               strerror(errno));
     return (void*)TTR_SHM_OPENFD_ERR;
   }
   if (ftruncate(fd, len) < 0) {
@@ -36,7 +37,8 @@ void* ttr_shm_create(const char* path, size_t len, int mode) {
 void* ttr_shm_read(const char* path, size_t* len) {
   int fd = open(path, O_RDONLY);
   if (fd < 0) {
-    tt_log_err("open failed: path='%s' errno=%d (%s)", path, errno, strerror(errno));
+    tt_log_err("open failed: path='%s' errno=%d (%s)", path, errno,
+               strerror(errno));
     return (void*)TTR_SHM_OPENFD_ERR;
   }
   struct stat st;
@@ -60,12 +62,19 @@ void ttr_shm_unlink(const char* path) {
 
 const char* tt_shm_strerror(int errcode) {
   switch (errcode) {
-    case TTR_SHM_MMAP_ERR:      return "mmap error";
-    case TTR_SHM_FTRUNCATE_ERR: return "ftruncate error";
-    case TTR_SHM_OPENFD_ERR:    return "open error";
-    case TTR_SHM_READFD_ERR:    return "read error";
-    case TTR_SHM_STATFD_ERR:    return "fstat error";
-    case TTR_SHM_FAIL:          return "empty buffer";
-    default:                    return "unknown error";
+    case TTR_SHM_MMAP_ERR:
+      return "mmap error";
+    case TTR_SHM_FTRUNCATE_ERR:
+      return "ftruncate error";
+    case TTR_SHM_OPENFD_ERR:
+      return "open error";
+    case TTR_SHM_READFD_ERR:
+      return "read error";
+    case TTR_SHM_STATFD_ERR:
+      return "fstat error";
+    case TTR_SHM_FAIL:
+      return "empty buffer";
+    default:
+      return "unknown error";
   }
 }

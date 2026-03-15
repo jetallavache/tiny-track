@@ -44,7 +44,8 @@ struct ttr_writer {
   struct ttr_writer_config cfg;
 };
 
-int ttr_writer_init(struct ttr_writer* ctx, const struct ttr_writer_config* cfg);
+int ttr_writer_init(struct ttr_writer* ctx,
+                    const struct ttr_writer_config* cfg);
 int ttr_writer_write_l1(struct ttr_writer* ctx, const void* sample);
 int ttr_writer_aggregate_l2(struct ttr_writer* ctx);
 int ttr_writer_aggregate_l3(struct ttr_writer* ctx);

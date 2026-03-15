@@ -53,30 +53,30 @@
 #include <stdint.h>
 
 #include "common/metrics.h"
-#include "common/proto/v1.h"  /* Inherits all v1 types and constants */
+#include "common/proto/v1.h" /* Inherits all v1 types and constants */
 
 /* ------------------------------------------------------------------ */
 /* Version                                                              */
 /* ------------------------------------------------------------------ */
 
-#define TT_PROTO_V2  0x02u
+#define TT_PROTO_V2 0x02u
 
 /* ------------------------------------------------------------------ */
 /* New packet type codes                                                */
 /* ------------------------------------------------------------------ */
 
-#define PKT_HISTORY_REQ  0x10u  /* History request    (client → server) */
-#define PKT_HISTORY_RESP 0x11u  /* History response   (server → client) */
-#define PKT_SUBSCRIBE    0x12u  /* Level subscription (client → server) */
-#define PKT_STATS        0x13u  /* Ring buffer stats  (server → client) */
+#define PKT_HISTORY_REQ 0x10u  /* History request    (client → server) */
+#define PKT_HISTORY_RESP 0x11u /* History response   (server → client) */
+#define PKT_SUBSCRIBE 0x12u    /* Level subscription (client → server) */
+#define PKT_STATS 0x13u        /* Ring buffer stats  (server → client) */
 
 /* ------------------------------------------------------------------ */
 /* Ring level identifiers (used across v2 packets)                     */
 /* ------------------------------------------------------------------ */
 
-#define RING_LEVEL_L1  0x01u  /* 1h  @ 1s  resolution */
-#define RING_LEVEL_L2  0x02u  /* 24h @ 1m  resolution */
-#define RING_LEVEL_L3  0x03u  /* 7d  @ 15m resolution */
+#define RING_LEVEL_L1 0x01u /* 1h  @ 1s  resolution */
+#define RING_LEVEL_L2 0x02u /* 24h @ 1m  resolution */
+#define RING_LEVEL_L3 0x03u /* 7d  @ 15m resolution */
 
 /* ------------------------------------------------------------------ */
 /* PKT_HISTORY_REQ payload  (18 bytes)                                 */
@@ -84,10 +84,10 @@
 
 #pragma pack(push, 1)
 struct tt_proto_history_req {
-  uint8_t  level;    /* RING_LEVEL_* constant                      */
-  uint64_t from_ts;  /* Start of range, Unix ms (0 = oldest)       */
-  uint64_t to_ts;    /* End of range,   Unix ms (0 = latest)       */
-  uint16_t max_count;/* Max samples to return (0 = no limit)       */
+  uint8_t level;      /* RING_LEVEL_* constant                      */
+  uint64_t from_ts;   /* Start of range, Unix ms (0 = oldest)       */
+  uint64_t to_ts;     /* End of range,   Unix ms (0 = latest)       */
+  uint16_t max_count; /* Max samples to return (0 = no limit)       */
 }; /* 18 bytes */
 #pragma pack(pop)
 
@@ -95,15 +95,15 @@ struct tt_proto_history_req {
 /* PKT_HISTORY_RESP payload  (4 + count * sizeof(tt_metrics) bytes)   */
 /* ------------------------------------------------------------------ */
 
-#define TT_HISTORY_BATCH_MAX  60u  /* Max samples per response frame  */
+#define TT_HISTORY_BATCH_MAX 60u /* Max samples per response frame  */
 
-#define HISTORY_FLAG_LAST  0x01u   /* Set on the final frame of a batch */
+#define HISTORY_FLAG_LAST 0x01u /* Set on the final frame of a batch */
 
 #pragma pack(push, 1)
 struct tt_proto_history_resp {
-  uint8_t  level;    /* RING_LEVEL_* constant                      */
-  uint16_t count;    /* Number of samples in this frame            */
-  uint8_t  flags;    /* HISTORY_FLAG_* bitmask                     */
+  uint8_t level;  /* RING_LEVEL_* constant                      */
+  uint16_t count; /* Number of samples in this frame            */
+  uint8_t flags;  /* HISTORY_FLAG_* bitmask                     */
   /* Followed by count * sizeof(struct tt_metrics) bytes of samples */
 }; /* 4 bytes header; total = 4 + count * 52 */
 #pragma pack(pop)
@@ -114,9 +114,9 @@ struct tt_proto_history_resp {
 
 #pragma pack(push, 1)
 struct tt_proto_subscribe {
-  uint8_t  level;       /* RING_LEVEL_* to subscribe to            */
+  uint8_t level;        /* RING_LEVEL_* to subscribe to            */
   uint32_t interval_ms; /* Push interval in ms (0 = use daemon default) */
-  uint8_t  _reserved;  /* Must be 0                               */
+  uint8_t _reserved;    /* Must be 0                               */
 }; /* 6 bytes */
 #pragma pack(pop)
 
@@ -127,12 +127,12 @@ struct tt_proto_subscribe {
 
 #pragma pack(push, 1)
 struct tt_proto_ring_stat {
-  uint8_t  level;      /* RING_LEVEL_*                             */
-  uint32_t capacity;   /* Total ring capacity (samples)            */
-  uint32_t head;       /* Current write position                   */
-  uint32_t filled;     /* Number of valid samples                  */
-  uint64_t first_ts;   /* Timestamp of oldest sample, Unix ms      */
-  uint64_t last_ts;    /* Timestamp of newest sample, Unix ms      */
+  uint8_t level;     /* RING_LEVEL_*                             */
+  uint32_t capacity; /* Total ring capacity (samples)            */
+  uint32_t head;     /* Current write position                   */
+  uint32_t filled;   /* Number of valid samples                  */
+  uint64_t first_ts; /* Timestamp of oldest sample, Unix ms      */
+  uint64_t last_ts;  /* Timestamp of newest sample, Unix ms      */
 }; /* 25 bytes */
 
 struct tt_proto_stats {
@@ -146,6 +146,6 @@ struct tt_proto_stats {
 /* New v2 commands (extend PKT_CMD from v1)                            */
 /* ------------------------------------------------------------------ */
 
-#define CMD_GET_STATS  0x10u  /* Request PKT_STATS; no arg           */
+#define CMD_GET_STATS 0x10u /* Request PKT_STATS; no arg           */
 
 #endif /* TT_PROTO_V2_H */

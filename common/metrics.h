@@ -1,6 +1,7 @@
 #ifndef TT_METRICS_H
 #define TT_METRICS_H
 
+#include <stddef.h>
 #include <stdint.h>
 
 /*
@@ -33,7 +34,7 @@ struct tt_metrics {
  * Aggregate N samples into one by averaging all numeric fields.
  * Conforms to ttr_aggregate_fn signature.
  */
-void tt_metrics_aggregate(const void* samples, uint32_t count,
-                          size_t cell_size, void* out);
+void tt_metrics_aggregate(const void* samples, uint32_t count, size_t cell_size,
+                          void* out);
 
 #endif /* TT_METRICS_H */

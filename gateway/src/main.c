@@ -139,9 +139,9 @@ int main(void) {
   ttg_net_mgr_init(&mgr);
 
   struct tt_log_config log_cfg = {.backend = TT_LOG_BACKEND_STDOUT,
-                             .min_level = TT_LOG_DEBUG,
-                             .ident = "tinytrack",
-                             .async = false};
+                                  .min_level = TT_LOG_DEBUG,
+                                  .ident = "tinytrack",
+                                  .async = false};
   tt_log_init(&log_cfg);
   tt_log_notice("tinytrack gateway starting...");
 
