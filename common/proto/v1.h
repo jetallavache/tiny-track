@@ -1,8 +1,9 @@
 #ifndef TT_PROTO_V1_H
 #define TT_PROTO_V1_H
 
-#include <stddef.h>
 #include <stdint.h>
+
+#include "common/metrics.h"
 
 #pragma pack(push, 1)
 struct tt_proto_packet_header {
@@ -21,25 +22,7 @@ struct tt_proto_packet_header {
 }; /* Total 10 bytes */
 #pragma pack(pop)
 
-#pragma pack(push, 1)
-struct tt_proto_metrics {
-  uint64_t timestamp;      /* 8 bytes  - Timestamp in ms */
-  uint16_t cpu_usage;      /* 2 bytes  - CPU usage * 100 (25.5% → 2550) */
-  uint16_t mem_usage;      /* 2 bytes  - Memory usage * 100 (25.5% → 2550) */
-  uint32_t net_rx;         /* 4 bytes  - Network received, bytes/sec */
-  uint32_t net_tx;         /* 4 bytes  - Network transmitted, bytes/sec */
-  uint16_t load_1min;      /* 2 bytes  - Load average * 100 (1.25 → 125) */
-  uint16_t load_5min;      /* 2 bytes  - Load average * 100 (1.25 → 125) */
-  uint16_t load_15min;     /* 2 bytes  - Load average * 100 (1.25 → 125) */
-  uint32_t nr_running;     /* 4 bytes  - */
-  uint32_t nr_total;       /* 4 bytes  - */
-  uint16_t du_usage;       /* 2 bytes  - Disk usage * 100 (25.5% → 2550) */
-  uint64_t du_total_bytes; /* 8 bytes  - Total size fs, bytes */
-  uint64_t du_free_bytes;  /* 8 bytes  - Available size fs, bytes */
-}; /* Total 52 bytes */
-#pragma pack(pop)
-
-#pragma pack(push, 1)
+/* tt_metrics (collected system metrics) is defined in common/metrics.h */#pragma pack(push, 1)
 struct tt_proto_alert {
 #define ALERT_INFO 0x01
 #define ALERT_WARNING 0x02
@@ -86,7 +69,7 @@ struct tt_proto_ack {
 #pragma pack(push, 1)
 struct tt_proto_packet_payload {
   struct tt_proto_packet_header header; /* 10 bytes */
-  struct tt_proto_metrics payload;      /* 52 bytes */
+  struct tt_metrics payload;            /* 52 bytes */
 }; /* Total 62 bytes */
 #pragma pack(pop)
 

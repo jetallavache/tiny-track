@@ -156,7 +156,7 @@ bool readpr_loadavg(struct ttd_collector_loadavg* pl) {
   return (parsed == 5);
 }
 
-float ttd_collect_cpu(struct ttd_state* st) {
+float ttd_collect_cpu(struct ttd_collector_state* st) {
   struct ttd_collector_stat curr;
   if (!readpr_stat(&curr))
     return 0.0f;
@@ -191,7 +191,7 @@ float ttd_collect_memory() {
   return (float)(mem.total - mem.available) * 100.0f / mem.total;
 }
 
-void ttd_collect_net(struct ttd_state* st, unsigned long* rx,
+void ttd_collect_net(struct ttd_collector_state* st, unsigned long* rx,
                      unsigned long* tx) {
   struct ttd_collector_net curr;
   if (!readpr_net(&curr)) {
@@ -219,7 +219,7 @@ struct ttd_collector_loadavg ttd_collect_loadavg() {
   return load;
 }
 
-struct ttd_collector_du ttd_collect_disk(struct ttd_state* st) {
+struct ttd_collector_du ttd_collect_disk(struct ttd_collector_state* st) {
   struct ttd_collector_du result = {0};
 
   time_t now = time(NULL);

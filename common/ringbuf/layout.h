@@ -57,7 +57,6 @@ struct ttr_meta {
   uint8_t padding[20];   /* Padding to 64 bytes */
 };
 
-
 /* Offset calculation */
 static inline size_t ttr_layout_l1_offset(void) {
   return TTR_HEADER_SIZE + TTR_CONSUMER_TABLE_SIZE + TTR_META_SIZE;

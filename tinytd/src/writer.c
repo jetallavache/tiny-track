@@ -1,6 +1,7 @@
 #include "writer.h"
 
 #include "common/log.h"
+#include "common/metrics.h"
 #include "common/ringbuf.h"
 #include "common/ringbuf/layout.h"
 #include "debug.h"
@@ -8,7 +9,9 @@
 int ttd_writer_init(struct ttd_writer* ctx, struct ttd_config* cfg) {
   int ret = ttr_writer_init(&ctx->ring, cfg->live_path, cfg->shadow_path,
                             cfg->l1_capacity, cfg->l2_capacity,
-                            cfg->l3_capacity, cfg->file_mode);
+                            cfg->l3_capacity,
+                            sizeof(struct tt_metrics), cfg->file_mode,
+                            tt_metrics_aggregate);
   if (ret < 0) {
     tt_log_err("Failed to initialize ring writer");
     return ret;
@@ -22,7 +25,7 @@ int ttd_writer_init(struct ttd_writer* ctx, struct ttd_config* cfg) {
 }
 
 int ttd_writer_write_l1(struct ttd_writer* ctx,
-                        struct tt_proto_metrics* sample) {
+                        struct tt_metrics* sample) {
   if (!ctx || !ctx->ring.live_addr) {
     tt_log_err("Invalid writer state: ctx=%p, live_addr=%p", (void*)ctx,
                ctx ? ctx->ring.live_addr : NULL);
@@ -30,12 +33,11 @@ int ttd_writer_write_l1(struct ttd_writer* ctx,
   }
   return ttr_writer_write_l1(&ctx->ring, sample);
 }
-
 int ttd_writer_aggregate_l2(struct ttd_writer* ctx) {
   int ret = ttr_writer_aggregate_l2(&ctx->ring);
 #ifdef TTD_DEBUG
   if (ret == 0) {
-    size_t cell_size = sizeof(struct tt_proto_metrics);
+    size_t cell_size = sizeof(struct tt_metrics);
     struct ttr_meta* l2_meta =
         (struct ttr_meta*)((uint8_t*)ctx->ring.live_addr +
                            ttr_layout_l2_meta_offset(ctx->ring.l1_capacity,
@@ -44,8 +46,8 @@ int ttd_writer_aggregate_l2(struct ttd_writer* ctx) {
                        ttr_layout_l2_offset(ctx->ring.l1_capacity, cell_size);
     uint32_t head = l2_meta->head;
     uint32_t prev = (head == 0 ? l2_meta->capacity : head) - 1;
-    const struct tt_proto_metrics* agg =
-        (const struct tt_proto_metrics*)(l2_data + prev * cell_size);
+    const struct tt_metrics* agg =
+        (const struct tt_metrics*)(l2_data + prev * cell_size);
     ttd_debug_dump_agg(2, agg, head, l2_meta->capacity);
   }
 #endif
@@ -56,7 +58,7 @@ int ttd_writer_aggregate_l3(struct ttd_writer* ctx) {
   int ret = ttr_writer_aggregate_l3(&ctx->ring);
 #ifdef TTD_DEBUG
   if (ret == 0) {
-    size_t cell_size = sizeof(struct tt_proto_metrics);
+    size_t cell_size = sizeof(struct tt_metrics);
     struct ttr_meta* l3_meta =
         (struct ttr_meta*)((uint8_t*)ctx->ring.live_addr +
                            ttr_layout_l3_meta_offset(ctx->ring.l1_capacity,
@@ -67,8 +69,8 @@ int ttd_writer_aggregate_l3(struct ttd_writer* ctx) {
                                             ctx->ring.l2_capacity, cell_size);
     uint32_t head = l3_meta->head;
     uint32_t prev = (head == 0 ? l3_meta->capacity : head) - 1;
-    const struct tt_proto_metrics* agg =
-        (const struct tt_proto_metrics*)(l3_data + prev * cell_size);
+    const struct tt_metrics* agg =
+        (const struct tt_metrics*)(l3_data + prev * cell_size);
     ttd_debug_dump_agg(3, agg, head, l3_meta->capacity);
   }
 #endif

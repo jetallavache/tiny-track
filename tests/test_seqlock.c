@@ -26,7 +26,7 @@ typedef struct {
 /* Writer thread: writes monotonically increasing values */
 static void *writer_thread(void *arg) {
   struct ttr_writer *writer = arg;
-  struct tt_proto_metrics sample = {0};
+  struct tt_metrics sample = {0};
   uint64_t counter = 0;
 
   while (running) {
@@ -48,7 +48,7 @@ static void *writer_thread(void *arg) {
 static void *reader_thread(void *arg) {
   reader_stats *stats = arg;
   struct ttr_reader reader;
-  struct tt_proto_metrics sample;
+  struct tt_metrics sample;
 
   if (ttr_reader_open(&reader, "/tmp/tinytd-test-live") != TTR_READER_OK) {
     fprintf(stderr, "Reader %d: failed to open\n", stats->id);

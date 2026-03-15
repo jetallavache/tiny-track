@@ -4,7 +4,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "common/proto/v1.h"
 #include "layout.h"
 
 enum {
@@ -29,9 +28,9 @@ struct ttr_reader {
 };
 
 int ttr_reader_open(struct ttr_reader* ctx, const char* path);
-int ttr_reader_get_latest(struct ttr_reader* ctx, struct tt_proto_metrics* out);
+int ttr_reader_get_latest(struct ttr_reader* ctx, void* out, size_t out_size);
 int ttr_reader_get_history(struct ttr_reader* ctx, int level,
-                           struct tt_proto_metrics* out, int count);
+                           void* out, size_t out_size, int count);
 void ttr_reader_close(struct ttr_reader* ctx);
 const char* ttr_reader_strerror(int errcode);
 

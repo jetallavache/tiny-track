@@ -31,7 +31,7 @@ int ttc_cmd_live(const char* path, int interval_ms, const char* format) {
   }
 
   while (1) {
-    struct tt_proto_metrics m;
+    struct tt_metrics m;
     int err = ttc_reader_get_latest(&ctx, &m);
     if (err == TTR_READER_OK) {
       if (strcmp(format, "json") == 0) {

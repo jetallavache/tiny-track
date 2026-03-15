@@ -25,7 +25,7 @@ static void signal_handler(int sig) {
 
 /* Send metrics to WebSocket client */
 static void send_metrics(struct ttg_conn* c) {
-  struct tt_proto_metrics m;
+  struct tt_metrics m;
 
   if (ttg_reader_get_latest(&ttg_reader, &m) != 0) {
     return; /* No data available */
@@ -109,7 +109,7 @@ static void fn(struct ttg_conn* c, int ev, void* ev_data) {
       ttg_ws_upgrade(c, hm, NULL);
     } else if (ttg_str_match(hm->uri, str("/api/metrics/live"), NULL)) {
       /* REST API: get latest metrics */
-      struct tt_proto_metrics m;
+      struct tt_metrics m;
       if (ttg_reader_get_latest(&ttg_reader, &m) == 0) {
         char buf[512];
         snprintf(buf, sizeof(buf),

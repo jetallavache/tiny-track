@@ -71,7 +71,7 @@ struct ttd_collector_du {
 };
 
 /* State of collector node */
-struct ttd_state {
+struct ttd_collector_state {
   struct ttd_collector_stat stat_prev;
   struct ttd_collector_net net_prev;
   time_t net_time_prev;
@@ -81,12 +81,12 @@ struct ttd_state {
   char* du_path;
 };
 
-float ttd_collect_cpu(struct ttd_state* st);
+float ttd_collect_cpu(struct ttd_collector_state* st);
 float ttd_collect_memory();
-void ttd_collect_net(struct ttd_state* st, unsigned long* rx,
+void ttd_collect_net(struct ttd_collector_state* st, unsigned long* rx,
                      unsigned long* tx);
 struct ttd_collector_loadavg ttd_collect_loadavg();
-struct ttd_collector_du ttd_collect_disk(struct ttd_state* st);
+struct ttd_collector_du ttd_collect_disk(struct ttd_collector_state* st);
 
 /* Initialize/cleanup persistent file descriptors */
 void ttd_collector_init(void);

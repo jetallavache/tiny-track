@@ -6,7 +6,12 @@
 #include <stdint.h>
 #include <sys/types.h>
 
-#include "common/proto/v1.h"
+/*
+ * Aggregation callback: given `count` samples of `cell_size` bytes each
+ * starting at `samples`, write one aggregated sample into `out`.
+ */
+typedef void (*ttr_aggregate_fn)(const void* samples, uint32_t count,
+                                 size_t cell_size, void* out);
 
 enum {
   TTR_WRITER_OK = 0,
@@ -20,11 +25,13 @@ struct ttr_writer {
   void* live_addr;
   void* shadow_addr;
   size_t total_size;
+  size_t cell_size;
   uint32_t l1_capacity;
   uint32_t l2_capacity;
   uint32_t l3_capacity;
   mode_t file_mode;
   bool enable_crc;
+  ttr_aggregate_fn aggregate;
   /* Dirty range tracking for incremental shadow_sync */
   size_t dirty_min;
   size_t dirty_max;
@@ -33,9 +40,9 @@ struct ttr_writer {
 int ttr_writer_init(struct ttr_writer* ctx, const char* live_path,
                     const char* shadow_path, uint32_t l1_capacity,
                     uint32_t l2_capacity, uint32_t l3_capacity,
-                    mode_t file_mode);
-int ttr_writer_write_l1(struct ttr_writer* ctx,
-                        struct tt_proto_metrics* sample);
+                    size_t cell_size, mode_t file_mode,
+                    ttr_aggregate_fn aggregate);
+int ttr_writer_write_l1(struct ttr_writer* ctx, const void* sample);
 int ttr_writer_aggregate_l2(struct ttr_writer* ctx);
 int ttr_writer_aggregate_l3(struct ttr_writer* ctx);
 int ttr_writer_shadow_sync(struct ttr_writer* ctx);

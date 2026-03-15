@@ -17,7 +17,7 @@ static uint64_t now_ms(void) {
 }
 
 static void collect_metrics(struct ttd_collector_state* state,
-                            struct tt_proto_metrics* sample) {
+                            struct tt_metrics* sample) {
   if (!state || !sample) {
     tt_log_err("Invalid parameters to collect_metrics");
     return;
@@ -113,10 +113,10 @@ void ttd_runtime_poll(struct ttd_runtime* rt, int timeout_ms) {
     uint64_t expirations;
     read(rt->timer_fd, &expirations, sizeof(expirations));
 
-    tt_log_debug("Timer fired, collecting metrics (rt=%p, writer=%p)",
-                 (void*)rt, (void*)rt->writer);
+    /* tt_log_debug("Timer fired, collecting metrics (rt=%p, writer=%p)",
+                 (void*)rt, (void*)rt->writer); */
 
-    struct tt_proto_metrics sample = {0};
+    struct tt_metrics sample = {0};
     collect_metrics(rt->state, &sample);
 
     ttd_debug_dump_collector(&sample);

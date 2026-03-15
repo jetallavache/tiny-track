@@ -1,5 +1,6 @@
 #include "writer.h"
 
+#include <alloca.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <time.h>
@@ -84,16 +85,18 @@ int ttr_writer_recover_from_shadow(struct ttr_writer* ctx) {
 int ttr_writer_init(struct ttr_writer* ctx, const char* live_path,
                     const char* shadow_path, uint32_t l1_capacity,
                     uint32_t l2_capacity, uint32_t l3_capacity,
-                    mode_t file_mode) {
+                    size_t cell_size, mode_t file_mode,
+                    ttr_aggregate_fn aggregate) {
   ctx->l1_capacity = l1_capacity;
   ctx->l2_capacity = l2_capacity;
   ctx->l3_capacity = l3_capacity;
+  ctx->cell_size = cell_size;
   ctx->file_mode = file_mode;
+  ctx->aggregate = aggregate;
   /* dirty range: empty state = min > max */
   ctx->dirty_min = SIZE_MAX;
   ctx->dirty_max = 0;
 
-  size_t cell_size = sizeof(struct tt_proto_metrics);
   ctx->total_size =
       tt_layout_total_size(l1_capacity, l2_capacity, l3_capacity, cell_size);
 
@@ -173,15 +176,14 @@ int ttr_writer_init(struct ttr_writer* ctx, const char* live_path,
   return TTR_WRITER_OK;
 }
 
-int ttr_writer_write_l1(struct ttr_writer* ctx,
-                        struct tt_proto_metrics* sample) {
+int ttr_writer_write_l1(struct ttr_writer* ctx, const void* sample) {
   if (!ctx || !ctx->live_addr || !sample) {
     tt_log_err("ttr_writer_write_l1: NULL argument (ctx=%p, sample=%p)",
-               (void*)ctx, (void*)sample);
+               (void*)ctx, sample);
     return TTR_WRITER_ERR_NULL;
   }
 
-  size_t cell_size = sizeof(struct tt_proto_metrics);
+  size_t cell_size = ctx->cell_size;
 
   struct ttr_header* hdr = (struct ttr_header*)ctx->live_addr;
   hdr->last_update_ts = get_timestamp_ms();
@@ -192,18 +194,15 @@ int ttr_writer_write_l1(struct ttr_writer* ctx,
 
   uint8_t* data = (uint8_t*)ctx->live_addr + ttr_layout_l1_offset();
 
-  sample->timestamp = hdr->last_update_ts;
-
   /* Seqlock: begin write */
   ttr_seqlock_write_begin(&meta->seq);
 
   uint32_t head = meta->head;
   memcpy(data + head * cell_size, sample, cell_size);
 
-  meta->last_ts = sample->timestamp;
-  if (meta->first_ts == 0) {
-    meta->first_ts = sample->timestamp;
-  }
+  meta->last_ts = hdr->last_update_ts;
+  if (meta->first_ts == 0)
+    meta->first_ts = hdr->last_update_ts;
 
   meta->head = (head + 1) % meta->capacity;
 
@@ -226,7 +225,7 @@ int ttr_writer_aggregate_l2(struct ttr_writer* ctx) {
     return TTR_WRITER_ERR_NULL;
   }
 
-  size_t cell_size = sizeof(struct tt_proto_metrics);
+  size_t cell_size = ctx->cell_size;
 
   struct ttr_meta* l1_meta =
       (struct ttr_meta*)((uint8_t*)ctx->live_addr + TTR_HEADER_SIZE +
@@ -235,8 +234,7 @@ int ttr_writer_aggregate_l2(struct ttr_writer* ctx) {
 
   struct ttr_meta* l2_meta =
       (struct ttr_meta*)((uint8_t*)ctx->live_addr +
-                         ttr_layout_l2_meta_offset(ctx->l1_capacity,
-                                                   cell_size));
+                         ttr_layout_l2_meta_offset(ctx->l1_capacity, cell_size));
   uint8_t* l2_data = (uint8_t*)ctx->live_addr +
                      ttr_layout_l2_offset(ctx->l1_capacity, cell_size);
 
@@ -246,55 +244,25 @@ int ttr_writer_aggregate_l2(struct ttr_writer* ctx) {
     return TTR_WRITER_ERR_NODATA;
   }
 
-  /* Average all available L1 samples (up to capacity) */
   uint32_t n = available < l1_meta->capacity ? available : l1_meta->capacity;
 
-  uint64_t cpu = 0, mem = 0, net_rx = 0, net_tx = 0;
-  uint64_t load1 = 0, load5 = 0, load15 = 0;
-  uint64_t du_usage = 0, du_total = 0, du_free = 0;
-  uint32_t nr_running = 0, nr_total = 0;
-
+  /* Build contiguous snapshot of the last n samples for the callback */
+  uint8_t* tmp = alloca(n * cell_size);
   for (uint32_t i = 0; i < n; i++) {
-    uint32_t idx =
-        (l1_meta->head - n + i + l1_meta->capacity) % l1_meta->capacity;
-    struct tt_proto_metrics* s =
-        (struct tt_proto_metrics*)(l1_data + idx * cell_size);
-    cpu += s->cpu_usage;
-    mem += s->mem_usage;
-    net_rx += s->net_rx;
-    net_tx += s->net_tx;
-    load1 += s->load_1min;
-    load5 += s->load_5min;
-    load15 += s->load_15min;
-    nr_running += s->nr_running;
-    nr_total += s->nr_total;
-    du_usage += s->du_usage;
-    du_total += s->du_total_bytes;
-    du_free += s->du_free_bytes;
+    uint32_t idx = (l1_meta->head - n + i + l1_meta->capacity) % l1_meta->capacity;
+    memcpy(tmp + i * cell_size, l1_data + idx * cell_size, cell_size);
   }
 
-  struct tt_proto_metrics agg = {0};
-  agg.timestamp = get_timestamp_ms();
-  agg.cpu_usage = (uint16_t)(cpu / n);
-  agg.mem_usage = (uint16_t)(mem / n);
-  agg.net_rx = (uint32_t)(net_rx / n);
-  agg.net_tx = (uint32_t)(net_tx / n);
-  agg.load_1min = (uint16_t)(load1 / n);
-  agg.load_5min = (uint16_t)(load5 / n);
-  agg.load_15min = (uint16_t)(load15 / n);
-  agg.nr_running = nr_running / n;
-  agg.nr_total = nr_total / n;
-  agg.du_usage = (uint16_t)(du_usage / n);
-  agg.du_total_bytes = du_total / n;
-  agg.du_free_bytes = du_free / n;
+  uint8_t agg[cell_size];
+  ctx->aggregate(tmp, n, cell_size, agg);
 
   ttr_seqlock_write_begin(&l2_meta->seq);
 
   uint32_t head = l2_meta->head;
-  memcpy(l2_data + head * cell_size, &agg, cell_size);
-  l2_meta->last_ts = agg.timestamp;
+  memcpy(l2_data + head * cell_size, agg, cell_size);
+  l2_meta->last_ts = get_timestamp_ms();
   if (l2_meta->first_ts == 0)
-    l2_meta->first_ts = agg.timestamp;
+    l2_meta->first_ts = l2_meta->last_ts;
   l2_meta->head = (head + 1) % l2_meta->capacity;
 
   ttr_seqlock_write_end(&l2_meta->seq);
@@ -302,8 +270,7 @@ int ttr_writer_aggregate_l2(struct ttr_writer* ctx) {
   mark_dirty(ctx, ttr_layout_l2_meta_offset(ctx->l1_capacity, cell_size),
              TTR_META_SIZE);
   mark_dirty(ctx, ttr_layout_l2_offset(ctx->l1_capacity, cell_size) +
-                      head * cell_size,
-             cell_size);
+                      head * cell_size, cell_size);
 
   return 0;
 }
@@ -314,22 +281,21 @@ int ttr_writer_aggregate_l3(struct ttr_writer* ctx) {
     return TTR_WRITER_ERR_NULL;
   }
 
-  size_t cell_size = sizeof(struct tt_proto_metrics);
+  size_t cell_size = ctx->cell_size;
 
   struct ttr_meta* l2_meta =
       (struct ttr_meta*)((uint8_t*)ctx->live_addr +
-                         ttr_layout_l2_meta_offset(ctx->l1_capacity,
-                                                   cell_size));
+                         ttr_layout_l2_meta_offset(ctx->l1_capacity, cell_size));
   uint8_t* l2_data = (uint8_t*)ctx->live_addr +
                      ttr_layout_l2_offset(ctx->l1_capacity, cell_size);
 
   struct ttr_meta* l3_meta =
       (struct ttr_meta*)((uint8_t*)ctx->live_addr +
-                         ttr_layout_l3_meta_offset(
-                             ctx->l1_capacity, ctx->l2_capacity, cell_size));
-  uint8_t* l3_data =
-      (uint8_t*)ctx->live_addr +
-      ttr_layout_l3_offset(ctx->l1_capacity, ctx->l2_capacity, cell_size);
+                         ttr_layout_l3_meta_offset(ctx->l1_capacity,
+                                                   ctx->l2_capacity, cell_size));
+  uint8_t* l3_data = (uint8_t*)ctx->live_addr +
+                     ttr_layout_l3_offset(ctx->l1_capacity, ctx->l2_capacity,
+                                          cell_size);
 
   uint32_t available = l2_meta->head;
   if (available == 0) {
@@ -339,64 +305,32 @@ int ttr_writer_aggregate_l3(struct ttr_writer* ctx) {
 
   uint32_t n = available < l2_meta->capacity ? available : l2_meta->capacity;
 
-  uint64_t cpu = 0, mem = 0, net_rx = 0, net_tx = 0;
-  uint64_t load1 = 0, load5 = 0, load15 = 0;
-  uint64_t du_usage = 0, du_total = 0, du_free = 0;
-  uint32_t nr_running = 0, nr_total = 0;
-
+  uint8_t* tmp = alloca(n * cell_size);
   for (uint32_t i = 0; i < n; i++) {
-    uint32_t idx =
-        (l2_meta->head - n + i + l2_meta->capacity) % l2_meta->capacity;
-    struct tt_proto_metrics* s =
-        (struct tt_proto_metrics*)(l2_data + idx * cell_size);
-    cpu += s->cpu_usage;
-    mem += s->mem_usage;
-    net_rx += s->net_rx;
-    net_tx += s->net_tx;
-    load1 += s->load_1min;
-    load5 += s->load_5min;
-    load15 += s->load_15min;
-    nr_running += s->nr_running;
-    nr_total += s->nr_total;
-    du_usage += s->du_usage;
-    du_total += s->du_total_bytes;
-    du_free += s->du_free_bytes;
+    uint32_t idx = (l2_meta->head - n + i + l2_meta->capacity) % l2_meta->capacity;
+    memcpy(tmp + i * cell_size, l2_data + idx * cell_size, cell_size);
   }
 
-  struct tt_proto_metrics agg = {0};
-  agg.timestamp = get_timestamp_ms();
-  agg.cpu_usage = (uint16_t)(cpu / n);
-  agg.mem_usage = (uint16_t)(mem / n);
-  agg.net_rx = (uint32_t)(net_rx / n);
-  agg.net_tx = (uint32_t)(net_tx / n);
-  agg.load_1min = (uint16_t)(load1 / n);
-  agg.load_5min = (uint16_t)(load5 / n);
-  agg.load_15min = (uint16_t)(load15 / n);
-  agg.nr_running = nr_running / n;
-  agg.nr_total = nr_total / n;
-  agg.du_usage = (uint16_t)(du_usage / n);
-  agg.du_total_bytes = du_total / n;
-  agg.du_free_bytes = du_free / n;
+  uint8_t agg[cell_size];
+  ctx->aggregate(tmp, n, cell_size, agg);
 
   ttr_seqlock_write_begin(&l3_meta->seq);
 
   uint32_t head = l3_meta->head;
-  memcpy(l3_data + head * cell_size, &agg, cell_size);
-  l3_meta->last_ts = agg.timestamp;
+  memcpy(l3_data + head * cell_size, agg, cell_size);
+  l3_meta->last_ts = get_timestamp_ms();
   if (l3_meta->first_ts == 0)
-    l3_meta->first_ts = agg.timestamp;
+    l3_meta->first_ts = l3_meta->last_ts;
   l3_meta->head = (head + 1) % l3_meta->capacity;
 
   ttr_seqlock_write_end(&l3_meta->seq);
 
   mark_dirty(ctx,
              ttr_layout_l3_meta_offset(ctx->l1_capacity, ctx->l2_capacity,
-                                       cell_size),
-             TTR_META_SIZE);
+                                       cell_size), TTR_META_SIZE);
   mark_dirty(ctx,
              ttr_layout_l3_offset(ctx->l1_capacity, ctx->l2_capacity,
-                                  cell_size) + head * cell_size,
-             cell_size);
+                                  cell_size) + head * cell_size, cell_size);
 
   return 0;
 }

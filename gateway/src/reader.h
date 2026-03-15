@@ -10,7 +10,7 @@ struct ttg_reader {
 };
 
 int ttg_reader_open(struct ttg_reader* ctx, const char* path);
-int ttg_reader_get_latest(struct ttg_reader* ctx, struct tt_proto_metrics* out);
+int ttg_reader_get_latest(struct ttg_reader* ctx, struct tt_metrics* out);
 void ttg_reader_close(struct ttg_reader* ctx);
 
 #endif

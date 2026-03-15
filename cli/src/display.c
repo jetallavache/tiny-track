@@ -9,7 +9,7 @@ static void format_timestamp(uint64_t ts_ms, char* buf, size_t size) {
   strftime(buf, size, "%H:%M:%S", tm_info);
 }
 
-void ttc_display_metrics(struct tt_proto_metrics* m) {
+void ttc_display_metrics(struct tt_metrics* m) {
   char time_buf[32];
   format_timestamp(m->timestamp, time_buf, sizeof(time_buf));
 
@@ -24,7 +24,7 @@ void ttc_display_metrics(struct tt_proto_metrics* m) {
          m->du_free_bytes, m->du_total_bytes);
 }
 
-void ttc_display_metrics_json(struct tt_proto_metrics* m) {
+void ttc_display_metrics_json(struct tt_metrics* m) {
   printf("{\n");
   printf("  \"timestamp\": %lu,\n", m->timestamp);
   printf("  \"cpu\": %.2f,\n", m->cpu_usage / 100.0);
@@ -42,7 +42,7 @@ void ttc_display_metrics_json(struct tt_proto_metrics* m) {
   printf("}\n");
 }
 
-void ttc_display_metrics_compact(struct tt_proto_metrics* m) {
+void ttc_display_metrics_compact(struct tt_metrics* m) {
   char time_buf[32];
   format_timestamp(m->timestamp, time_buf, sizeof(time_buf));
 

@@ -19,7 +19,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "common/ringbuf/layout.h"
+#include "common/ringbuf.h"
 #include "common/proto/v1.h"
 
 #define LIVE_PATH   "/tmp/tinytd-test-live.dat"
@@ -67,7 +67,7 @@ static void snapshot_ring(const void* addr, uint32_t* head_l1,
   *head_l1 = l1->head;
   *last_ts = l1->last_ts;
 
-  size_t cell = sizeof(struct tt_proto_metrics);
+  size_t cell = sizeof(struct tt_metrics);
   const struct ttr_meta* l2 =
       (const struct ttr_meta*)((const uint8_t*)addr +
                                ttr_layout_l2_meta_offset(l1->capacity, cell));
@@ -203,10 +203,10 @@ int main(void) {
     const struct ttr_meta* l1 =
         (const struct ttr_meta*)((const uint8_t*)live_addr + TTR_HEADER_SIZE +
                                  TTR_CONSUMER_TABLE_SIZE);
-    size_t cell = sizeof(struct tt_proto_metrics);
+    size_t cell = sizeof(struct tt_metrics);
     uint32_t idx = (l1->head == 0 ? l1->capacity : l1->head) - 1;
-    const struct tt_proto_metrics* s =
-        (const struct tt_proto_metrics*)((const uint8_t*)live_addr +
+    const struct tt_metrics* s =
+        (const struct tt_metrics*)((const uint8_t*)live_addr +
                                          ttr_layout_l1_offset() +
                                          idx * cell);
     CHECK("latest L1 sample has non-zero timestamp", s->timestamp > 0);

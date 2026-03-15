@@ -16,7 +16,7 @@ int ttr_reader_open(struct ttr_reader* ctx, const char* path) {
   }
   if ((intptr_t)(ctx->addr = ttr_shm_read(path, &ctx->size)) < 0) {
     tt_log_err("Failed to read mmap (%s)",
-               tt_shm_errorstr((intptr_t)ctx->addr));
+               tt_shm_strerror((intptr_t)ctx->addr));
     return TTR_READER_ERR_READ;
   }
 
@@ -56,8 +56,7 @@ int ttr_reader_open(struct ttr_reader* ctx, const char* path) {
   return TTR_READER_OK;
 }
 
-int ttr_reader_get_latest(struct ttr_reader* ctx,
-                          struct tt_proto_metrics* out) {
+int ttr_reader_get_latest(struct ttr_reader* ctx, void* out, size_t out_size) {
   if (!ctx || !out) {
     tt_log_err("ttr_reader_get_latest: NULL argument");
     return TTR_READER_ERR_INVALID;
@@ -72,6 +71,9 @@ int ttr_reader_get_latest(struct ttr_reader* ctx,
     return TTR_READER_ERR_STALE;
   }
 
+  size_t cell_size = ctx->l1_meta->cell_size;
+  size_t copy_size = out_size < cell_size ? out_size : cell_size;
+
   /* Seqlock: read with retry */
   uint32_t seq;
   do {
@@ -84,8 +86,7 @@ int ttr_reader_get_latest(struct ttr_reader* ctx,
     uint32_t last_idx =
         (head - 1 + ctx->l1_meta->capacity) % ctx->l1_meta->capacity;
 
-    memcpy(out, ctx->l1_data + last_idx * ctx->l1_meta->cell_size,
-           sizeof(struct tt_proto_metrics));
+    memcpy(out, ctx->l1_data + last_idx * cell_size, copy_size);
 
   } while (ttr_seqlock_read_retry(&ctx->l1_meta->seq, seq));
 
@@ -93,7 +94,7 @@ int ttr_reader_get_latest(struct ttr_reader* ctx,
 }
 
 int ttr_reader_get_history(struct ttr_reader* ctx, int level,
-                           struct tt_proto_metrics* out, int count) {
+                           void* out, size_t out_size, int count) {
   if (!ctx || !out) {
     tt_log_err("ttr_reader_get_history: NULL argument");
     return TTR_READER_ERR_INVALID;
@@ -139,8 +140,9 @@ int ttr_reader_get_history(struct ttr_reader* ctx, int level,
 
     for (int i = 0; i < count; i++) {
       uint32_t idx = (head - count + i + meta->capacity) % meta->capacity;
-      memcpy(&out[i], data + idx * meta->cell_size,
-             sizeof(struct tt_proto_metrics));
+      memcpy((uint8_t*)out + i * meta->cell_size,
+             data + idx * meta->cell_size,
+             out_size < meta->cell_size ? out_size : meta->cell_size);
     }
 
     actual_count = count;

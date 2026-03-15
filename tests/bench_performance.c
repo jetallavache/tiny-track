@@ -23,7 +23,7 @@ static uint64_t get_ns(void) {
 /* Benchmark: writer throughput */
 static void bench_writer_throughput(void) {
   struct ttr_writer writer;
-  struct tt_proto_metrics sample = {0};
+  struct tt_metrics sample = {0};
 
   ttr_writer_init(&writer, "/tmp/tinytd-bench-live", "/tmp/tinytd-bench-shadow",
                       3600, 1440, 672, 0644);
@@ -54,8 +54,8 @@ static void bench_writer_throughput(void) {
 static void bench_reader_throughput(void) {
   struct ttr_writer writer;
   struct ttr_reader reader;
-  struct tt_proto_metrics sample = {0};
-  struct tt_proto_metrics out;
+  struct tt_metrics sample = {0};
+  struct tt_metrics out;
 
   ttr_writer_init(&writer, "/tmp/tinytd-bench-live", "/tmp/tinytd-bench-shadow",
                       3600, 1440, 672, 0644);
@@ -100,7 +100,7 @@ typedef struct {
 static void *reader_thread(void *arg) {
   reader_thread_ctx *ctx = arg;
   struct ttr_reader reader;
-  struct tt_proto_metrics out;
+  struct tt_metrics out;
 
   ttr_reader_open(&reader, "/tmp/tinytd-bench-live");
 
@@ -117,7 +117,7 @@ static void *reader_thread(void *arg) {
 
 static void bench_concurrent_readers(void) {
   struct ttr_writer writer;
-  struct tt_proto_metrics sample = {0};
+  struct tt_metrics sample = {0};
 
   ttr_writer_init(&writer, "/tmp/tinytd-bench-live", "/tmp/tinytd-bench-shadow",
                       3600, 1440, 672, 0644);
@@ -169,7 +169,7 @@ static void bench_concurrent_readers(void) {
 /* Benchmark: seqlock retry rate */
 static void bench_seqlock_contention(void) {
   struct ttr_writer writer;
-  struct tt_proto_metrics sample = {0};
+  struct tt_metrics sample = {0};
 
   ttr_writer_init(&writer, "/tmp/tinytd-bench-live", "/tmp/tinytd-bench-shadow",
                       3600, 1440, 672, 0644);
@@ -192,7 +192,7 @@ static void bench_seqlock_contention(void) {
 
   /* Reader with retry counting */
   struct ttr_reader reader;
-  struct tt_proto_metrics out;
+  struct tt_metrics out;
   ttr_reader_open(&reader, "/tmp/tinytd-bench-live");
 
   int total_reads = 10000;
@@ -228,7 +228,7 @@ static void bench_memory_usage(void) {
   ttr_writer_init(&writer, "/tmp/tinytd-bench-live", "/tmp/tinytd-bench-shadow",
                       l1_cap, l2_cap, l3_cap, 0644);
 
-  size_t cell_size = sizeof(struct tt_proto_metrics);
+  size_t cell_size = sizeof(struct tt_metrics);
   size_t total_size =
       tt_layout_total_size(l1_cap, l2_cap, l3_cap, cell_size);
 

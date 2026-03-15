@@ -7,13 +7,13 @@ int ttc_reader_open(struct ttc_reader* ctx, const char* path) {
 }
 
 int ttc_reader_get_latest(struct ttc_reader* ctx,
-                          struct tt_proto_metrics* out) {
-  return ttr_reader_get_latest(&ctx->ring, out);
+                          struct tt_metrics* out) {
+  return ttr_reader_get_latest(&ctx->ring, out, sizeof(*out));
 }
 
 int ttc_reader_get_history(struct ttc_reader* ctx, int level,
-                           struct tt_proto_metrics* out, int count) {
-  return ttr_reader_get_history(&ctx->ring, level, out, count);
+                           struct tt_metrics* out, int count) {
+  return ttr_reader_get_history(&ctx->ring, level, out, sizeof(*out), count);
 }
 
 void ttc_reader_close(struct ttc_reader* ctx) {

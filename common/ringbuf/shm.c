@@ -107,7 +107,7 @@ void ttr_shm_unlink(const char* path) {
   shm_unlink(path);
 }
 
-const char* tt_shm_errorstr(int errcode) {
+const char* tt_shm_strerror(int errcode) {
   switch (errcode) {
     case TTR_SHM_MMAP_ERR:
       return "Error mmap";
