@@ -13,6 +13,7 @@
 /* Path cache (to avoid reading config on every call) */
 static const char* cached_live_path = NULL;
 static const char* cached_shadow_path = NULL;
+static const char* cached_pid_file = NULL;
 
 static const char* get_path_from_config(const char* config_key,
                                         const char** cache) {
@@ -37,6 +38,11 @@ const char* tt_config_live_path(void) {
 
 const char* tt_config_shadow_path(void) {
   return get_path_from_config("storage.shadow_path", &cached_shadow_path);
+}
+
+const char* tt_config_pid_path(void) {
+  const char* path = get_path_from_config("daemon.pid_file", &cached_pid_file);
+  return path ? path : "/var/run/tinytd.pid";
 }
 
 const char* tt_config_file_path(void) {
