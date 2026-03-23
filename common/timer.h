@@ -30,4 +30,4 @@ bool tt_timer_expired(uint64_t* expiration, uint64_t period, uint64_t now);
 /* System timerfd utilities (for epoll integration) */
 int tt_timerfd_create(uint32_t interval_ms);
 
-#endif /* COMMON_TIMER_H */
+#endif /* TT_TIMER_H */

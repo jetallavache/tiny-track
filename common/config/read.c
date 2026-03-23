@@ -50,6 +50,30 @@ int tt_config_read_str(const char* filepath, const char* key, char* buf,
   return 0;
 }
 
+enum tt_log_backend tt_config_parse_log_backend(const char* backend_str) {
+  if (!backend_str)
+    return TT_LOG_BACKEND_AUTO;
+
+  if (strcasecmp(backend_str, "stderr") == 0)
+    return TT_LOG_BACKEND_STDERR;
+  if (strcasecmp(backend_str, "stdout") == 0)
+    return TT_LOG_BACKEND_STDOUT;
+  if (strcasecmp(backend_str, "syslog") == 0)
+    return TT_LOG_BACKEND_SYSLOG;
+  if (strcasecmp(backend_str, "journal") == 0)
+    return TT_LOG_BACKEND_JOURNAL;
+  if (strcasecmp(backend_str, "auto") == 0)
+    return TT_LOG_BACKEND_AUTO;
+
+  /* Try as a number */
+  int backend = atoi(backend_str);
+  if (backend >= TT_LOG_BACKEND_STDERR && backend <= TT_LOG_BACKEND_AUTO) {
+    return (enum tt_log_backend)backend;
+  }
+
+  return TT_LOG_BACKEND_AUTO; /* default */
+}
+
 enum tt_log_level tt_config_parse_log_level(const char* level_str) {
   if (!level_str)
     return TT_LOG_INFO;

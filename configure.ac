@@ -4,7 +4,7 @@ AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign subdir-objects])
 
 # Переопределяем sysconfdir на /etc
-sysconfdir=/etc
+sysconfdir=/etc/tinytrack/
 AC_SUBST([sysconfdir])
 
 # Checks for programs
@@ -14,11 +14,11 @@ AM_PROG_AR
 
 # Check for C11 support
 # NOTE: Using -O0 due to GCC optimization bug with pointer aliasing in tinytd
-CFLAGS="$CFLAGS -std=c11 -D_POSIX_C_SOURCE=200809L -D_GNU_SOURCE -O0"
+CFLAGS="-std=c11 -D_POSIX_C_SOURCE=200809L -D_GNU_SOURCE -O0"
 
 # Checks for header files
 AC_CHECK_HEADERS([fcntl.h stdint.h stdlib.h string.h sys/time.h unistd.h])
-AC_CHECK_HEADERS([sys/epoll.h sys/timerfd.h], [], 
+AC_CHECK_HEADERS([sys/epoll.h sys/timerfd.h], [],
     [AC_MSG_ERROR([Linux-specific headers required])])
 
 # Checks for typedefs, structures, and compiler characteristics
@@ -33,18 +33,18 @@ AC_FUNC_MMAP
 AC_CHECK_FUNCS([clock_gettime gettimeofday memset munmap])
 
 # Check for required libraries
-AC_CHECK_LIB([rt], [clock_gettime], [], 
+AC_CHECK_LIB([rt], [clock_gettime], [],
     [AC_MSG_ERROR([librt is required])])
 AC_CHECK_LIB([ncurses], [initscr], [],
     [AC_MSG_ERROR([libncurses is required (install ncurses-devel)])])
-AC_CHECK_LIB([crypto], [SHA256_Init], [], 
+AC_CHECK_LIB([crypto], [SHA256_Init], [],
     [AC_MSG_WARN([libcrypto not found, gateway will not be built])])
 
 PKG_PROG_PKG_CONFIG
 
 # Check for systemd
 AC_ARG_WITH([systemdsystemunitdir],
-    [AS_HELP_STRING([--with-systemdsystemunitdir=DIR], 
+    [AS_HELP_STRING([--with-systemdsystemunitdir=DIR],
         [Directory for systemd service files])],
     [],
     [with_systemdsystemunitdir=auto])

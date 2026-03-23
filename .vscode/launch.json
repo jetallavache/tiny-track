@@ -6,19 +6,19 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/tinytd/tinytd",
-            "args": [],
+            "args": ["-c", "etc/tinytrack.conf-debug"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
-            "environment": [
-                {
-                    "name": "TINYTRACK_LIVE_PATH",
-                    "value": "/dev/shm/tinytd-live.dat"
-                },
-                {
-                    "name": "TINYTRACK_SHADOW_PATH",
-                    "value": "/dev/shm/tinytd-shadow.dat"
-                }
-            ],
+            // "environment": [
+            //     {
+            //         "name": "TINYTRACK_LIVE_PATH",
+            //         "value": "/dev/shm/tinytd-live.dat"
+            //     },
+            //     {
+            //         "name": "TINYTRACK_SHADOW_PATH",
+            //         "value": "/dev/shm/tinytd-shadow.dat"
+            //     }
+            // ],
             "externalConsole": false,
             "MIMode": "gdb",
             "setupCommands": [

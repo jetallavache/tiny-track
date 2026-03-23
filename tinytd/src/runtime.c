@@ -129,12 +129,12 @@ void ttd_runtime_poll(struct ttd_runtime* rt, int timeout_ms) {
   }
 
   /* Periodic tasks */
-  if (tt_timer_expired(&rt->next_l2, rt->cfg->l2_aggregate_interval * 1000,
+  if (tt_timer_expired(&rt->next_l2, rt->cfg->l2_agg_interval_sec * 1000,
                        now)) {
     ttd_writer_aggregate_l2(rt->writer);
   }
 
-  if (tt_timer_expired(&rt->next_l3, rt->cfg->l3_aggregate_interval * 1000,
+  if (tt_timer_expired(&rt->next_l3, rt->cfg->l3_agg_interval_sec * 1000,
                        now)) {
     ttd_writer_aggregate_l3(rt->writer);
   }
