@@ -1,13 +1,11 @@
 [Unit]
 Description=TinyTrack Monitoring Daemon
-Documentation=https://github.com/jetallavache/tiny-track
+Documentation=man:tinytd(8)
 After=network.target
 
 [Service]
 Type=simple
-User=root
-Group=root
-ExecStart=/usr/local/bin/tinytd
+ExecStart=/usr/local/bin/tinytd -c /etc/tinytrack/tinytrack.conf
 Restart=on-failure
 RestartSec=5s
 
@@ -21,14 +19,11 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/dev/shm /var/lib/tinytrack
+ReadWritePaths=/dev/shm /var/lib/tinytrack /var/run
 
 # Resource limits
 LimitNOFILE=1024
 LimitNPROC=64
-
-# Environment
-Environment="TINYTRACK_CONFIG=/etc/tinytrack.conf"
 
 [Install]
 WantedBy=multi-user.target
