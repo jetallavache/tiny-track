@@ -30,6 +30,7 @@ struct ttr_writer_config {
   size_t cell_size;
   mode_t file_mode;
   bool enable_crc;
+  bool auto_recover;
   ttr_aggregate_fn aggregate;
 };
 

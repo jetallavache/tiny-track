@@ -15,6 +15,7 @@ int ttd_writer_init(struct ttd_writer* ctx, struct ttd_config* cfg) {
       .cell_size = sizeof(struct tt_metrics),
       .file_mode = cfg->file_mode,
       .enable_crc = cfg->enable_crc,
+      .auto_recover = cfg->auto_recover,
       .aggregate = tt_metrics_aggregate,
   };
   int ret = ttr_writer_init(&ctx->ring, &ring_cfg);

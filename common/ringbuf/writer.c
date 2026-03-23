@@ -161,25 +161,22 @@ int ttr_writer_init(struct ttr_writer* ctx,
     return TTR_WRITER_ERR_SHADOW_CREATE;
   }
 
-  if (ttr_writer_recover_from_shadow(ctx))
-    goto done;
+  if (!cfg->auto_recover || !ttr_writer_recover_from_shadow(ctx)) {
+    struct ttr_header* hdr = (struct ttr_header*)ctx->live_addr;
+    hdr->magic = TTR_MAGIC;
+    hdr->version = TTR_VERSION;
+    hdr->writer_pid = getpid();
+    hdr->num_consumers = 0;
+    hdr->last_update_ts = hdr->last_shadow_sync_ts = get_timestamp_ms();
 
-  struct ttr_header* hdr = (struct ttr_header*)ctx->live_addr;
-  hdr->magic = TTR_MAGIC;
-  hdr->version = TTR_VERSION;
-  hdr->writer_pid = getpid();
-  hdr->num_consumers = 0;
-  hdr->last_update_ts = hdr->last_shadow_sync_ts = get_timestamp_ms();
+    init_meta(level_meta(ctx, 1), cfg->l1_capacity, cfg->cell_size);
+    init_meta(level_meta(ctx, 2), cfg->l2_capacity, cfg->cell_size);
+    init_meta(level_meta(ctx, 3), cfg->l3_capacity, cfg->cell_size);
 
-  init_meta(level_meta(ctx, 1), cfg->l1_capacity, cfg->cell_size);
-  init_meta(level_meta(ctx, 2), cfg->l2_capacity, cfg->cell_size);
-  init_meta(level_meta(ctx, 3), cfg->l3_capacity, cfg->cell_size);
-
-  msync(ctx->live_addr, ctx->total_size, MS_SYNC);
-  ctx->dirty_min = 0;
-  ctx->dirty_max = ctx->total_size;
-
-done:
+    msync(ctx->live_addr, ctx->total_size, MS_SYNC);
+    ctx->dirty_min = 0;
+    ctx->dirty_max = ctx->total_size;
+  }
   /* Hint kernel: L1 is accessed randomly (latest sample), L2/L3 sequentially */
   madvise(level_data(ctx, 1), cfg->l1_capacity * cfg->cell_size, MADV_RANDOM);
   madvise(level_data(ctx, 2), cfg->l2_capacity * cfg->cell_size,
