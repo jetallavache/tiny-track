@@ -24,6 +24,14 @@ install-data-hook:
 	fi
 	@install -d -m 750 -o tinytd -g tinytd $(DESTDIR)/var/lib/tinytrack
 	@echo "  tinytd user/group and /var/lib/tinytrack are ready."
+	@if getent group systemd-journal > /dev/null 2>&1; then \
+		SUDO_USER=$${SUDO_USER:-$(LOGNAME)}; \
+		if [ -n "$$SUDO_USER" ] && ! id -nG "$$SUDO_USER" | grep -qw systemd-journal; then \
+			echo "  Adding $$SUDO_USER to systemd-journal group..."; \
+			usermod -aG systemd-journal "$$SUDO_USER"; \
+			echo "  Re-login required for journal access to take effect."; \
+		fi \
+	fi
 
 # Post-uninstall: remove runtime files, data directory, user and group
 uninstall-hook:
