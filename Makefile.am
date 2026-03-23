@@ -12,6 +12,19 @@ dist_doc_DATA = README.md docs/INSTALL.md LICENSE
 man1_MANS = docs/man/tiny-cli.1
 man8_MANS = docs/man/tinytd.8
 
+# Post-install: create system user/group and data directory
+install-data-hook:
+	@if ! getent group tinytd > /dev/null 2>&1; then \
+		echo "  Creating system group: tinytd"; \
+		groupadd --system tinytd; \
+	fi
+	@if ! getent passwd tinytd > /dev/null 2>&1; then \
+		echo "  Creating system user: tinytd"; \
+		useradd --system --no-create-home --shell /usr/sbin/nologin --gid tinytd tinytd; \
+	fi
+	@install -d -m 750 -o tinytd -g tinytd $(DESTDIR)/var/lib/tinytrack
+	@echo "  tinytd user/group and /var/lib/tinytrack are ready."
+
 # Code formatting
 .PHONY: format format-check
 
