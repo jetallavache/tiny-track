@@ -47,20 +47,26 @@ Installation Paths
 Default installation (prefix=/usr/local):
 
 * Binaries:       /usr/local/bin/
-* Configuration:  /etc/tinytrack/
+* Configuration:  /etc/
 * Data:           /var/lib/tinytrack/
 
 Post-Installation
 -----------------
 
-Create data directory:
+Create system user and group (required for privilege dropping):
+
+    sudo groupadd --system tinytd
+    sudo useradd --system --no-create-home --shell /usr/sbin/nologin --gid tinytd tinytd
+
+Create data directory and set ownership:
 
     sudo mkdir -p /var/lib/tinytrack
-    sudo chmod 755 /var/lib/tinytrack
+    sudo chown tinytd:tinytd /var/lib/tinytrack
+    sudo chmod 750 /var/lib/tinytrack
 
 Install systemd service (optional):
 
-    sudo cp etc/systemd/tinytd.service /etc/systemd/system/
+    [sudo cp etc/systemd/tinytd.service /etc/systemd/system/]
     sudo systemctl daemon-reload
     sudo systemctl enable tinytd
     sudo systemctl start tinytd

@@ -3,7 +3,11 @@
 tinytd \- lightweight system metrics collection daemon
 .SH SYNOPSIS
 .B tinytd
-[\fIconfig-file\fR]
+[\fB\-d\fR]
+[\fB\-c\fR \fIconfig-file\fR]
+.br
+.B tinytd
+\fB\-h\fR
 .SH DESCRIPTION
 .B tinytd
 is a minimal system monitoring daemon designed for resource-constrained
@@ -16,10 +20,18 @@ Consumers such as
 and
 .BR tinytrack (8)
 read the ring buffer directly via mmap with zero-copy access.
-.SH ARGUMENTS
+.SH OPTIONS
 .TP
-.I config-file
-Path to the configuration file. Default: \fI/etc/tinytrack/tinytrack.conf\fR.
+.B \-d
+Run as a background daemon (double-fork). Without this flag the process
+runs in the foreground, which is useful for debugging.
+.TP
+.BI \-c " config-file"
+Path to the configuration file.
+Default: \fI/etc/tinytrack/tinytrack.conf\fR.
+.TP
+.B \-h
+Print a short usage summary and exit.
 .SH SIGNALS
 .TP
 .B SIGTERM
@@ -29,13 +41,7 @@ Graceful shutdown: flush buffers and exit.
 Same as SIGTERM.
 .TP
 .B SIGHUP
-Reload configuration.
-.TP
-.B SIGUSR1
-Rotate log files.
-.TP
-.B SIGUSR2
-Dump internal state to log.
+Ignored (reserved for future configuration reload).
 .SH RING BUFFER
 The daemon maintains three ring levels in a single mmap file:
 .TP
@@ -47,11 +53,12 @@ Medium-resolution ring. Default: 1440 samples at 1-minute intervals (24 hours).
 Populated by aggregating L1 samples.
 .TP
 .B L3
-Low-resolution ring. Default: 168 samples at 15-minute intervals (7 days).
+Low-resolution ring. Default: 168 samples at 1-hour intervals (7 days).
 Populated by aggregating L2 samples.
 .PP
 A shadow copy of the ring buffer is maintained for crash recovery.
-On restart, \fBtinytd\fR restores data from the shadow file if valid.
+On restart, \fBtinytd\fR restores data from the shadow file if valid
+and \fBauto_recover\fR is enabled in the configuration.
 .SH FILES
 .TP
 .I /etc/tinytrack/tinytrack.conf
@@ -60,11 +67,27 @@ Default configuration file.
 .I /dev/shm/tinytd-live.dat
 Live shared memory ring buffer (mmap).
 .TP
-.I /dev/shm/tinytd-shadow.dat
-Shadow copy for crash recovery.
+.I /var/lib/tinytrack/tinytd-shadow.dat
+Shadow copy for crash recovery. Must be writable by the \fBtinytd\fR user.
 .TP
-.I /tmp/tinytd.pid
-PID file.
+.I /var/run/tinytd.pid
+PID file written on startup, removed on clean shutdown.
+.SH SETUP
+Before running \fBtinytd\fR for the first time, create a dedicated system
+user and group, then set up the data directory:
+.PP
+.nf
+sudo groupadd --system tinytd
+sudo useradd --system --no-create-home \\
+    --shell /usr/sbin/nologin --gid tinytd tinytd
+sudo mkdir -p /var/lib/tinytrack
+sudo chown tinytd:tinytd /var/lib/tinytrack
+sudo chmod 750 /var/lib/tinytrack
+.fi
+.PP
+The daemon drops privileges to the user and group specified in the
+\fB[daemon]\fR section of the configuration file after initializing
+shared memory files.
 .SH SEE ALSO
 .BR tiny\-cli (1),
 .BR tinytrack (8)
