@@ -11,6 +11,7 @@ struct ttd_config {
   char user[32];
   char group[32];
   char pid_file[256];
+  enum tt_log_backend log_backend;
   enum tt_log_level log_level;
 
   /* Collection */
@@ -28,8 +29,8 @@ struct ttd_config {
   uint32_t l1_capacity;
   uint32_t l2_capacity;
   uint32_t l3_capacity;
-  uint32_t l2_aggregate_interval;
-  uint32_t l3_aggregate_interval;
+  uint32_t l2_agg_interval_sec;
+  uint32_t l3_agg_interval_sec;
 
   /* Recovery */
   bool enable_crc;
@@ -37,6 +38,5 @@ struct ttd_config {
 };
 
 int ttd_config_load(const char* path, struct ttd_config* cfg);
-void ttd_config_set_defaults(struct ttd_config* cfg);
 
 #endif /* TTD_CONFIG_H */
