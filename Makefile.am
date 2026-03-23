@@ -25,6 +25,25 @@ install-data-hook:
 	@install -d -m 750 -o tinytd -g tinytd $(DESTDIR)/var/lib/tinytrack
 	@echo "  tinytd user/group and /var/lib/tinytrack are ready."
 
+# Post-uninstall: remove runtime files, data directory, user and group
+uninstall-hook:
+	@echo "  Stopping tinytd if running..."
+	@-pkill -x tinytd 2>/dev/null; sleep 1
+	@echo "  Removing runtime and data files..."
+	@-rm -f /var/run/tinytd.pid
+	@-rm -f /dev/shm/tinytd-live.dat
+	@-rm -f /var/lib/tinytrack/tinytd-shadow.dat
+	@-rmdir /var/lib/tinytrack 2>/dev/null || true
+	@if getent passwd tinytd > /dev/null 2>&1; then \
+		echo "  Removing user: tinytd"; \
+		userdel tinytd; \
+	fi
+	@if getent group tinytd > /dev/null 2>&1; then \
+		echo "  Removing group: tinytd"; \
+		groupdel tinytd; \
+	fi
+	@echo "  Uninstall complete."
+
 # Code formatting
 .PHONY: format format-check
 
