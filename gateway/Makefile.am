@@ -2,6 +2,9 @@ bin_PROGRAMS = tinytrack
 
 tinytrack_SOURCES = \
 	src/main.c \
+	src/proto.c src/proto.h \
+	src/config.c src/config.h \
+	src/session.c src/session.h \
 	src/b64.c src/b64.h \
 	src/reader.c src/reader.h \
 	src/net.c src/net.h \

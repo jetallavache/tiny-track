@@ -3,6 +3,7 @@ bin_PROGRAMS = tiny-cli
 tiny_cli_SOURCES = \
 	src/main.c \
 	src/ctx.c src/ctx.h \
+	src/config.c src/config.h \
 	src/output.c src/output.h \
 	src/commands.c src/commands.h \
 	src/dashboard.c src/dashboard.h \
