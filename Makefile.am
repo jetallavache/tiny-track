@@ -24,13 +24,23 @@ install-data-hook:
 	fi
 	@install -d -m 750 -o tinytd -g tinytd $(DESTDIR)/var/lib/tinytrack
 	@echo "  tinytd user/group and /var/lib/tinytrack are ready."
-	@if getent group systemd-journal > /dev/null 2>&1; then \
-		SUDO_USER=$${SUDO_USER:-$(LOGNAME)}; \
-		if [ -n "$$SUDO_USER" ] && ! id -nG "$$SUDO_USER" | grep -qw systemd-journal; then \
-			echo "  Adding $$SUDO_USER to systemd-journal group..."; \
-			usermod -aG systemd-journal "$$SUDO_USER"; \
-			echo "  Re-login required for journal access to take effect."; \
-		fi \
+	@SUDO_USER=$${SUDO_USER:-$(LOGNAME)}; \
+	if [ -n "$$SUDO_USER" ] && [ "$$SUDO_USER" != "root" ]; then \
+		if getent group systemd-journal > /dev/null 2>&1; then \
+			if ! id -nG "$$SUDO_USER" | grep -qw systemd-journal; then \
+				echo "  Adding $$SUDO_USER to systemd-journal group..."; \
+				usermod -aG systemd-journal "$$SUDO_USER"; \
+			fi; \
+		fi; \
+		JOURNAL_DIR=$$(ls -d /run/log/journal/* 2>/dev/null | head -1); \
+		if [ -n "$$JOURNAL_DIR" ] && command -v setfacl > /dev/null 2>&1; then \
+			echo "  Granting $$SUDO_USER immediate journal read access via ACL..."; \
+			setfacl -m u:"$$SUDO_USER":rx /run/log/journal 2>/dev/null || true; \
+			setfacl -m u:"$$SUDO_USER":rx "$$JOURNAL_DIR" 2>/dev/null || true; \
+			echo "  Journal access granted (no re-login required)."; \
+		else \
+			echo "  Note: re-login required for systemd-journal group to take effect."; \
+		fi; \
 	fi
 
 # Post-uninstall: remove runtime files, data directory, user and group
@@ -49,6 +59,18 @@ uninstall-hook:
 	@if getent group tinytd > /dev/null 2>&1; then \
 		echo "  Removing group: tinytd"; \
 		groupdel tinytd; \
+	fi
+	@SUDO_USER=$${SUDO_USER:-$(LOGNAME)}; \
+	if [ -n "$$SUDO_USER" ] && [ "$$SUDO_USER" != "root" ]; then \
+		if id -nG "$$SUDO_USER" | grep -qw systemd-journal; then \
+			echo "  Removing $$SUDO_USER from systemd-journal group..."; \
+			gpasswd -d "$$SUDO_USER" systemd-journal 2>/dev/null || true; \
+		fi; \
+		if command -v setfacl > /dev/null 2>&1; then \
+			setfacl -x u:"$$SUDO_USER" /run/log/journal 2>/dev/null || true; \
+			JOURNAL_DIR=$$(ls -d /run/log/journal/* 2>/dev/null | head -1); \
+			[ -n "$$JOURNAL_DIR" ] && setfacl -x u:"$$SUDO_USER" "$$JOURNAL_DIR" 2>/dev/null || true; \
+		fi; \
 	fi
 	@echo "  Uninstall complete."
 

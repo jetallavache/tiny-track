@@ -62,6 +62,12 @@ AS_IF([test "x$with_systemdsystemunitdir" = "xyes" -o "x$with_systemdsystemunitd
 AC_SUBST([systemdsystemunitdir])
 AM_CONDITIONAL([HAVE_SYSTEMD], [test -n "$systemdsystemunitdir"])
 
+# Check for setfacl (acl package) - used for immediate journal access without re-login
+AC_PATH_PROG([SETFACL], [setfacl])
+AM_CONDITIONAL([HAVE_SETFACL], [test -n "$SETFACL"])
+AS_IF([test -z "$SETFACL"],
+    [AC_MSG_WARN([setfacl not found; install 'acl' package for immediate journal access after install])])
+
 # Optional features
 AC_ARG_ENABLE([debug],
     AS_HELP_STRING([--enable-debug], [Enable debug mode]),
@@ -95,4 +101,5 @@ echo "
   ldflags:     ${LDFLAGS}
 
   debug:       ${enable_debug}
+  setfacl:     ${SETFACL:-not found (re-login required for journal access)}
 "
