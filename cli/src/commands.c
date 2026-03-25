@@ -32,7 +32,9 @@ static int daemon_running(const struct ttc_ctx* ctx) {
   pid_t pid = read_pidfile(ctx->pid_file);
   if (pid <= 0)
     return 0;
-  return kill(pid, 0) == 0;
+  if (kill(pid, 0) == 0)
+    return 1;
+  return errno == EPERM; /* process exists but owned by another user */
 }
 
 static int open_reader(const struct ttc_ctx* ctx, struct ttc_reader* r) {

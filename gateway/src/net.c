@@ -153,11 +153,13 @@ void ttg_net_mgr_poll(struct ttg_mgr* mgr, int ms) {
       ttg_event_call(c, TTG_EVENT_READ, &n);
     }
 
+    /*
     tt_log_debug("%lu %c%c %c%c%c%c%c %lu", c->id, c->is_readable ? 'r' : '-',
                  c->is_writable ? 'w' : '-', c->is_tls ? 'T' : 't',
                  c->is_connecting ? 'C' : 'c', c->is_tls_hs ? 'H' : 'h',
                  c->is_resolving ? 'R' : 'r', c->is_closing ? 'C' : 'c',
-                 /* c->rtls.len */ 0);
+                 /* c->rtls.len  0);
+    */
 
     if (c->is_resolving || c->is_closing) {
       /* Do nothing */
