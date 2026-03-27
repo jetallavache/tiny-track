@@ -1,0 +1,51 @@
+@startuml
+title TinyTrack — tinytd Daemon Internals
+
+skinparam backgroundColor #FAFAFA
+skinparam component {
+  BackgroundColor #E8F4FD
+  BorderColor #2980B9
+}
+skinparam arrow {
+  Color #555555
+}
+
+component "main.c" as main {
+  component "daemonize()\nprivilege drop\nPID file" as init
+}
+
+component "ttd_runtime\n(epoll loop)" as rt {
+  component "timerfd\n(interval_ms)" as tfd
+}
+
+component "ttd_collector_state" as col {
+  component "CPU stat\n(/proc/stat)" as cpu
+  component "Memory\n(/proc/meminfo)" as mem
+  component "Network\n(/proc/net/dev)" as net
+  component "Disk\n(statvfs)" as disk
+  component "Load avg\n(/proc/loadavg)" as load
+}
+
+component "ttd_writer" as writer {
+  component "ttr_writer\n(ring buffer)" as ring
+  component "shadow_sync\n(dirty range + CRC)" as shadow
+}
+
+database "/dev/shm/\ntinytd-live.dat" as shm
+database "shadow file\n(persistent)" as shadowfile
+
+main --> rt : ttd_runtime_init()
+tfd --> rt : EPOLLIN tick
+rt --> col : collect all metrics → tt_metrics
+rt --> writer : ttd_writer_push()
+writer --> ring : ttr_writer_write_l1()
+ring --> shm : mmap write
+ring --> shadow : incremental dirty sync
+shadow --> shadowfile : write (Adler32 CRC)
+
+note bottom of col
+  On startup: auto_recover reads
+  shadow file back into shm
+end note
+
+@enduml

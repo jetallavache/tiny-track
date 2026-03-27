@@ -1,0 +1,99 @@
+@startuml
+title TinyTrack — Wire Protocol Frame Structure
+
+skinparam backgroundColor #FAFAFA
+skinparam class {
+  BackgroundColor #E8F4FD
+  BorderColor #2980B9
+}
+skinparam note {
+  BackgroundColor #FEF9E7
+  BorderColor #F39C12
+}
+
+class "tt_proto_header\n(10 bytes, every frame)" as hdr {
+  magic:     uint8  = 0xAA
+  version:   uint8  = 0x01 | 0x02
+  type:      uint8  = PKT_*
+  length:    uint16 (network order)
+  timestamp: uint32 (Unix seconds)
+  checksum:  uint8  (XOR of header bytes)
+}
+
+class "PKT_METRICS (0x01)\npayload: tt_metrics (52 bytes)" as pkt_metrics {
+  cpu_usage: float
+  mem_used / mem_total: uint64
+  net_rx / net_tx: uint64
+  disk_used / disk_total: uint64
+  load_1 / load_5 / load_15: float
+  timestamp: uint64
+}
+
+class "PKT_CONFIG (0x02)\npayload: 5 bytes" as pkt_config {
+  interval_ms:    uint32
+  alerts_enabled: uint8
+}
+
+class "PKT_ALERT (0x03)\npayload: 129 bytes" as pkt_alert {
+  level:   uint8  (INFO/WARNING/CRITICAL)
+  message: char[128]
+}
+
+class "PKT_CMD (0x04)\npayload: 9 bytes" as pkt_cmd {
+  cmd_type: uint8  (SET_INTERVAL / SET_ALERTS / GET_SNAPSHOT)
+  arg:      union[8 bytes]
+}
+
+class "PKT_ACK (0x05)\npayload: 2 bytes" as pkt_ack {
+  cmd_type: uint8
+  status:   uint8  (ACK_OK / ACK_ERROR)
+}
+
+class "PKT_HISTORY_REQ (0x10) v2\npayload: 18 bytes" as pkt_hreq {
+  level:     uint8  (L1/L2/L3)
+  from_ts:   uint64
+  to_ts:     uint64
+  max_count: uint16
+}
+
+class "PKT_HISTORY_RESP (0x11) v2\npayload: 4 + N*52 bytes" as pkt_hresp {
+  level:  uint8
+  count:  uint16
+  flags:  uint8  (HISTORY_FLAG_LAST)
+  samples: tt_metrics[count]
+}
+
+class "PKT_SUBSCRIBE (0x12) v2\npayload: 6 bytes" as pkt_sub {
+  level:       uint8
+  interval_ms: uint32
+  _reserved:   uint8
+}
+
+class "PKT_STATS (0x13) v2\npayload: 75 bytes" as pkt_stats {
+  l1: tt_proto_ring_stat (25 bytes)
+  l2: tt_proto_ring_stat (25 bytes)
+  l3: tt_proto_ring_stat (25 bytes)
+}
+
+hdr <.. pkt_metrics : payload
+hdr <.. pkt_config  : payload
+hdr <.. pkt_alert   : payload
+hdr <.. pkt_cmd     : payload
+hdr <.. pkt_ack     : payload
+hdr <.. pkt_hreq    : payload
+hdr <.. pkt_hresp   : payload
+hdr <.. pkt_sub     : payload
+hdr <.. pkt_stats   : payload
+
+note right of hdr
+  Server → Client:
+    PKT_METRICS, PKT_CONFIG,
+    PKT_ALERT, PKT_ACK,
+    PKT_HISTORY_RESP, PKT_STATS
+
+  Client → Server:
+    PKT_CMD, PKT_HISTORY_REQ,
+    PKT_SUBSCRIBE
+end note
+
+@enduml

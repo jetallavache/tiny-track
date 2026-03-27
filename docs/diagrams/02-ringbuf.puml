@@ -1,0 +1,60 @@
+@startuml
+title TinyTrack — Ring Buffer Layout (Shared Memory)
+
+skinparam backgroundColor #FAFAFA
+skinparam class {
+  BackgroundColor #E8F4FD
+  BorderColor #2980B9
+}
+
+class "ttr_header\n(shm root)" as header {
+  magic: uint32
+  version: uint32
+  shm_size: uint64
+  l1_offset / l2_offset / l3_offset
+  l1_meta_offset / l2_meta_offset / l3_meta_offset
+}
+
+class "ttr_meta\n(per level)" as meta {
+  capacity: uint32
+  head: uint32
+  count: uint32
+  interval_ms: uint32
+  first_ts / last_ts: uint64
+  seqlock: atomic
+}
+
+class "ttr_writer" as writer {
+  shm_fd: int
+  base: void*
+  cfg: ttr_writer_config
+  dirty_lo / dirty_hi
+  ---
+  ttr_writer_write_l1()
+  ttr_writer_shadow_sync()
+  ttr_writer_cleanup()
+}
+
+class "ttr_reader" as reader {
+  base: void*
+  size: size_t
+  ---
+  ttr_reader_open()
+  ttr_reader_get_latest()
+  ttr_reader_get_history()
+  ttr_reader_close()
+}
+
+note right of header
+  L1: 3600 samples @ 1s  (1h)
+  L2:  1440 samples @ 1m  (24h)
+  L3:   672 samples @ 15m (7d)
+end note
+
+header "1" *-- "3" meta : contains
+writer --> header : writes via mmap
+reader --> header : reads via mmap
+meta --> writer : dirty range tracking
+meta --> reader : seqlock read
+
+@enduml
