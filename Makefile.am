@@ -1,7 +1,7 @@
 SUBDIRS = common tinytd cli gateway tests etc
 
 EXTRA_DIST = README.md docs/INSTALL.md LICENSE \
-             docs/man/tiny-cli.1 docs/man/tinytd.8 \
+             docs/man/tiny-cli.1 docs/man/tinytd.8 docs/man/tinytrack.8 \
              scripts/completion/tiny-cli.bash \
              scripts/completion/tiny-cli.zsh \
              scripts/install-extras.sh
@@ -10,7 +10,7 @@ dist_doc_DATA = README.md docs/INSTALL.md LICENSE
 
 # Man pages
 man1_MANS = docs/man/tiny-cli.1
-man8_MANS = docs/man/tinytd.8
+man8_MANS = docs/man/tinytd.8 docs/man/tinytrack.8
 
 # Post-install: create system user/group and data directory
 install-data-hook:

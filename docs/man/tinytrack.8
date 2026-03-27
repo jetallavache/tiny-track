@@ -1,0 +1,122 @@
+.TH TINYTRACK 8 "2026-03-27" "TinyTrack 0.1.2" "TinyTrack Manual"
+.SH NAME
+tinytrack \- HTTP/WebSocket gateway for TinyTrack metrics
+.SH SYNOPSIS
+.B tinytrack
+[\fB\-d\fR]
+[\fB\-c\fR \fIconfig-file\fR]
+[\fB\-p\fR \fIport\fR]
+[\fB\-l\fR \fIws://host:port\fR]
+[\fB\-s\fR \fIshm-path\fR]
+.br
+.B tinytrack
+\fB\-h\fR
+.SH DESCRIPTION
+.B tinytrack
+is the HTTP/WebSocket gateway for the TinyTrack monitoring system.
+It reads metrics from the shared memory ring buffer written by
+.BR tinytd (8)
+and pushes them to connected WebSocket clients using a compact binary
+protocol (v1/v2).
+.PP
+Clients can subscribe to live metric streams, request historical data
+from any ring level (L1/L2/L3), and send control commands.
+.SH OPTIONS
+.TP
+.B \-d
+Run as a background daemon (double-fork). Without this flag the process
+runs in the foreground, which is useful for debugging.
+.TP
+.BI \-c " config-file"
+Path to the configuration file.
+Default: \fI/etc/tinytrack/tinytrack.conf\fR.
+.TP
+.BI \-p " port"
+Listen port. Shorthand for \fB\-l ws://0.0.0.0:\fIport\fR.
+.TP
+.BI \-l " ws://host:port"
+Full listen address. Overrides \fBgateway.listen\fR in the config file.
+.TP
+.BI \-s " shm-path"
+Path to the tinytd live mmap file. Overrides \fBstorage.live_path\fR
+in the config file.
+.TP
+.B \-h
+Print a short usage summary and exit.
+.SH SIGNALS
+.TP
+.B SIGTERM
+Graceful shutdown: close all connections and exit.
+.TP
+.B SIGINT
+Same as SIGTERM.
+.SH PROTOCOL
+The gateway speaks a binary framing protocol over WebSocket.
+Every frame starts with a 10-byte header (magic, version, type, length,
+timestamp, checksum) followed by a type-specific payload.
+.PP
+.B Protocol v1 packet types:
+.TP
+.B PKT_METRICS (0x01)
+Live metrics snapshot pushed to clients at the configured interval.
+.TP
+.B PKT_CONFIG (0x02)
+Daemon configuration sent once on connect and on config change.
+.TP
+.B PKT_ALERT (0x03)
+Threshold alert notification.
+.TP
+.B PKT_CMD (0x04)
+Command from client: set interval, toggle alerts, or request a snapshot.
+.TP
+.B PKT_ACK (0x05)
+Server acknowledgement for a received command.
+.PP
+.B Protocol v2 additions:
+.TP
+.B PKT_HISTORY_REQ (0x10)
+Client requests historical samples from a ring level (L1/L2/L3)
+with an optional time range and sample count limit.
+.TP
+.B PKT_HISTORY_RESP (0x11)
+Server response carrying a batch of up to 60 samples.
+The last frame in a batch has the \fBHISTORY_FLAG_LAST\fR flag set.
+.TP
+.B PKT_SUBSCRIBE (0x12)
+Client subscribes to a specific ring level at a given push interval.
+.TP
+.B PKT_STATS (0x13)
+Ring buffer statistics (capacity, fill level, timestamps) for all three levels.
+.SH FILES
+.TP
+.I /etc/tinytrack/tinytrack.conf
+Default configuration file.
+.TP
+.I /dev/shm/tinytd-live.dat
+Live shared memory ring buffer written by \fBtinytd\fR (read-only for tinytrack).
+.TP
+.I /var/run/tinytrack.pid
+PID file written on startup, removed on clean shutdown.
+.SH SETUP
+Before running \fBtinytrack\fR for the first time, create a dedicated system
+user and group:
+.PP
+.nf
+sudo groupadd --system tinytrack
+sudo useradd --system --no-create-home \\
+    --shell /usr/sbin/nologin --gid tinytrack tinytrack
+.fi
+.PP
+The gateway drops privileges to the user and group specified in the
+\fB[gateway]\fR section of the configuration file after opening the
+shared memory file.
+.PP
+\fBtinytrack\fR requires \fBtinytd\fR to be running and the shared memory
+file to exist before it can start.
+.SH SEE ALSO
+.BR tinytd (8),
+.BR tiny\-cli (1)
+.SH BUGS
+Report bugs to <bugs@example.com>.
+.SH COPYRIGHT
+Copyright \(co 2026 TinyTrack Project. MIT License.
