@@ -47,8 +47,10 @@ install-data-hook:
 uninstall-hook:
 	@echo "  Stopping tinytd if running..."
 	@-pkill -x tinytd 2>/dev/null; sleep 1
+	@-pkill -x tinytrack 2>/dev/null; sleep 1
 	@echo "  Removing runtime and data files..."
 	@-rm -f /var/run/tinytd.pid
+	@-rm -f /var/run/tinytrack.pid
 	@-rm -f /dev/shm/tinytd-live.dat
 	@-rm -f /var/lib/tinytrack/tinytd-shadow.dat
 	@-rmdir /var/lib/tinytrack 2>/dev/null || true
