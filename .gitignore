@@ -34,3 +34,22 @@ gateway/tinytrack
 # Distribution
 tinytrack-*.tar.gz
 tinytrack-*/
+
+# Debug
+*-debug
+
+# Coverage
+coverage-report/
+*.gcda
+*.gcno
+*.gcov
+
+# Valgrind reports
+valgrind-*.log
+
+# Test runtime files
+/tmp/tinytd-test-live.dat
+/tmp/tinytd-test-shadow.dat
+
+# Node.js
+node_modules/
