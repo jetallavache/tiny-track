@@ -93,7 +93,7 @@ uninstall-hook:
 	@echo "  Uninstall complete."
 
 # Code formatting
-.PHONY: format format-check
+.PHONY: format format-check valgrind coverage coverage-clean
 
 format:
 	@echo "Formatting code with clang-format..."
@@ -102,3 +102,46 @@ format:
 format-check:
 	@echo "Checking code formatting..."
 	@find common tinytd cli gateway -name '*.c' -o -name '*.h' | xargs clang-format --dry-run --Werror
+
+# Valgrind memory check — runs tinytd for 5s with test config
+valgrind:
+	@command -v valgrind >/dev/null 2>&1 || { echo "valgrind not found"; exit 1; }
+	@echo "Running valgrind on tinytd..."
+	valgrind \
+	  --tool=memcheck \
+	  --leak-check=full \
+	  --show-leak-kinds=all \
+	  --track-origins=yes \
+	  --error-exitcode=1 \
+	  --log-file=valgrind-tinytd.log \
+	  ./tinytd/tinytd -c tests/tinytd-test.conf &
+	@sleep 5; kill %1 2>/dev/null; wait 2>/dev/null; true
+	@echo "Valgrind report: valgrind-tinytd.log"
+	@grep -E "ERROR SUMMARY|definitely lost|indirectly lost" valgrind-tinytd.log
+
+# Coverage — requires ./configure --enable-coverage
+COVERAGE_DIR = coverage-report
+
+coverage:
+	@test -f common/ringbuf/libcommon_a-writer.gcno || \
+	  { echo "Rebuild with: ./configure --enable-coverage && make"; exit 1; }
+	@echo "Running tests for coverage data..."
+	@cd tests && $(MAKE) check 2>/dev/null || true
+	@echo "Collecting coverage..."
+	@mkdir -p $(COVERAGE_DIR)
+	@if test "x$(LCOV)" != "xno" && command -v lcov >/dev/null 2>&1; then \
+	  lcov --capture --directory . --output-file $(COVERAGE_DIR)/coverage.info \
+	       --exclude '*/tests/*' --exclude '/usr/*' --quiet; \
+	  lcov --list $(COVERAGE_DIR)/coverage.info; \
+	  command -v genhtml >/dev/null 2>&1 && \
+	    genhtml $(COVERAGE_DIR)/coverage.info --output-directory $(COVERAGE_DIR)/html --quiet && \
+	    echo "HTML report: $(COVERAGE_DIR)/html/index.html"; \
+	else \
+	  find . -name '*.gcda' | while read f; do \
+	    echo "--- $$f ---"; $(GCOV) -b "$$f" 2>/dev/null | grep -E "Lines|Branches"; \
+	  done; \
+	fi
+
+coverage-clean:
+	find . -name '*.gcda' -o -name '*.gcno' | xargs rm -f 2>/dev/null; true
+	rm -rf $(COVERAGE_DIR)

@@ -79,6 +79,23 @@ if test "x$enable_debug" = "xyes"; then
     CFLAGS="$CFLAGS -g"
 fi
 
+# Coverage
+AC_ARG_ENABLE([coverage],
+    AS_HELP_STRING([--enable-coverage], [Enable gcov code coverage]),
+    [enable_coverage=$enableval], [enable_coverage=no])
+
+if test "x$enable_coverage" = "xyes"; then
+    AC_CHECK_PROG([GCOV], [gcov], [gcov], [no])
+    AC_CHECK_PROG([LCOV], [lcov], [lcov], [no])
+    if test "x$GCOV" = "xno"; then
+        AC_MSG_ERROR([gcov not found, required for --enable-coverage])
+    fi
+    CFLAGS="$CFLAGS -g -O0 --coverage"
+    LDFLAGS="$LDFLAGS --coverage"
+fi
+AC_SUBST([GCOV])
+AC_SUBST([LCOV])
+
 # Output files
 AC_CONFIG_FILES([
     Makefile
@@ -101,5 +118,6 @@ echo "
   ldflags:     ${LDFLAGS}
 
   debug:       ${enable_debug}
+  coverage:    ${enable_coverage}
   setfacl:     ${SETFACL:-not found (re-login required for journal access)}
 "
