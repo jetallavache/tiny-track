@@ -184,7 +184,7 @@ function concat(...bufs) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Dispatch parsed frame to handler                                     */
+/* Dispatch parsed frame to handler                                   */
 /* ------------------------------------------------------------------ */
 
 function dispatchFrame(frame, handlers) {
