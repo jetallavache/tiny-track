@@ -1,8 +1,18 @@
 #ifndef TTG_CONFIG_H
 #define TTG_CONFIG_H
 
+#include "common/log.h"
+
 /* Gateway runtime configuration */
 struct ttg_config {
+  /* Daemon */
+  char user[32];
+  char group[32];
+  char pid_file[256];
+  enum tt_log_backend log_backend;
+  enum tt_log_level log_level;
+
+  /* Gateway */
   char listen[128];        /* ws://HOST:PORT               */
   char shm_path[256];      /* Path to live mmap file       */
   int  update_interval_ms; /* Default push interval, ms    */
