@@ -1,5 +1,33 @@
 bin_PROGRAMS = tinytrack
 
+# Gateway integration tests
+GATEWAY_TEST_PORT = 4028
+GATEWAY_TEST_CONF = $(top_srcdir)/tests/tinytd-test.conf
+
+.PHONY: check-gateway check-gateway-extended
+
+check-gateway: tinytrack
+	@command -v node >/dev/null 2>&1 || { echo "node not found"; exit 1; }
+	@cd $(abs_top_srcdir)/gateway/tests; \
+	  $(abs_top_builddir)/tinytd/tinytd -c $(abs_top_srcdir)/tests/tinytd-test.conf 2>/dev/null & TDPID=$$!; \
+	  sleep 2; \
+	  $(abs_top_builddir)/gateway/tinytrack -c $(abs_top_srcdir)/tests/tinytd-test.conf -p $(GATEWAY_TEST_PORT) 2>/dev/null & GWPID=$$!; \
+	  sleep 1; \
+	  node test_gateway.js ws://127.0.0.1:$(GATEWAY_TEST_PORT)/websocket; STATUS=$$?; \
+	  kill $$GWPID $$TDPID 2>/dev/null; wait $$GWPID $$TDPID 2>/dev/null; \
+	  exit $$STATUS
+
+check-gateway-extended: tinytrack
+	@command -v node >/dev/null 2>&1 || { echo "node not found"; exit 1; }
+	@cd $(abs_top_srcdir)/gateway/tests; \
+	  $(abs_top_builddir)/tinytd/tinytd -c $(abs_top_srcdir)/tests/tinytd-test.conf 2>/dev/null & TDPID=$$!; \
+	  sleep 2; \
+	  $(abs_top_builddir)/gateway/tinytrack -c $(abs_top_srcdir)/tests/tinytd-test.conf -p $(GATEWAY_TEST_PORT) 2>/dev/null & GWPID=$$!; \
+	  sleep 1; \
+	  node test_gateway_extended.js ws://127.0.0.1:$(GATEWAY_TEST_PORT)/websocket; STATUS=$$?; \
+	  kill $$GWPID $$TDPID 2>/dev/null; wait $$GWPID $$TDPID 2>/dev/null; \
+	  exit $$STATUS
+
 tinytrack_SOURCES = \
 	src/main.c \
 	src/proto.c src/proto.h \
