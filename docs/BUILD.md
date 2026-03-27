@@ -54,6 +54,44 @@ make uninstall          Remove from system
 make dist               Create release tarball
 make distcheck          Verify release tarball
 
+Developer Targets
+-----------------
+
+Code formatting (requires clang-format):
+
+    make format             Format all C sources in-place
+    make format-check       Check formatting without modifying files
+
+Gateway integration tests (requires node + built binaries):
+
+    make check-gateway              Run basic WebSocket protocol tests
+    make check-gateway-extended     Run extended integration tests (9 suites)
+
+    # Custom port:
+    make check-gateway-extended GATEWAY_TEST_PORT=4099
+
+Valgrind memory checks (requires valgrind + built binaries):
+
+    make valgrind-tinytd    Run tinytd for 5s, report leaks and errors
+    make valgrind-cli       Run tiny-cli status under valgrind
+    make valgrind-gateway   Run tinytrack under valgrind with a live WS client
+
+    Reports are written to valgrind-tinytd.log, valgrind-tiny-cli.log,
+    valgrind-tinytrack.log in the project root.
+
+Coverage (requires ./configure --enable-coverage):
+
+    ./configure --enable-coverage
+    make
+    make coverage           Collect and display coverage data
+    make coverage-clean     Remove .gcda/.gcno files and coverage-report/
+
+Cleaning:
+
+    scripts/clean.sh        Full clean: distclean + autotools files +
+                            coverage artifacts + valgrind logs +
+                            test runtime files (/tmp/tinytd-test-*.dat)
+
 Installation Layout
 -------------------
 
