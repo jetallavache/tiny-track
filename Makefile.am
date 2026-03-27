@@ -131,7 +131,7 @@ coverage:
 	@mkdir -p $(COVERAGE_DIR)
 	@if command -v lcov >/dev/null 2>&1; then \
 	  lcov --capture --directory . --output-file $(COVERAGE_DIR)/coverage.info \
-	       --exclude '*/tests/*' --exclude '/usr/*' --quiet && \
+	       --exclude '/usr/*' --ignore-errors unused --quiet && \
 	  lcov --list $(COVERAGE_DIR)/coverage.info && \
 	  { command -v genhtml >/dev/null 2>&1 && \
 	    genhtml $(COVERAGE_DIR)/coverage.info --output-directory $(COVERAGE_DIR)/html --quiet && \
