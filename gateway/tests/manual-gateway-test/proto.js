@@ -245,3 +245,8 @@ function dispatchFrame(frame, handlers) {
       console.warn('Unknown packet type:', type.toString(16));
   }
 }
+
+/* Node.js module export */
+if (typeof module !== 'undefined')
+  module.exports = { PROTO, parseFrame, parseMetrics, buildCmd,
+                     buildSubscribe, buildHistoryReq, dispatchFrame };
