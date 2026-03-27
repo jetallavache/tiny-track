@@ -93,7 +93,14 @@ uninstall-hook:
 	@echo "  Uninstall complete."
 
 # Code formatting
-.PHONY: format format-check valgrind coverage coverage-clean
+.PHONY: format format-check valgrind-tinytd valgrind-cli valgrind-gateway coverage coverage-clean \
+        check-gateway check-gateway-extended
+
+check-gateway:
+	$(MAKE) -C gateway check-gateway
+
+check-gateway-extended:
+	$(MAKE) -C gateway check-gateway-extended
 
 format:
 	@echo "Formatting code with clang-format..."
@@ -104,7 +111,7 @@ format-check:
 	@find common tinytd cli gateway -name '*.c' -o -name '*.h' | xargs clang-format --dry-run --Werror
 
 # Valgrind memory check — runs tinytd for 5s with test config
-valgrind:
+valgrind-tinytd:
 	@command -v valgrind >/dev/null 2>&1 || { echo "valgrind not found"; exit 1; }
 	@test -f tinytd/tinytd || { echo "Run 'make' first"; exit 1; }
 	@echo "Running valgrind on tinytd (5s)..."
@@ -118,6 +125,55 @@ valgrind:
 	  timeout 5 tinytd/tinytd -c tests/tinytd-test.conf; true
 	@echo "Valgrind report: valgrind-tinytd.log"
 	@grep -E "ERROR SUMMARY|definitely lost|indirectly lost|possibly lost" valgrind-tinytd.log
+
+# Valgrind memory check — runs tiny-cli status against live tinytd
+valgrind-cli:
+	@command -v valgrind >/dev/null 2>&1 || { echo "valgrind not found"; exit 1; }
+	@test -f cli/tiny-cli || { echo "Run 'make' first"; exit 1; }
+	@test -f tinytd/tinytd || { echo "Run 'make' first"; exit 1; }
+	@echo "Starting tinytd..."
+	@tinytd/tinytd -c tests/tinytd-test.conf 2>/dev/null & TDPID=$$!; \
+	  i=0; while [ $$i -lt 20 ] && [ ! -f /tmp/tinytd-test-live.dat ]; do sleep 0.5; i=$$((i+1)); done; \
+	  echo "Running valgrind on tiny-cli..."; \
+	  valgrind \
+	    --tool=memcheck \
+	    --leak-check=full \
+	    --show-leak-kinds=all \
+	    --track-origins=yes \
+	    --error-exitcode=42 \
+	    --log-file=valgrind-tiny-cli.log \
+	    cli/tiny-cli -p /tmp/tinytd-test-live.dat -c tests/tinytd-test.conf status; STATUS=$$?; \
+	  kill $$TDPID 2>/dev/null; wait $$TDPID 2>/dev/null; \
+	  echo "Valgrind report: valgrind-tiny-cli.log"; \
+	  grep -E "ERROR SUMMARY|definitely lost|indirectly lost|possibly lost" valgrind-tiny-cli.log; \
+	  [ $$STATUS -eq 42 ] && exit 1 || exit 0
+
+# Valgrind memory check — runs tinytrack gateway for 5s with a WS client
+valgrind-gateway:
+	@command -v valgrind >/dev/null 2>&1 || { echo "valgrind not found"; exit 1; }
+	@test -f gateway/tinytrack || { echo "Run 'make' first"; exit 1; }
+	@test -f tinytd/tinytd || { echo "Run 'make' first"; exit 1; }
+	@command -v node >/dev/null 2>&1 || { echo "node not found"; exit 1; }
+	@echo "Starting tinytd..."
+	@tinytd/tinytd -c tests/tinytd-test.conf 2>/dev/null & TDPID=$$!; \
+	  i=0; while [ $$i -lt 20 ] && [ ! -f /tmp/tinytd-test-live.dat ]; do sleep 0.5; i=$$((i+1)); done; \
+	  echo "Running valgrind on tinytrack (gateway)..."; \
+	  valgrind \
+	    --tool=memcheck \
+	    --leak-check=full \
+	    --show-leak-kinds=all \
+	    --track-origins=yes \
+	    --error-exitcode=42 \
+	    --log-file=valgrind-tinytrack.log \
+	    gateway/tinytrack -c tests/tinytd-test.conf -p 4037 2>/dev/null & GWPID=$$!; \
+	  sleep 2; \
+	  cd gateway/tests; node test_gateway.js ws://127.0.0.1:4037/websocket; cd ../..; \
+	  sleep 1; \
+	  kill $$GWPID 2>/dev/null; wait $$GWPID 2>/dev/null; STATUS=$$?; \
+	  kill $$TDPID 2>/dev/null; wait $$TDPID 2>/dev/null; \
+	  echo "Valgrind report: valgrind-tinytrack.log"; \
+	  grep -E "ERROR SUMMARY|definitely lost|indirectly lost|possibly lost" valgrind-tinytrack.log; \
+	  [ $$STATUS -eq 42 ] && exit 1 || exit 0
 
 # Coverage — requires ./configure --enable-coverage && make
 COVERAGE_DIR = coverage-report
