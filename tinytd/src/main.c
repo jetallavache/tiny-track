@@ -22,17 +22,22 @@ static void signal_handler(int sig) {
 
 static void daemonize(void) {
   pid_t pid = fork();
-  if (pid < 0) exit(EXIT_FAILURE);
-  if (pid > 0) exit(EXIT_SUCCESS);
+  if (pid < 0)
+    exit(EXIT_FAILURE);
+  if (pid > 0)
+    exit(EXIT_SUCCESS);
 
-  if (setsid() < 0) exit(EXIT_FAILURE);
+  if (setsid() < 0)
+    exit(EXIT_FAILURE);
 
   signal(SIGCHLD, SIG_IGN);
   signal(SIGHUP, SIG_IGN);
 
   pid = fork();
-  if (pid < 0) exit(EXIT_FAILURE);
-  if (pid > 0) exit(EXIT_SUCCESS);
+  if (pid < 0)
+    exit(EXIT_FAILURE);
+  if (pid > 0)
+    exit(EXIT_SUCCESS);
 
   umask(0);
   chdir("/");
@@ -43,7 +48,8 @@ static void daemonize(void) {
 
 static int write_pid_file(const char* path) {
   FILE* f = fopen(path, "w");
-  if (!f) return -1;
+  if (!f)
+    return -1;
   fprintf(f, "%d\n", getpid());
   fclose(f);
   return 0;
@@ -51,12 +57,24 @@ static int write_pid_file(const char* path) {
 
 static int drop_privileges(const char* user, const char* group) {
   struct group* gr = getgrnam(group);
-  if (!gr) { tt_log_err("Unknown group: %s", group); return -1; }
-  if (setgid(gr->gr_gid) < 0) { tt_log_err("setgid failed"); return -1; }
+  if (!gr) {
+    tt_log_err("Unknown group: %s", group);
+    return -1;
+  }
+  if (setgid(gr->gr_gid) < 0) {
+    tt_log_err("setgid failed");
+    return -1;
+  }
 
   struct passwd* pw = getpwnam(user);
-  if (!pw) { tt_log_err("Unknown user: %s", user); return -1; }
-  if (setuid(pw->pw_uid) < 0) { tt_log_err("setuid failed"); return -1; }
+  if (!pw) {
+    tt_log_err("Unknown user: %s", user);
+    return -1;
+  }
+  if (setuid(pw->pw_uid) < 0) {
+    tt_log_err("setuid failed");
+    return -1;
+  }
 
   return 0;
 }
@@ -67,11 +85,12 @@ static void cleanup(struct ttd_runtime* rt, struct ttd_collector_state* cst,
   ttd_runtime_free(rt);
   ttd_collector_cleanup();
   ttd_writer_cleanup(writer);
-  if (pid_file) unlink(pid_file);
+  if (pid_file)
+    unlink(pid_file);
 }
 
 int main(int argc, char** argv) {
-  struct ttd_config cfg;
+  struct ttd_config cfg = {0};
   struct ttd_writer writer = {0};
   struct ttd_collector_state cst = {0};
   struct ttd_runtime rt = {0};
@@ -81,17 +100,22 @@ int main(int argc, char** argv) {
   int opt;
   while ((opt = getopt(argc, argv, "dc:h")) != -1) {
     switch (opt) {
-      case 'd': do_daemonize = 1; break;
-      case 'c': config_path = optarg; break;
+      case 'd':
+        do_daemonize = 1;
+        break;
+      case 'c':
+        config_path = optarg;
+        break;
       case 'h':
-        printf("Usage: tinytd [-d] [-c config-file]\n\n"
-               "Options:\n"
-               "  -d             Run as daemon (background)\n"
-               "  -c config-file Path to configuration file\n"
-               "                 Default: /etc/tinytrack/tinytrack.conf\n"
-               "  -h             Show this help and exit\n\n"
-               "Signals:\n"
-               "  SIGTERM/SIGINT  Graceful shutdown\n");
+        printf(
+            "Usage: tinytd [-d] [-c config-file]\n\n"
+            "Options:\n"
+            "  -d             Run as daemon (background)\n"
+            "  -c config-file Path to configuration file\n"
+            "                 Default: /etc/tinytrack/tinytrack.conf\n"
+            "  -h             Show this help and exit\n\n"
+            "Signals:\n"
+            "  SIGTERM/SIGINT  Graceful shutdown\n");
         return 0;
       default:
         fprintf(stderr, "Try 'tinytd -h' for usage.\n");

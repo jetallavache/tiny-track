@@ -106,39 +106,41 @@ format-check:
 # Valgrind memory check — runs tinytd for 5s with test config
 valgrind:
 	@command -v valgrind >/dev/null 2>&1 || { echo "valgrind not found"; exit 1; }
-	@echo "Running valgrind on tinytd..."
-	valgrind \
+	@test -f tinytd/tinytd || { echo "Run 'make' first"; exit 1; }
+	@echo "Running valgrind on tinytd (5s)..."
+	@valgrind \
 	  --tool=memcheck \
 	  --leak-check=full \
 	  --show-leak-kinds=all \
 	  --track-origins=yes \
 	  --error-exitcode=1 \
 	  --log-file=valgrind-tinytd.log \
-	  ./tinytd/tinytd -c tests/tinytd-test.conf &
-	@sleep 5; kill %1 2>/dev/null; wait 2>/dev/null; true
+	  timeout 5 tinytd/tinytd -c tests/tinytd-test.conf; true
 	@echo "Valgrind report: valgrind-tinytd.log"
-	@grep -E "ERROR SUMMARY|definitely lost|indirectly lost" valgrind-tinytd.log
+	@grep -E "ERROR SUMMARY|definitely lost|indirectly lost|possibly lost" valgrind-tinytd.log
 
-# Coverage — requires ./configure --enable-coverage
+# Coverage — requires ./configure --enable-coverage && make
 COVERAGE_DIR = coverage-report
 
 coverage:
 	@test -f common/ringbuf/libcommon_a-writer.gcno || \
 	  { echo "Rebuild with: ./configure --enable-coverage && make"; exit 1; }
-	@echo "Running tests for coverage data..."
-	@cd tests && $(MAKE) check 2>/dev/null || true
+	@echo "Running tinytd for coverage data (5s)..."
+	@timeout 5 tinytd/tinytd -c tests/tinytd-test.conf 2>/dev/null; true
 	@echo "Collecting coverage..."
 	@mkdir -p $(COVERAGE_DIR)
-	@if test "x$(LCOV)" != "xno" && command -v lcov >/dev/null 2>&1; then \
+	@if command -v lcov >/dev/null 2>&1; then \
 	  lcov --capture --directory . --output-file $(COVERAGE_DIR)/coverage.info \
-	       --exclude '*/tests/*' --exclude '/usr/*' --quiet; \
-	  lcov --list $(COVERAGE_DIR)/coverage.info; \
-	  command -v genhtml >/dev/null 2>&1 && \
+	       --exclude '*/tests/*' --exclude '/usr/*' --quiet && \
+	  lcov --list $(COVERAGE_DIR)/coverage.info && \
+	  { command -v genhtml >/dev/null 2>&1 && \
 	    genhtml $(COVERAGE_DIR)/coverage.info --output-directory $(COVERAGE_DIR)/html --quiet && \
-	    echo "HTML report: $(COVERAGE_DIR)/html/index.html"; \
+	    echo "HTML report: $(COVERAGE_DIR)/html/index.html" || true; }; \
 	else \
 	  find . -name '*.gcda' | while read f; do \
-	    echo "--- $$f ---"; $(GCOV) -b "$$f" 2>/dev/null | grep -E "Lines|Branches"; \
+	    dir=$$(dirname $$f); base=$$(basename $$f .gcda); \
+	    result=$$(cd "$$dir" && $(GCOV) -b "$$base.gcda" 2>/dev/null | grep -E "Lines executed|Branches executed|строк|переходов"); \
+	    [ -n "$$result" ] && echo "--- $$base ---" && echo "$$result" || true; \
 	  done; \
 	fi
 
