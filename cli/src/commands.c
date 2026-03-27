@@ -467,46 +467,87 @@ int ttc_cmd_script(const struct ttc_ctx* ctx, const char* path) {
 }
 
 int ttc_cmd_debug(const struct ttc_ctx* ctx) {
-  ttc_print_sep(ctx, 44);
+  ttc_print_sep(ctx, 56);
   printf(" %sTinyTrack Diagnostics%s\n", ttc_color(ctx, COL_BOLD),
          ttc_color(ctx, COL_RESET));
-  ttc_print_sep(ctx, 44);
+  ttc_print_sep(ctx, 56);
 
-  /* mmap file integrity */
   struct stat st;
+
+  /* --- tinytd --- */
+  printf(" %s[tinytd]%s\n", ttc_color(ctx, COL_BOLD), ttc_color(ctx, COL_RESET));
+
+  int td_ok = daemon_running(ctx);
+  pid_t td_pid = read_pidfile(ctx->pid_file);
+  printf(" %-28s %s%s%s", "status:",
+         td_ok ? ttc_color(ctx, COL_GREEN) : ttc_color(ctx, COL_RED),
+         td_ok ? "running" : "stopped", ttc_color(ctx, COL_RESET));
+  if (td_pid > 0) printf("  pid=%d", (int)td_pid);
+  printf("\n");
+
+  int pid_ok = stat(ctx->pid_file, &st) == 0;
+  printf(" %-28s %s%s%s\n", "pid file:",
+         pid_ok ? ttc_color(ctx, COL_GREEN) : ttc_color(ctx, COL_YELLOW),
+         pid_ok ? ctx->pid_file : "not found", ttc_color(ctx, COL_RESET));
+
+  /* mmap file */
   int live_ok = stat(ctx->mmap_path, &st) == 0;
-  printf(" %-24s %s%s%s (%ld bytes)\n", "live mmap:",
+  printf(" %-28s %s%s%s (%ld bytes)\n", "live mmap:",
          live_ok ? ttc_color(ctx, COL_GREEN) : ttc_color(ctx, COL_RED),
          live_ok ? "OK" : "MISSING", ttc_color(ctx, COL_RESET),
          live_ok ? (long)st.st_size : 0L);
 
-  /* Try to open and validate magic */
+  /* mmap magic + ring stats */
   struct ttc_reader r;
   int err = ttc_reader_open(&r, ctx->mmap_path);
-  printf(" %-24s %s%s%s\n", "mmap magic:",
-         err == TTR_READER_OK ? ttc_color(ctx, COL_GREEN)
-                              : ttc_color(ctx, COL_RED),
+  printf(" %-28s %s%s%s\n", "mmap magic:",
+         err == TTR_READER_OK ? ttc_color(ctx, COL_GREEN) : ttc_color(ctx, COL_RED),
          err == TTR_READER_OK ? "valid" : ttc_reader_strerror(err),
          ttc_color(ctx, COL_RESET));
 
   if (err == TTR_READER_OK) {
-    char ts[16];
-    ttc_fmt_ts(r.ring.l1_meta->last_ts, ts, sizeof(ts));
-    printf(" %-24s %s\n", "last L1 write:", ts);
-    printf(" %-24s %u/%u\n", "L1 fill:", r.ring.l1_meta->head,
-           r.ring.l1_meta->capacity);
+    const struct ttc_config* cfg = &ctx->cfg;
+    char lbl[3][32];
+    make_ring_label(cfg, 1, lbl[0], sizeof(lbl[0]));
+    make_ring_label(cfg, 2, lbl[1], sizeof(lbl[1]));
+    make_ring_label(cfg, 3, lbl[2], sizeof(lbl[2]));
+
+    const struct ttr_meta* metas[3] = {
+        r.ring.l1_meta, r.ring.l2_meta, r.ring.l3_meta};
+    for (int i = 0; i < 3; i++) {
+      char ts[16];
+      ttc_fmt_ts(metas[i]->last_ts, ts, sizeof(ts));
+      printf(" %-28s fill=%u/%u  last=%s\n", lbl[i],
+             metas[i]->head < metas[i]->capacity ? metas[i]->head
+                                                  : metas[i]->capacity,
+             metas[i]->capacity, ts);
+    }
     ttc_reader_close(&r);
   }
 
-  /* Daemon */
-  printf(
-      " %-24s %s%s%s\n", "daemon:",
-      daemon_running(ctx) ? ttc_color(ctx, COL_GREEN) : ttc_color(ctx, COL_RED),
-      daemon_running(ctx) ? "running" : "stopped", ttc_color(ctx, COL_RESET));
+  /* --- tinytrack --- */
+  printf("\n %s[tinytrack]%s\n", ttc_color(ctx, COL_BOLD), ttc_color(ctx, COL_RESET));
 
-  /* Config file */
+  int gw_ok = gw_running(ctx);
+  pid_t gw_pid = read_pidfile(ctx->gw_pid_file);
+  printf(" %-28s %s%s%s", "status:",
+         gw_ok ? ttc_color(ctx, COL_GREEN) : ttc_color(ctx, COL_RED),
+         gw_ok ? "running" : "stopped", ttc_color(ctx, COL_RESET));
+  if (gw_pid > 0) printf("  pid=%d", (int)gw_pid);
+  printf("\n");
+
+  int gw_pid_ok = stat(ctx->gw_pid_file, &st) == 0;
+  printf(" %-28s %s%s%s\n", "pid file:",
+         gw_pid_ok ? ttc_color(ctx, COL_GREEN) : ttc_color(ctx, COL_YELLOW),
+         gw_pid_ok ? ctx->gw_pid_file : "not found", ttc_color(ctx, COL_RESET));
+
+  printf(" %-28s %s\n", "listen:", ctx->gw_listen);
+
+  /* --- common --- */
+  printf("\n %s[common]%s\n", ttc_color(ctx, COL_BOLD), ttc_color(ctx, COL_RESET));
+
   int cfg_ok = stat(ctx->config_path, &st) == 0;
-  printf(" %-24s %s%s%s\n", "config file:",
+  printf(" %-28s %s%s%s\n", "config file:",
          cfg_ok ? ttc_color(ctx, COL_GREEN) : ttc_color(ctx, COL_YELLOW),
          cfg_ok ? ctx->config_path : "not found (using defaults)",
          ttc_color(ctx, COL_RESET));
