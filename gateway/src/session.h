@@ -11,9 +11,9 @@
  * ttg_session_timer_fn() is passed to ttg_net_timer_add().
  */
 
-void ttg_session_init(struct ttg_reader *reader);
+void ttg_session_init(struct ttg_reader* reader);
 
-void ttg_session_event_fn(struct ttg_conn *c, int ev, void *ev_data);
-void ttg_session_timer_fn(void *arg);
+void ttg_session_event_fn(struct ttg_conn* c, int ev, void* ev_data);
+void ttg_session_timer_fn(void* arg);
 
 #endif /* TTG_SESSION_H */

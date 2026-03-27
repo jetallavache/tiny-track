@@ -15,13 +15,13 @@
 
 #define WS_MARK 'W'
 
-static struct ttg_reader *g_reader;
+static struct ttg_reader* g_reader;
 
-void ttg_session_init(struct ttg_reader *reader) {
+void ttg_session_init(struct ttg_reader* reader) {
   g_reader = reader;
 }
 
-static void send_metrics(struct ttg_conn *c) {
+static void send_metrics(struct ttg_conn* c) {
   struct tt_metrics m;
   int ret;
 
@@ -29,7 +29,8 @@ static void send_metrics(struct ttg_conn *c) {
     ret = ttg_reader_get_latest(g_reader, &m);
   } else {
     ret = ttg_reader_get_history(g_reader, c->sub_level, &m, 1);
-    if (ret == 1) ret = 0;
+    if (ret == 1)
+      ret = 0;
   }
   if (ret != 0)
     return;
@@ -41,8 +42,8 @@ static void send_metrics(struct ttg_conn *c) {
     ttg_ws_send(c, buf, n, TTG_WS_OP_BINARY);
 }
 
-static void send_history(struct ttg_conn *c,
-                         const struct tt_proto_history_req *req) {
+static void send_history(struct ttg_conn* c,
+                         const struct tt_proto_history_req* req) {
   uint16_t max = ntohs(req->max_count);
   if (max == 0 || max > TT_HISTORY_BATCH_MAX * 10)
     max = TT_HISTORY_BATCH_MAX * 10;
@@ -51,8 +52,8 @@ static void send_history(struct ttg_conn *c,
   struct tt_metrics samples[TT_HISTORY_BATCH_MAX];
 
   while (remaining > 0) {
-    int batch = remaining < TT_HISTORY_BATCH_MAX ? remaining
-                                                 : TT_HISTORY_BATCH_MAX;
+    int batch =
+        remaining < TT_HISTORY_BATCH_MAX ? remaining : TT_HISTORY_BATCH_MAX;
     int got = ttg_reader_get_history(g_reader, req->level, samples, batch);
     if (got <= 0)
       break;
@@ -71,15 +72,15 @@ static void send_history(struct ttg_conn *c,
     memcpy(payload + sizeof(resp), samples, (size_t)got * sizeof(*samples));
 
     uint8_t buf[sizeof(struct tt_proto_header) + sizeof(payload)];
-    size_t n = ttg_proto_build(buf, sizeof(buf), TT_PROTO_V2, PKT_HISTORY_RESP,
-                               (uint32_t)time(NULL), payload,
-                               (uint16_t)(sizeof(resp) + (size_t)got * sizeof(*samples)));
+    size_t n = ttg_proto_build(
+        buf, sizeof(buf), TT_PROTO_V2, PKT_HISTORY_RESP, (uint32_t)time(NULL),
+        payload, (uint16_t)(sizeof(resp) + (size_t)got * sizeof(*samples)));
     if (n > 0)
       ttg_ws_send(c, buf, n, TTG_WS_OP_BINARY);
   }
 }
 
-static void send_stats(struct ttg_conn *c) {
+static void send_stats(struct ttg_conn* c) {
   struct tt_proto_stats stats;
   ttg_reader_get_stats(g_reader, RING_LEVEL_L1, &stats.l1);
   ttg_reader_get_stats(g_reader, RING_LEVEL_L2, &stats.l2);
@@ -92,8 +93,8 @@ static void send_stats(struct ttg_conn *c) {
     ttg_ws_send(c, buf, n, TTG_WS_OP_BINARY);
 }
 
-static void handle_subscribe(struct ttg_conn *c,
-                              const struct tt_proto_subscribe *sub) {
+static void handle_subscribe(struct ttg_conn* c,
+                             const struct tt_proto_subscribe* sub) {
   struct tt_proto_ack ack = {.cmd_type = PKT_SUBSCRIBE, .status = ACK_OK};
 
   if (sub->level < RING_LEVEL_L1 || sub->level > RING_LEVEL_L3) {
@@ -103,8 +104,8 @@ static void handle_subscribe(struct ttg_conn *c,
     uint32_t ms = ntohl(sub->interval_ms);
     if (ms >= 1000 && ms <= 60000)
       c->update_interval_ms = ms;
-    tt_log_info("Client subscribed to level %u @ %u ms",
-                c->sub_level, c->update_interval_ms);
+    tt_log_info("Client subscribed to level %u @ %u ms", c->sub_level,
+                c->update_interval_ms);
   }
 
   uint8_t buf[sizeof(struct tt_proto_header) + sizeof(ack)];
@@ -114,7 +115,7 @@ static void handle_subscribe(struct ttg_conn *c,
     ttg_ws_send(c, buf, n, TTG_WS_OP_BINARY);
 }
 
-static void handle_cmd(struct ttg_conn *c, const struct tt_proto_cmd *cmd) {
+static void handle_cmd(struct ttg_conn* c, const struct tt_proto_cmd* cmd) {
   struct tt_proto_ack ack = {.cmd_type = cmd->cmd_type, .status = ACK_OK};
 
   if (cmd->cmd_type == CMD_SET_INTERVAL) {
@@ -142,29 +143,29 @@ static void handle_cmd(struct ttg_conn *c, const struct tt_proto_cmd *cmd) {
     ttg_ws_send(c, buf, n, TTG_WS_OP_BINARY);
 }
 
-static void on_ws_message(struct ttg_conn *c, const void *data, size_t len) {
+static void on_ws_message(struct ttg_conn* c, const void* data, size_t len) {
   if (len < sizeof(struct tt_proto_header))
     return;
 
-  const struct tt_proto_header *hdr = (const struct tt_proto_header *)data;
+  const struct tt_proto_header* hdr = (const struct tt_proto_header*)data;
   if (ttg_proto_validate(hdr) != 0)
     return;
 
-  const uint8_t *payload = (const uint8_t *)data + sizeof(*hdr);
+  const uint8_t* payload = (const uint8_t*)data + sizeof(*hdr);
 
   if (hdr->type == PKT_HISTORY_REQ) {
     if (len >= sizeof(*hdr) + sizeof(struct tt_proto_history_req))
-      send_history(c, (const struct tt_proto_history_req *)payload);
+      send_history(c, (const struct tt_proto_history_req*)payload);
   } else if (hdr->type == PKT_SUBSCRIBE) {
     if (len >= sizeof(*hdr) + sizeof(struct tt_proto_subscribe))
-      handle_subscribe(c, (const struct tt_proto_subscribe *)payload);
+      handle_subscribe(c, (const struct tt_proto_subscribe*)payload);
   } else if (hdr->type == PKT_CMD) {
     if (len >= sizeof(*hdr) + sizeof(struct tt_proto_cmd))
-      handle_cmd(c, (const struct tt_proto_cmd *)payload);
+      handle_cmd(c, (const struct tt_proto_cmd*)payload);
   }
 }
 
-static void on_ws_open(struct ttg_conn *c) {
+static void on_ws_open(struct ttg_conn* c) {
   c->data[0] = WS_MARK;
   c->update_interval_ms = 1000;
   c->last_update_time = 0;
@@ -173,7 +174,7 @@ static void on_ws_open(struct ttg_conn *c) {
   tt_log_info("WebSocket client connected");
 
   struct tt_proto_config cfg = {
-      .interval_ms    = htonl(c->update_interval_ms),
+      .interval_ms = htonl(c->update_interval_ms),
       .alerts_enabled = 0,
   };
   uint8_t buf[sizeof(struct tt_proto_header) + sizeof(cfg)];
@@ -183,7 +184,7 @@ static void on_ws_open(struct ttg_conn *c) {
     ttg_ws_send(c, buf, n, TTG_WS_OP_BINARY);
 }
 
-static void on_http(struct ttg_conn *c, struct ttg_http_message *hm) {
+static void on_http(struct ttg_conn* c, struct ttg_http_message* hm) {
   if (ttg_str_match(hm->uri, str("/websocket"), NULL)) {
     ttg_ws_upgrade(c, hm, NULL);
     return;
@@ -206,22 +207,22 @@ static void on_http(struct ttg_conn *c, struct ttg_http_message *hm) {
   ttg_http_reply(c, 404, "", "Not Found\n");
 }
 
-void ttg_session_event_fn(struct ttg_conn *c, int ev, void *ev_data) {
+void ttg_session_event_fn(struct ttg_conn* c, int ev, void* ev_data) {
   if (ev == TTG_EVENT_WS_OPEN) {
     on_ws_open(c);
   } else if (ev == TTG_EVENT_HTTP_MSG) {
-    on_http(c, (struct ttg_http_message *)ev_data);
+    on_http(c, (struct ttg_http_message*)ev_data);
   } else if (ev == TTG_EVENT_WS_MSG) {
-    struct ttg_ws_message *wm = (struct ttg_ws_message *)ev_data;
+    struct ttg_ws_message* wm = (struct ttg_ws_message*)ev_data;
     on_ws_message(c, wm->data.buf, wm->data.len);
   }
 }
 
-void ttg_session_timer_fn(void *arg) {
-  struct ttg_mgr *mgr = (struct ttg_mgr *)arg;
+void ttg_session_timer_fn(void* arg) {
+  struct ttg_mgr* mgr = (struct ttg_mgr*)arg;
   time_t now = time(NULL);
 
-  for (struct ttg_conn *c = mgr->conns; c != NULL; c = c->next) {
+  for (struct ttg_conn* c = mgr->conns; c != NULL; c = c->next) {
     if (c->data[0] != WS_MARK)
       continue;
     if (now - c->last_update_time >= (time_t)(c->update_interval_ms / 1000)) {

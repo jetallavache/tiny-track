@@ -23,17 +23,22 @@ static void signal_handler(int sig) {
 
 static void daemonize(void) {
   pid_t pid = fork();
-  if (pid < 0) exit(EXIT_FAILURE);
-  if (pid > 0) exit(EXIT_SUCCESS);
+  if (pid < 0)
+    exit(EXIT_FAILURE);
+  if (pid > 0)
+    exit(EXIT_SUCCESS);
 
-  if (setsid() < 0) exit(EXIT_FAILURE);
+  if (setsid() < 0)
+    exit(EXIT_FAILURE);
 
   signal(SIGCHLD, SIG_IGN);
   signal(SIGHUP, SIG_IGN);
 
   pid = fork();
-  if (pid < 0) exit(EXIT_FAILURE);
-  if (pid > 0) exit(EXIT_SUCCESS);
+  if (pid < 0)
+    exit(EXIT_FAILURE);
+  if (pid > 0)
+    exit(EXIT_SUCCESS);
 
   umask(0);
   chdir("/");
@@ -42,66 +47,88 @@ static void daemonize(void) {
     close(fd);
 }
 
-static int write_pid_file(const char *path) {
-  FILE *f = fopen(path, "w");
-  if (!f) return -1;
+static int write_pid_file(const char* path) {
+  FILE* f = fopen(path, "w");
+  if (!f)
+    return -1;
   fprintf(f, "%d\n", getpid());
   fclose(f);
   return 0;
 }
 
-static int drop_privileges(const char *user, const char *group) {
-  struct group *gr = getgrnam(group);
-  if (!gr) { tt_log_err("Unknown group: %s", group); return -1; }
-  if (setgid(gr->gr_gid) < 0) { tt_log_err("setgid failed"); return -1; }
+static int drop_privileges(const char* user, const char* group) {
+  struct group* gr = getgrnam(group);
+  if (!gr) {
+    tt_log_err("Unknown group: %s", group);
+    return -1;
+  }
+  if (setgid(gr->gr_gid) < 0) {
+    tt_log_err("setgid failed");
+    return -1;
+  }
 
-  struct passwd *pw = getpwnam(user);
-  if (!pw) { tt_log_err("Unknown user: %s", user); return -1; }
-  if (setuid(pw->pw_uid) < 0) { tt_log_err("setuid failed"); return -1; }
+  struct passwd* pw = getpwnam(user);
+  if (!pw) {
+    tt_log_err("Unknown user: %s", user);
+    return -1;
+  }
+  if (setuid(pw->pw_uid) < 0) {
+    tt_log_err("setuid failed");
+    return -1;
+  }
 
   return 0;
 }
 
-int main(int argc, char **argv) {
-  const char *config_path = NULL;
-  const char *listen_override = NULL;
-  const char *shm_override = NULL;
+int main(int argc, char** argv) {
+  const char* config_path = NULL;
+  const char* listen_override = NULL;
+  const char* shm_override = NULL;
   static char listen_buf[64];
   int do_daemonize = 0;
 
   static const struct option long_opts[] = {
       {"config", required_argument, NULL, 'c'},
-      {"port",   required_argument, NULL, 'p'},
+      {"port", required_argument, NULL, 'p'},
       {"listen", required_argument, NULL, 'l'},
-      {"shm",    required_argument, NULL, 's'},
-      {"daemon", no_argument,       NULL, 'd'},
-      {"help",   no_argument,       NULL, 'h'},
+      {"shm", required_argument, NULL, 's'},
+      {"daemon", no_argument, NULL, 'd'},
+      {"help", no_argument, NULL, 'h'},
       {NULL, 0, NULL, 0},
   };
 
   int opt;
   while ((opt = getopt_long(argc, argv, "c:p:l:s:dh", long_opts, NULL)) != -1) {
     switch (opt) {
-      case 'c': config_path     = optarg; break;
-      case 'l': listen_override = optarg; break;
-      case 's': shm_override    = optarg; break;
-      case 'd': do_daemonize    = 1;      break;
+      case 'c':
+        config_path = optarg;
+        break;
+      case 'l':
+        listen_override = optarg;
+        break;
+      case 's':
+        shm_override = optarg;
+        break;
+      case 'd':
+        do_daemonize = 1;
+        break;
       case 'p':
         snprintf(listen_buf, sizeof(listen_buf), "ws://0.0.0.0:%s", optarg);
         listen_override = listen_buf;
         break;
       case 'h':
-        printf("Usage: tinytrack [-d] [-c CONFIG] [-p PORT] "
-               "[-l ws://HOST:PORT] [-s SHM_PATH]\n\n"
-               "Options:\n"
-               "  -d             Run as daemon (background)\n"
-               "  -c CONFIG      Path to configuration file\n"
-               "  -p PORT        Listen port (shorthand for -l)\n"
-               "  -l ws://H:P    Listen address\n"
-               "  -s SHM_PATH    Path to tinytd live mmap file\n"
-               "  -h             Show this help and exit\n\n"
-               "Signals:\n"
-               "  SIGTERM/SIGINT  Graceful shutdown\n");
+        printf(
+            "Usage: tinytrack [-d] [-c CONFIG] [-p PORT] "
+            "[-l ws://HOST:PORT] [-s SHM_PATH]\n\n"
+            "Options:\n"
+            "  -d             Run as daemon (background)\n"
+            "  -c CONFIG      Path to configuration file\n"
+            "  -p PORT        Listen port (shorthand for -l)\n"
+            "  -l ws://H:P    Listen address\n"
+            "  -s SHM_PATH    Path to tinytd live mmap file\n"
+            "  -h             Show this help and exit\n\n"
+            "Signals:\n"
+            "  SIGTERM/SIGINT  Graceful shutdown\n");
         return 0;
       default:
         fprintf(stderr, "Try 'tinytrack -h' for usage.\n");
@@ -117,10 +144,10 @@ int main(int argc, char **argv) {
     daemonize();
 
   struct tt_log_config log_cfg = {
-      .backend   = cfg.log_backend,
+      .backend = cfg.log_backend,
       .min_level = cfg.log_level,
-      .ident     = "tinytrack",
-      .async     = false,
+      .ident = "tinytrack",
+      .async = false,
   };
   tt_log_init(&log_cfg);
   tt_log_notice("tinytrack gateway starting...");

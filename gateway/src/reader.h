@@ -15,7 +15,8 @@ int ttg_reader_get_latest(struct ttg_reader* ctx, struct tt_metrics* out);
 
 /*
  * Read up to `count` historical samples from ring level (RING_LEVEL_L1/L2/L3).
- * Writes into `out` array. Returns number of samples read, or negative on error.
+ * Writes into `out` array. Returns number of samples read, or negative on
+ * error.
  */
 int ttg_reader_get_history(struct ttg_reader* ctx, uint8_t level,
                            struct tt_metrics* out, int count);

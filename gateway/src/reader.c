@@ -24,20 +24,29 @@ int ttg_reader_get_stats(struct ttg_reader* ctx, uint8_t level,
                          struct tt_proto_ring_stat* out) {
   struct ttr_meta* meta;
   switch (level) {
-    case RING_LEVEL_L1: meta = ctx->ring.l1_meta; break;
-    case RING_LEVEL_L2: meta = ctx->ring.l2_meta; break;
-    case RING_LEVEL_L3: meta = ctx->ring.l3_meta; break;
-    default: return -1;
+    case RING_LEVEL_L1:
+      meta = ctx->ring.l1_meta;
+      break;
+    case RING_LEVEL_L2:
+      meta = ctx->ring.l2_meta;
+      break;
+    case RING_LEVEL_L3:
+      meta = ctx->ring.l3_meta;
+      break;
+    default:
+      return -1;
   }
-  if (!meta) return -1;
+  if (!meta)
+    return -1;
 
-  out->level    = level;
+  out->level = level;
   out->capacity = htonl(meta->capacity);
-  out->head     = htonl(meta->head);
-  out->filled   = htonl(meta->head < meta->capacity ? meta->head
-                                                     : meta->capacity);
-  out->first_ts = meta->first_ts; /* already ms, no hton needed for uint64 — handled by caller */
-  out->last_ts  = meta->last_ts;
+  out->head = htonl(meta->head);
+  out->filled =
+      htonl(meta->head < meta->capacity ? meta->head : meta->capacity);
+  out->first_ts = meta->first_ts; /* already ms, no hton needed for uint64 —
+                                     handled by caller */
+  out->last_ts = meta->last_ts;
   return 0;
 }
 

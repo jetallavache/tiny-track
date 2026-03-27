@@ -41,36 +41,56 @@ int main(int argc, char** argv) {
   ttc_ctx_init(&ctx);
 
   static const struct option long_opts[] = {
-      {"path",     required_argument, NULL, 'p'},
-      {"config",   required_argument, NULL, 'c'},
-      {"pid",      required_argument, NULL, 'P'},
-      {"format",   required_argument, NULL, 'f'},
+      {"path", required_argument, NULL, 'p'},
+      {"config", required_argument, NULL, 'c'},
+      {"pid", required_argument, NULL, 'P'},
+      {"format", required_argument, NULL, 'f'},
       {"interval", required_argument, NULL, 'i'},
-      {"no-color", no_argument,       NULL, 'n'},
-      {"verbose",  no_argument,       NULL, 'v'},
-      {"version",  no_argument,       NULL, 'V'},
-      {"help",     no_argument,       NULL, 'h'},
+      {"no-color", no_argument, NULL, 'n'},
+      {"verbose", no_argument, NULL, 'v'},
+      {"version", no_argument, NULL, 'V'},
+      {"help", no_argument, NULL, 'h'},
       {NULL, 0, NULL, 0},
   };
 
   int opt;
-  while ((opt = getopt_long(argc, argv, "+p:c:P:f:i:nvVh",
-                            long_opts, NULL)) != -1) {
+  while ((opt = getopt_long(argc, argv, "+p:c:P:f:i:nvVh", long_opts, NULL)) !=
+         -1) {
     switch (opt) {
-      case 'p': ctx.mmap_path   = optarg; break;
-      case 'c': ctx.config_path = optarg; break;
-      case 'P': ctx.pid_file    = optarg; break;
-      case 'f':
-        if (strcmp(optarg, "json") == 0)        ctx.format = FMT_JSON;
-        else if (strcmp(optarg, "compact") == 0) ctx.format = FMT_COMPACT;
-        else                                     ctx.format = FMT_TABLE;
+      case 'p':
+        ctx.mmap_path = optarg;
         break;
-      case 'i': ctx.interval_ms = atoi(optarg); break;
-      case 'n': ctx.color   = false;            break;
-      case 'v': ctx.verbose = true;             break;
-      case 'V': return ttc_cmd_version(&ctx);
-      case 'h': usage(); return 0;
-      default:  usage(); return 1;
+      case 'c':
+        ctx.config_path = optarg;
+        break;
+      case 'P':
+        ctx.pid_file = optarg;
+        break;
+      case 'f':
+        if (strcmp(optarg, "json") == 0)
+          ctx.format = FMT_JSON;
+        else if (strcmp(optarg, "compact") == 0)
+          ctx.format = FMT_COMPACT;
+        else
+          ctx.format = FMT_TABLE;
+        break;
+      case 'i':
+        ctx.interval_ms = atoi(optarg);
+        break;
+      case 'n':
+        ctx.color = false;
+        break;
+      case 'v':
+        ctx.verbose = true;
+        break;
+      case 'V':
+        return ttc_cmd_version(&ctx);
+      case 'h':
+        usage();
+        return 0;
+      default:
+        usage();
+        return 1;
     }
   }
 
