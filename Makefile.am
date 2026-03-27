@@ -125,8 +125,15 @@ COVERAGE_DIR = coverage-report
 coverage:
 	@test -f common/ringbuf/libcommon_a-writer.gcno || \
 	  { echo "Rebuild with: ./configure --enable-coverage && make"; exit 1; }
-	@echo "Running tinytd for coverage data (5s)..."
-	@timeout 5 tinytd/tinytd -c tests/tinytd-test.conf 2>/dev/null; true
+	@echo "Running daemons for coverage data..."
+	@timeout 10 tinytd/tinytd -c tests/tinytd-test.conf 2>/dev/null & \
+	  TDPID=$$!; sleep 3; \
+	  cli/tiny-cli -c tests/tinytd-test.conf status  2>/dev/null; \
+	  cli/tiny-cli -c tests/tinytd-test.conf debug   2>/dev/null; \
+	  cli/tiny-cli -c tests/tinytd-test.conf metrics 2>/dev/null; \
+	  gateway/tinytrack -c tests/tinytd-test.conf & GWPID=$$!; sleep 2; \
+	  kill $$GWPID 2>/dev/null; wait $$GWPID 2>/dev/null; \
+	  kill $$TDPID 2>/dev/null; wait $$TDPID 2>/dev/null; true
 	@echo "Collecting coverage..."
 	@mkdir -p $(COVERAGE_DIR)
 	@if command -v lcov >/dev/null 2>&1; then \
