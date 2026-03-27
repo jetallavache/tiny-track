@@ -14,19 +14,19 @@ int ttd_config_load(const char* path, struct ttd_config* cfg) {
     return -1;
   fclose(f);
 
-  /* [daemon] */
-  tt_config_read_str(path, "daemon.user", cfg->user, sizeof(cfg->user),
+  /* [tinytd] */
+  tt_config_read_str(path, "tinytd.user", cfg->user, sizeof(cfg->user),
                      "tinytd");
-  tt_config_read_str(path, "daemon.group", cfg->group, sizeof(cfg->group),
+  tt_config_read_str(path, "tinytd.group", cfg->group, sizeof(cfg->group),
                      "tinytd");
-  tt_config_read_str(path, "daemon.pid_file", cfg->pid_file,
+  tt_config_read_str(path, "tinytd.pid_file", cfg->pid_file,
                      sizeof(cfg->pid_file), "/var/run/tinytd.pid");
   char log_backend_str[32];
-  if (tt_config_read_str(path, "daemon.log_backend", log_backend_str,
+  if (tt_config_read_str(path, "tinytd.log_backend", log_backend_str,
                          sizeof(log_backend_str), "auto") == 0)
     cfg->log_backend = tt_config_parse_log_backend(log_backend_str);
   char log_level_str[32];
-  if (tt_config_read_str(path, "daemon.log_level", log_level_str,
+  if (tt_config_read_str(path, "tinytd.log_level", log_level_str,
                          sizeof(log_level_str), "info") == 0)
     cfg->log_level = tt_config_parse_log_level(log_level_str);
 
