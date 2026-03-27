@@ -28,6 +28,7 @@ INSTALLATION
 
 From source:
 
+    ./bootstrap.sh
     ./configure
     make
     make install
@@ -39,7 +40,7 @@ USAGE
 
 Start daemon:
 
-    tinytd
+    <!-- tinytd -->
 
 Query status:
 
