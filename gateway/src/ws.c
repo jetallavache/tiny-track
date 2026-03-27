@@ -4,7 +4,6 @@
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
-#include <openssl/sha.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -46,24 +45,13 @@ static void ws_handshake(struct ttg_conn* c, const struct ttg_str* wskey,
   const char* magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
   unsigned char sha[20], b64_sha[30];
 
-  /* OpenSSL_add_all_algorithms(); */
-  /* ERR_load_crypto_strings(); */
-  /* EVP_MD_CTX *hashctx; */
-  /* hashctx = EVP_MD_CTX_create(); */
-  /* const EVP_MD *hashptr = EVP_get_digestbyname("SHA1"); */
-  /* EVP_MD_CTX_init(hashctx); */
-  /* EVP_DigestInit_ex(hashctx, hashptr, NULL); */
-  /* EVP_DigestUpdate(hashctx, wskey->buf, wskey->len); */
-  /* EVP_DigestUpdate(hashctx, magic, sizeof(magic); */
-  /* EVP_DigestFinal_ex(hashctx, sha, NULL); */
-  /*  /* EVP_MD_CTX_cleanup(hashctx); */
-  /* EVP_MD_CTX_free(hashctx); */
-
-  SHA_CTX sha_ctx;
-  SHA1_Init(&sha_ctx);
-  SHA1_Update(&sha_ctx, (unsigned char*)wskey->buf, wskey->len);
-  SHA1_Update(&sha_ctx, (unsigned char*)magic, 36);
-  SHA1_Final(sha, &sha_ctx);
+  unsigned int sha_len = 20;
+  EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
+  EVP_DigestInit_ex(mdctx, EVP_sha1(), NULL);
+  EVP_DigestUpdate(mdctx, wskey->buf, wskey->len);
+  EVP_DigestUpdate(mdctx, magic, 36);
+  EVP_DigestFinal_ex(mdctx, sha, &sha_len);
+  EVP_MD_CTX_free(mdctx);
 
   ttg_b64_encode(sha, sizeof(sha), (char*)b64_sha, sizeof(b64_sha));
   ttg_xprintf(ttg_pfn_iobuf, &c->send,
