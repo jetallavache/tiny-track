@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -34,7 +35,16 @@ static int daemon_running(const struct ttc_ctx* ctx) {
     return 0;
   if (kill(pid, 0) == 0)
     return 1;
-  return errno == EPERM; /* process exists but owned by another user */
+  return errno == EPERM;
+}
+
+static int gw_running(const struct ttc_ctx* ctx) {
+  pid_t pid = read_pidfile(ctx->gw_pid_file);
+  if (pid <= 0)
+    return 0;
+  if (kill(pid, 0) == 0)
+    return 1;
+  return errno == EPERM;
 }
 
 static int open_reader(const struct ttc_ctx* ctx, struct ttc_reader* r) {
@@ -47,13 +57,17 @@ static int open_reader(const struct ttc_ctx* ctx, struct ttc_reader* r) {
 }
 
 int ttc_cmd_status(const struct ttc_ctx* ctx) {
-  int running = daemon_running(ctx);
-  pid_t pid = read_pidfile(ctx->pid_file);
+  int td_running = daemon_running(ctx);
+  int gw_ok      = gw_running(ctx);
+  pid_t td_pid   = read_pidfile(ctx->pid_file);
+  pid_t gw_pid   = read_pidfile(ctx->gw_pid_file);
 
   if (ctx->format == FMT_JSON) {
     printf("{\n");
-    printf("  \"daemon\": \"%s\",\n", running ? "running" : "stopped");
-    printf("  \"pid\": %d,\n", (int)pid);
+    printf("  \"tinytd\":    { \"status\": \"%s\", \"pid\": %d },\n",
+           td_running ? "running" : "stopped", (int)td_pid);
+    printf("  \"tinytrack\": { \"status\": \"%s\", \"pid\": %d, \"listen\": \"%s\" },\n",
+           gw_ok ? "running" : "stopped", (int)gw_pid, ctx->gw_listen);
     printf("  \"mmap\": \"%s\"\n", ctx->mmap_path);
     printf("}\n");
     return 0;
@@ -64,27 +78,70 @@ int ttc_cmd_status(const struct ttc_ctx* ctx) {
          ttc_color(ctx, COL_RESET));
   ttc_print_sep(ctx, 44);
 
-  printf(" %-20s %s%s%s\n", "Daemon:",
-         running ? ttc_color(ctx, COL_GREEN) : ttc_color(ctx, COL_RED),
-         running ? "running" : "stopped", ttc_color(ctx, COL_RESET));
+  /* tinytd */
+  printf(" %-20s %s%s%s", "tinytd:",
+         td_running ? ttc_color(ctx, COL_GREEN) : ttc_color(ctx, COL_RED),
+         td_running ? "running" : "stopped", ttc_color(ctx, COL_RESET));
+  if (td_pid > 0)
+    printf("  pid=%d", (int)td_pid);
+  printf("\n");
 
-  if (pid > 0)
-    printf(" %-20s %d\n", "PID:", (int)pid);
+  /* tinytrack */
+  printf(" %-20s %s%s%s", "tinytrack:",
+         gw_ok ? ttc_color(ctx, COL_GREEN) : ttc_color(ctx, COL_RED),
+         gw_ok ? "running" : "stopped", ttc_color(ctx, COL_RESET));
+  if (gw_pid > 0)
+    printf("  pid=%d", (int)gw_pid);
+  if (gw_ok)
+    printf("  listen=%s", ctx->gw_listen);
+  printf("\n");
 
   printf(" %-20s %s\n", "mmap path:", ctx->mmap_path);
   printf(" %-20s %s\n", "config:", ctx->config_path);
 
-  /* Try to open mmap and show ring stats */
+  /* Ring stats */
   struct ttc_reader r;
   if (open_reader(ctx, &r) == TTR_READER_OK) {
+    const struct ttc_config *cfg = &ctx->cfg;
+    uint32_t l1_ivl = cfg->collection_interval_ms / 1000;
+    if (l1_ivl == 0) l1_ivl = 1;
+    char lbl[3][24];
+    /* build labels from config */
+    uint64_t total;
+    char ivl_s[12], total_s[12];
+    /* L1 */
+    total = (uint64_t)cfg->l1_capacity * l1_ivl;
+    snprintf(ivl_s, sizeof(ivl_s), "%us", l1_ivl);
+    if (total < 3600) snprintf(total_s, sizeof(total_s), "%um", (uint32_t)(total/60));
+    else if (total < 86400) snprintf(total_s, sizeof(total_s), "%uh", (uint32_t)(total/3600));
+    else snprintf(total_s, sizeof(total_s), "%ud", (uint32_t)(total/86400));
+    snprintf(lbl[0], 24, "L1 %s@%s", total_s, ivl_s);
+    /* L2 */
+    total = (uint64_t)cfg->l2_capacity * cfg->l2_agg_interval_sec;
+    uint32_t ivl2 = cfg->l2_agg_interval_sec;
+    if (ivl2 < 60) snprintf(ivl_s, sizeof(ivl_s), "%us", ivl2);
+    else snprintf(ivl_s, sizeof(ivl_s), "%um", ivl2/60);
+    if (total < 3600) snprintf(total_s, sizeof(total_s), "%um", (uint32_t)(total/60));
+    else if (total < 86400) snprintf(total_s, sizeof(total_s), "%uh", (uint32_t)(total/3600));
+    else snprintf(total_s, sizeof(total_s), "%ud", (uint32_t)(total/86400));
+    snprintf(lbl[1], 24, "L2 %s@%s", total_s, ivl_s);
+    /* L3 */
+    total = (uint64_t)cfg->l3_capacity * cfg->l3_agg_interval_sec;
+    uint32_t ivl3 = cfg->l3_agg_interval_sec;
+    if (ivl3 < 3600) snprintf(ivl_s, sizeof(ivl_s), "%um", ivl3/60);
+    else snprintf(ivl_s, sizeof(ivl_s), "%uh", ivl3/3600);
+    if (total < 86400) snprintf(total_s, sizeof(total_s), "%uh", (uint32_t)(total/3600));
+    else snprintf(total_s, sizeof(total_s), "%ud", (uint32_t)(total/86400));
+    snprintf(lbl[2], 24, "L3 %s@%s", total_s, ivl_s);
+
     printf("\n");
-    ttc_print_ring_level(ctx, 1, r.ring.l1_meta, "1h@1s");
-    ttc_print_ring_level(ctx, 2, r.ring.l2_meta, "24h@1m");
-    ttc_print_ring_level(ctx, 3, r.ring.l3_meta, "7d@15m");
+    ttc_print_ring_level(ctx, 1, r.ring.l1_meta, lbl[0]);
+    ttc_print_ring_level(ctx, 2, r.ring.l2_meta, lbl[1]);
+    ttc_print_ring_level(ctx, 3, r.ring.l3_meta, lbl[2]);
     ttc_reader_close(&r);
   }
 
-  return running ? 0 : 1;
+  return (td_running && gw_ok) ? 0 : 1;
 }
 
 int ttc_cmd_metrics(const struct ttc_ctx* ctx) {
@@ -198,33 +255,34 @@ static int systemd_available(void) {
 }
 
 static void systemd_show_status(const struct ttc_ctx* ctx) {
-  /* Print structured status from systemctl */
-  char cmd[256];
-  snprintf(cmd, sizeof(cmd),
-           "systemctl show tinytd --property=ActiveState,SubState,"
-           "MainPID,ExecMainStartTimestamp,LoadState 2>/dev/null");
-  FILE* f = popen(cmd, "r");
-  if (!f)
-    return;
-
-  char line[256];
-  while (fgets(line, sizeof(line), f)) {
-    line[strcspn(line, "\n")] = '\0';
-    char* eq = strchr(line, '=');
-    if (!eq)
-      continue;
-    *eq = '\0';
-    const char* key = line;
-    const char* val = eq + 1;
-
-    const char* color = ttc_color(ctx, COL_RESET);
-    if (strcmp(key, "ActiveState") == 0) {
-      color = strcmp(val, "active") == 0 ? ttc_color(ctx, COL_GREEN)
-                                         : ttc_color(ctx, COL_RED);
+  const char* units[] = {"tinytd", "tinytrack"};
+  for (int u = 0; u < 2; u++) {
+    printf("%s--- %s ---%s\n",
+           ttc_color(ctx, COL_BOLD), units[u], ttc_color(ctx, COL_RESET));
+    char cmd[256];
+    snprintf(cmd, sizeof(cmd),
+             "systemctl show %s --property=ActiveState,SubState,"
+             "MainPID,ExecMainStartTimestamp,LoadState 2>/dev/null",
+             units[u]);
+    FILE* f = popen(cmd, "r");
+    if (!f) continue;
+    char line[256];
+    while (fgets(line, sizeof(line), f)) {
+      line[strcspn(line, "\n")] = '\0';
+      char* eq = strchr(line, '=');
+      if (!eq) continue;
+      *eq = '\0';
+      const char* key = line;
+      const char* val = eq + 1;
+      const char* color = ttc_color(ctx, COL_RESET);
+      if (strcmp(key, "ActiveState") == 0)
+        color = strcmp(val, "active") == 0 ? ttc_color(ctx, COL_GREEN)
+                                           : ttc_color(ctx, COL_RED);
+      printf(" %-32s %s%s%s\n", key, color, val, ttc_color(ctx, COL_RESET));
     }
-    printf(" %-32s %s%s%s\n", key, color, val, ttc_color(ctx, COL_RESET));
+    pclose(f);
+    printf("\n");
   }
-  pclose(f);
 }
 
 int ttc_cmd_service(const struct ttc_ctx* ctx, const char* action) {
@@ -245,35 +303,37 @@ int ttc_cmd_service(const struct ttc_ctx* ctx, const char* action) {
 
   if (strcmp(action, "start") == 0) {
     if (use_systemd)
-      snprintf(cmd, sizeof(cmd), "systemctl start tinytd");
-    else if (daemon_running(ctx)) {
-      printf("tinytd is already running\n");
-      return 0;
-    } else
-      snprintf(cmd, sizeof(cmd), "tinytd '%s' &", ctx->config_path);
+      snprintf(cmd, sizeof(cmd), "systemctl start tinytd tinytrack");
+    else
+      snprintf(cmd, sizeof(cmd), "tinytd -c '%s' & tinytrack -c '%s' &",
+               ctx->config_path, ctx->config_path);
 
   } else if (strcmp(action, "stop") == 0) {
     if (use_systemd)
-      snprintf(cmd, sizeof(cmd), "systemctl stop tinytd");
+      snprintf(cmd, sizeof(cmd), "systemctl stop tinytrack tinytd");
     else
-      snprintf(cmd, sizeof(cmd), "kill $(cat '%s' 2>/dev/null) 2>/dev/null",
-               ctx->pid_file);
+      snprintf(cmd, sizeof(cmd),
+               "kill $(cat '%s' 2>/dev/null) 2>/dev/null;"
+               "kill $(cat '%s' 2>/dev/null) 2>/dev/null",
+               ctx->gw_pid_file, ctx->pid_file);
 
   } else if (strcmp(action, "restart") == 0) {
     if (use_systemd)
-      snprintf(cmd, sizeof(cmd), "systemctl restart tinytd");
+      snprintf(cmd, sizeof(cmd), "systemctl restart tinytd tinytrack");
     else
-      snprintf(
-          cmd, sizeof(cmd),
-          "kill $(cat '%s' 2>/dev/null) 2>/dev/null; sleep 1; tinytd '%s' &",
-          ctx->pid_file, ctx->config_path);
+      snprintf(cmd, sizeof(cmd),
+               "kill $(cat '%s' 2>/dev/null) 2>/dev/null;"
+               "kill $(cat '%s' 2>/dev/null) 2>/dev/null;"
+               "sleep 1; tinytd -c '%s' & tinytrack -c '%s' &",
+               ctx->gw_pid_file, ctx->pid_file,
+               ctx->config_path, ctx->config_path);
 
   } else if (strcmp(action, "enable") == 0 || strcmp(action, "disable") == 0) {
     if (!use_systemd) {
       fprintf(stderr, "systemd not available\n");
       return 1;
     }
-    snprintf(cmd, sizeof(cmd), "systemctl %s tinytd", action);
+    snprintf(cmd, sizeof(cmd), "systemctl %s tinytd tinytrack", action);
 
   } else {
     fprintf(stderr,
@@ -292,24 +352,31 @@ int ttc_cmd_logs(const struct ttc_ctx* ctx, int lines, const char* level) {
   if (lines <= 0)
     lines = 50;
 
-  char cmd[256];
-  /* Try journalctl first */
-  if (system("journalctl --version >/dev/null 2>&1") == 0) {
-    if (level && strlen(level) > 0)
-      snprintf(cmd, sizeof(cmd), "journalctl -u tinytd -n %d -p %s --no-pager",
-               lines, level);
-    else
-      snprintf(cmd, sizeof(cmd), "journalctl -u tinytd -n %d --no-pager",
-               lines);
-  } else {
-    /* Fallback: grep syslog */
-    snprintf(cmd, sizeof(cmd),
-             "grep tinytd /var/log/syslog 2>/dev/null | tail -n %d"
-             " || grep tinytd /var/log/messages 2>/dev/null | tail -n %d",
-             lines, lines);
-  }
+  int use_journal = system("journalctl --version >/dev/null 2>&1") == 0;
+  char cmd[512];
 
-  return system(cmd);
+  /* Show logs for both services */
+  const char* units[] = {"tinytd", "tinytrack"};
+  for (int i = 0; i < 2; i++) {
+    printf("%s=== %s ===%s\n",
+           ttc_color(ctx, COL_BOLD), units[i], ttc_color(ctx, COL_RESET));
+    if (use_journal) {
+      if (level && strlen(level) > 0)
+        snprintf(cmd, sizeof(cmd),
+                 "journalctl -u %s -n %d -p %s --no-pager", units[i], lines, level);
+      else
+        snprintf(cmd, sizeof(cmd),
+                 "journalctl -u %s -n %d --no-pager", units[i], lines);
+    } else {
+      snprintf(cmd, sizeof(cmd),
+               "grep %s /var/log/syslog 2>/dev/null | tail -n %d"
+               " || grep %s /var/log/messages 2>/dev/null | tail -n %d",
+               units[i], lines, units[i], lines);
+    }
+    system(cmd);
+    printf("\n");
+  }
+  return 0;
 }
 
 int ttc_cmd_script(const struct ttc_ctx* ctx, const char* path) {

@@ -30,8 +30,17 @@ typedef struct {
   int hist_count;
   int mode;
   int show_help;
-  char ring_label[3][24]; /* computed once on connect */
+  char ring_label[3][24]; /* computed from config */
   int labels_ready;
+  /* daemon status */
+  int tinytd_running;
+  int tinytrack_running;
+  pid_t tinytd_pid;
+  pid_t tinytrack_pid;
+  /* log lines (last N from journalctl) */
+  char log_lines[8][128];
+  int log_count;
+  time_t log_fetched;
 } dash_state;
 
 static volatile sig_atomic_t g_resize = 0;
@@ -70,35 +79,36 @@ static void fmt_bytes(unsigned long b, char* buf, size_t len) {
     snprintf(buf, len, "%luB", b);
 }
 
-static void compute_ring_label(const struct ttr_meta* m, int level, char* buf,
+static void compute_ring_label(int level, uint32_t capacity,
+                               uint32_t slot_interval_sec, char* buf,
                                size_t len) {
-  uint32_t filled = m->head < m->capacity ? m->head : m->capacity;
-  if (filled < 2 || m->last_ts <= m->first_ts) {
-    snprintf(buf, len, "L%d %u slots", level, m->capacity);
-    return;
-  }
-  uint64_t ivl_ms = (m->last_ts - m->first_ts) / (filled - 1);
-  uint64_t total_ms = (uint64_t)m->capacity * ivl_ms;
+  /* slot_interval_sec: how many real seconds one slot represents
+   * L1: collection_interval_ms / 1000  (e.g. 1s)
+   * L2: l2_agg_interval_sec            (e.g. 60s = 1m)
+   * L3: l3_agg_interval_sec            (e.g. 3600s = 1h)
+   *
+   * total_sec = capacity * slot_interval_sec
+   * We pick the largest unit that divides evenly for display.
+   */
+  uint64_t total_sec = (uint64_t)capacity * slot_interval_sec;
 
-  char ivl[12], total[12];
-  if (ivl_ms < 1000)
-    snprintf(ivl, sizeof(ivl), "%llums", (unsigned long long)ivl_ms);
-  else if (ivl_ms < 60000)
-    snprintf(ivl, sizeof(ivl), "%llds", (unsigned long long)(ivl_ms / 1000));
-  else if (ivl_ms < 3600000)
-    snprintf(ivl, sizeof(ivl), "%lldm", (unsigned long long)(ivl_ms / 60000));
+  /* Format slot interval */
+  char ivl[12];
+  if (slot_interval_sec < 60)
+    snprintf(ivl, sizeof(ivl), "%us", slot_interval_sec);
+  else if (slot_interval_sec < 3600)
+    snprintf(ivl, sizeof(ivl), "%um", slot_interval_sec / 60);
   else
-    snprintf(ivl, sizeof(ivl), "%lldh", (unsigned long long)(ivl_ms / 3600000));
+    snprintf(ivl, sizeof(ivl), "%uh", slot_interval_sec / 3600);
 
-  if (total_ms < 3600000)
-    snprintf(total, sizeof(total), "%lldm",
-             (unsigned long long)(total_ms / 60000));
-  else if (total_ms < 86400000)
-    snprintf(total, sizeof(total), "%lldh",
-             (unsigned long long)(total_ms / 3600000));
+  /* Format total retention */
+  char total[12];
+  if (total_sec < 3600)
+    snprintf(total, sizeof(total), "%um", (uint32_t)(total_sec / 60));
+  else if (total_sec < 86400)
+    snprintf(total, sizeof(total), "%uh", (uint32_t)(total_sec / 3600));
   else
-    snprintf(total, sizeof(total), "%lldd",
-             (unsigned long long)(total_ms / 86400000));
+    snprintf(total, sizeof(total), "%ud", (uint32_t)(total_sec / 86400));
 
   snprintf(buf, len, "L%d %s@%s", level, total, ivl);
 }
@@ -274,12 +284,12 @@ static void draw_tsdb(WINDOW* w, int row, int cols, const struct ttr_reader* r,
 
 static void draw_hints(WINDOW* w, int rows, int mode) {
   wattron(w, COLOR_PAIR(CP_DIM));
-  mvwprintw(w, rows - 1, 1, " q:quit  Tab:mode[%d/1]  ?:help", mode);
+  mvwprintw(w, rows - 1, 1, " q:quit  Tab:mode[%d/2]  ?:help", mode);
   wattroff(w, COLOR_PAIR(CP_DIM));
 }
 
 static void draw_help(int rows, int cols) {
-  int h = 10, wd = 40;
+  int h = 12, wd = 44;
   WINDOW* hw = newwin(h, wd, (rows - h) / 2, (cols - wd) / 2);
   box(hw, 0, 0);
   wattron(hw, A_BOLD);
@@ -289,10 +299,110 @@ static void draw_help(int rows, int cols) {
   mvwprintw(hw, 3, 2, "Tab        Cycle mode");
   mvwprintw(hw, 5, 2, "Mode 0:  Live metrics + sparklines");
   mvwprintw(hw, 6, 2, "Mode 1:  Ring buffer TSDB view");
-  mvwprintw(hw, 8, 2, "Press any key to close");
+  mvwprintw(hw, 7, 2, "Mode 2:  Services status + logs");
+  mvwprintw(hw, 9, 2, "Press any key to close");
   wrefresh(hw);
   getch();
   delwin(hw);
+}
+
+static pid_t dash_read_pid(const char* path) {
+  FILE* f = fopen(path, "r");
+  if (!f) return -1;
+  pid_t pid = -1;
+  fscanf(f, "%d", &pid);
+  fclose(f);
+  return pid;
+}
+
+static int dash_proc_running(pid_t pid) {
+  if (pid <= 0) return 0;
+  return kill(pid, 0) == 0 || errno == EPERM;
+}
+
+/* Fetch last `n` log lines for a unit into dst[n][128] */
+static int dash_fetch_logs(const char* unit, char dst[][128], int n) {
+  char cmd[128];
+  snprintf(cmd, sizeof(cmd),
+           "journalctl -u %s -n %d --no-pager --output=short-iso 2>/dev/null",
+           unit, n);
+  FILE* f = popen(cmd, "r");
+  if (!f) return 0;
+  int count = 0;
+  char line[256];
+  /* collect all lines, keep last n */
+  char tmp[8][256];
+  int total = 0;
+  while (fgets(line, sizeof(line), f)) {
+    line[strcspn(line, "\n")] = '\0';
+    strncpy(tmp[total % 8], line, 255);
+    total++;
+  }
+  pclose(f);
+  int start = total > n ? total - n : 0;
+  for (int i = start; i < total; i++) {
+    strncpy(dst[count++], tmp[i % 8], 127);
+  }
+  return count;
+}
+
+static void draw_services(WINDOW* w, int row, int cols,
+                          dash_state* st, const struct ttc_ctx* ctx) {
+  (void)cols;
+
+  wattron(w, COLOR_PAIR(CP_TITLE) | A_BOLD);
+  mvwprintw(w, row++, 1, "[ Services ]");
+  wattroff(w, COLOR_PAIR(CP_TITLE) | A_BOLD);
+
+  /* tinytd row */
+  int ok = st->tinytd_running;
+  wattron(w, A_BOLD);
+  mvwprintw(w, row, 1, "%-12s", "tinytd");
+  wattroff(w, A_BOLD);
+  wattron(w, COLOR_PAIR(ok ? CP_OK : CP_CRIT));
+  mvwprintw(w, row, 14, "%-8s", ok ? "running" : "stopped");
+  wattroff(w, COLOR_PAIR(ok ? CP_OK : CP_CRIT));
+  if (st->tinytd_pid > 0)
+    mvwprintw(w, row, 23, "pid=%-6d", (int)st->tinytd_pid);
+  wattron(w, COLOR_PAIR(CP_DIM));
+  mvwprintw(w, row, 34, "%s", ctx->pid_file);
+  wattroff(w, COLOR_PAIR(CP_DIM));
+  row++;
+
+  /* tinytrack row */
+  ok = st->tinytrack_running;
+  wattron(w, A_BOLD);
+  mvwprintw(w, row, 1, "%-12s", "tinytrack");
+  wattroff(w, A_BOLD);
+  wattron(w, COLOR_PAIR(ok ? CP_OK : CP_CRIT));
+  mvwprintw(w, row, 14, "%-8s", ok ? "running" : "stopped");
+  wattroff(w, COLOR_PAIR(ok ? CP_OK : CP_CRIT));
+  if (st->tinytrack_pid > 0)
+    mvwprintw(w, row, 23, "pid=%-6d", (int)st->tinytrack_pid);
+  wattron(w, COLOR_PAIR(CP_DIM));
+  mvwprintw(w, row, 34, "%-20s  listen: %s", ctx->gw_pid_file, ctx->gw_listen);
+  wattroff(w, COLOR_PAIR(CP_DIM));
+  row += 2;
+
+  /* Logs */
+  wattron(w, COLOR_PAIR(CP_TITLE) | A_BOLD);
+  mvwprintw(w, row++, 1, "[ Recent Logs ]");
+  wattroff(w, COLOR_PAIR(CP_TITLE) | A_BOLD);
+
+  for (int i = 0; i < st->log_count; i++) {
+    /* Colorize by severity keyword */
+    int pair = CP_DIM;
+    if (strstr(st->log_lines[i], "err") || strstr(st->log_lines[i], "ERR") ||
+        strstr(st->log_lines[i], "fail") || strstr(st->log_lines[i], "FAIL"))
+      pair = CP_CRIT;
+    else if (strstr(st->log_lines[i], "warn") || strstr(st->log_lines[i], "WARN"))
+      pair = CP_WARN;
+    else if (strstr(st->log_lines[i], "start") || strstr(st->log_lines[i], "ready"))
+      pair = CP_OK;
+    wattron(w, COLOR_PAIR(pair));
+    mvwprintw(w, row++, 1, "%.78s", st->log_lines[i]);
+    wattroff(w, COLOR_PAIR(pair));
+  }
 }
 
 int ttc_cmd_dashboard(const struct ttc_ctx* ctx) {
@@ -331,9 +441,12 @@ int ttc_cmd_dashboard(const struct ttc_ctx* ctx) {
           ttc_reader_open(&st.reader, ctx->mmap_path) == TTR_READER_OK;
 
     if (st.reader_ok && !st.labels_ready) {
-      compute_ring_label(st.reader.ring.l1_meta, 1, st.ring_label[0], 24);
-      compute_ring_label(st.reader.ring.l2_meta, 2, st.ring_label[1], 24);
-      compute_ring_label(st.reader.ring.l3_meta, 3, st.ring_label[2], 24);
+      const struct ttc_config *cfg = &ctx->cfg;
+      uint32_t l1_ivl = cfg->collection_interval_ms / 1000;
+      if (l1_ivl == 0) l1_ivl = 1;
+      compute_ring_label(1, cfg->l1_capacity, l1_ivl,             st.ring_label[0], 24);
+      compute_ring_label(2, cfg->l2_capacity, cfg->l2_agg_interval_sec, st.ring_label[1], 24);
+      compute_ring_label(3, cfg->l3_capacity, cfg->l3_agg_interval_sec, st.ring_label[2], 24);
       st.labels_ready = 1;
     }
 
@@ -357,15 +470,35 @@ int ttc_cmd_dashboard(const struct ttc_ctx* ctx) {
     }
 
     erase();
-    draw_header(stdscr, cols, st.reader_ok);
+    draw_header(stdscr, cols, st.tinytd_running);
+
+    /* Update daemon status every refresh */
+    st.tinytd_pid        = dash_read_pid(ctx->pid_file);
+    st.tinytrack_pid     = dash_read_pid(ctx->gw_pid_file);
+    st.tinytd_running    = dash_proc_running(st.tinytd_pid);
+    st.tinytrack_running = dash_proc_running(st.tinytrack_pid);
+
+    /* Fetch logs once per 5s in services mode */
+    time_t now = time(NULL);
+    if (st.mode == 2 && now - st.log_fetched >= 5) {
+      st.log_count = dash_fetch_logs("tinytd", st.log_lines, 4);
+      int gw = dash_fetch_logs("tinytrack", st.log_lines + st.log_count,
+                               8 - st.log_count);
+      st.log_count += gw;
+      st.log_fetched = now;
+    }
 
     if (st.mode == 0)
       draw_metrics(stdscr, 2, cols, &st.latest, st.hist, st.hist_count);
-    else if (st.reader_ok)
-      draw_tsdb(stdscr, 2, cols, &st.reader.ring,
-                (const char (*)[24])st.ring_label);
-    else
-      mvprintw(4, 2, "Daemon not running. Waiting for %s ...", ctx->mmap_path);
+    else if (st.mode == 1) {
+      if (st.reader_ok)
+        draw_tsdb(stdscr, 2, cols, &st.reader.ring,
+                  (const char (*)[24])st.ring_label);
+      else
+        mvprintw(4, 2, "Daemon not running. Waiting for %s ...", ctx->mmap_path);
+    } else {
+      draw_services(stdscr, 2, cols, &st, ctx);
+    }
 
     draw_hints(stdscr, rows, st.mode);
     if (st.show_help)
@@ -376,7 +509,7 @@ int ttc_cmd_dashboard(const struct ttc_ctx* ctx) {
     if (ch == 'q' || ch == 27)
       break;
     if (ch == '\t')
-      st.mode = (st.mode + 1) % 2;
+      st.mode = (st.mode + 1) % 3;
     if (ch == '?')
       st.show_help = !st.show_help;
   }

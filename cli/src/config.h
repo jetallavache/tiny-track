@@ -5,9 +5,18 @@
 
 /* CLI configuration loaded from tinytrack.conf */
 struct ttc_config {
-  char shm_path[256];  /* storage.live_path    */
-  char pid_file[256];  /* daemon.pid_file      */
-  int  interval_ms;    /* collection.interval_ms */
+  char shm_path[256];    /* storage.live_path      */
+  char pid_file[256];    /* tinytd.pid_file        */
+  char gw_pid_file[256]; /* gateway.pid_file       */
+  char gw_listen[128];   /* gateway.listen         */
+  int  interval_ms;      /* collection.interval_ms */
+  /* Ring buffer config for label computation */
+  uint32_t l1_capacity;
+  uint32_t l2_capacity;
+  uint32_t l3_capacity;
+  uint32_t l2_agg_interval_sec;
+  uint32_t l3_agg_interval_sec;
+  uint32_t collection_interval_ms;
 };
 
 /*
