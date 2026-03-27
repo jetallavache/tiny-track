@@ -45,6 +45,8 @@ static void make_ring_label(const struct ttc_config* cfg, int level,
   fmt_duration((uint64_t)cap * ivl_sec, total, sizeof(total));
   snprintf(buf, len, "L%d %s @ %s", level, total, ivl);
 }
+
+static pid_t read_pidfile(const char* path) {
   FILE* f = fopen(path, "r");
   if (!f)
     return -1;
