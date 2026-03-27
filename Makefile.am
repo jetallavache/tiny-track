@@ -22,6 +22,14 @@ install-data-hook:
 		echo "  Creating system user: tinytd"; \
 		useradd --system --no-create-home --shell /usr/sbin/nologin --gid tinytd tinytd; \
 	fi
+	@if ! getent group tinytrack > /dev/null 2>&1; then \
+		echo "  Creating system group: tinytrack"; \
+		groupadd --system tinytrack; \
+	fi
+	@if ! getent passwd tinytrack > /dev/null 2>&1; then \
+		echo "  Creating system user: tinytrack"; \
+		useradd --system --no-create-home --shell /usr/sbin/nologin --gid tinytrack tinytrack; \
+	fi
 	@install -d -m 750 -o tinytd -g tinytd $(DESTDIR)/var/lib/tinytrack
 	@echo "  tinytd user/group and /var/lib/tinytrack are ready."
 	@SUDO_USER=$${SUDO_USER:-$(LOGNAME)}; \
@@ -61,6 +69,14 @@ uninstall-hook:
 	@if getent group tinytd > /dev/null 2>&1; then \
 		echo "  Removing group: tinytd"; \
 		groupdel tinytd; \
+	fi
+	@if getent passwd tinytrack > /dev/null 2>&1; then \
+		echo "  Removing user: tinytrack"; \
+		userdel tinytrack; \
+	fi
+	@if getent group tinytrack > /dev/null 2>&1; then \
+		echo "  Removing group: tinytrack"; \
+		groupdel tinytrack; \
 	fi
 	@SUDO_USER=$${SUDO_USER:-$(LOGNAME)}; \
 	if [ -n "$$SUDO_USER" ] && [ "$$SUDO_USER" != "root" ]; then \
