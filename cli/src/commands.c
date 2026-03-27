@@ -19,7 +19,32 @@
 #include "output.h"
 #include "reader.h"
 
-static pid_t read_pidfile(const char* path) {
+static void fmt_duration(uint64_t sec, char* buf, size_t len) {
+  if (sec == 0)             snprintf(buf, len, "0 sec");
+  else if (sec < 60)        snprintf(buf, len, "%llu sec", (unsigned long long)sec);
+  else if (sec < 3600)      snprintf(buf, len, "%llu min", (unsigned long long)(sec / 60));
+  else if (sec < 86400)     snprintf(buf, len, "%llu hr",  (unsigned long long)(sec / 3600));
+  else if (sec < 604800)    snprintf(buf, len, "%llu day", (unsigned long long)(sec / 86400));
+  else if (sec < 2592000)   snprintf(buf, len, "%llu wk",  (unsigned long long)(sec / 604800));
+  else if (sec < 31536000)  snprintf(buf, len, "%llu mo",  (unsigned long long)(sec / 2592000));
+  else                      snprintf(buf, len, "%llu yr",  (unsigned long long)(sec / 31536000));
+}
+
+static void make_ring_label(const struct ttc_config* cfg, int level,
+                            char* buf, size_t len) {
+  uint32_t ivl_sec;
+  uint32_t cap;
+  switch (level) {
+    case 1: cap = cfg->l1_capacity; ivl_sec = cfg->collection_interval_ms / 1000; if (!ivl_sec) ivl_sec = 1; break;
+    case 2: cap = cfg->l2_capacity; ivl_sec = cfg->l2_agg_interval_sec; break;
+    case 3: cap = cfg->l3_capacity; ivl_sec = cfg->l3_agg_interval_sec; break;
+    default: snprintf(buf, len, "L%d", level); return;
+  }
+  char ivl[16], total[16];
+  fmt_duration(ivl_sec, ivl, sizeof(ivl));
+  fmt_duration((uint64_t)cap * ivl_sec, total, sizeof(total));
+  snprintf(buf, len, "L%d %s @ %s", level, total, ivl);
+}
   FILE* f = fopen(path, "r");
   if (!f)
     return -1;
@@ -58,16 +83,18 @@ static int open_reader(const struct ttc_ctx* ctx, struct ttc_reader* r) {
 
 int ttc_cmd_status(const struct ttc_ctx* ctx) {
   int td_running = daemon_running(ctx);
-  int gw_ok      = gw_running(ctx);
-  pid_t td_pid   = read_pidfile(ctx->pid_file);
-  pid_t gw_pid   = read_pidfile(ctx->gw_pid_file);
+  int gw_ok = gw_running(ctx);
+  pid_t td_pid = read_pidfile(ctx->pid_file);
+  pid_t gw_pid = read_pidfile(ctx->gw_pid_file);
 
   if (ctx->format == FMT_JSON) {
     printf("{\n");
     printf("  \"tinytd\":    { \"status\": \"%s\", \"pid\": %d },\n",
            td_running ? "running" : "stopped", (int)td_pid);
-    printf("  \"tinytrack\": { \"status\": \"%s\", \"pid\": %d, \"listen\": \"%s\" },\n",
-           gw_ok ? "running" : "stopped", (int)gw_pid, ctx->gw_listen);
+    printf(
+        "  \"tinytrack\": { \"status\": \"%s\", \"pid\": %d, \"listen\": "
+        "\"%s\" },\n",
+        gw_ok ? "running" : "stopped", (int)gw_pid, ctx->gw_listen);
     printf("  \"mmap\": \"%s\"\n", ctx->mmap_path);
     printf("}\n");
     return 0;
@@ -102,38 +129,11 @@ int ttc_cmd_status(const struct ttc_ctx* ctx) {
   /* Ring stats */
   struct ttc_reader r;
   if (open_reader(ctx, &r) == TTR_READER_OK) {
-    const struct ttc_config *cfg = &ctx->cfg;
-    uint32_t l1_ivl = cfg->collection_interval_ms / 1000;
-    if (l1_ivl == 0) l1_ivl = 1;
-    char lbl[3][24];
-    /* build labels from config */
-    uint64_t total;
-    char ivl_s[12], total_s[12];
-    /* L1 */
-    total = (uint64_t)cfg->l1_capacity * l1_ivl;
-    snprintf(ivl_s, sizeof(ivl_s), "%us", l1_ivl);
-    if (total < 3600) snprintf(total_s, sizeof(total_s), "%um", (uint32_t)(total/60));
-    else if (total < 86400) snprintf(total_s, sizeof(total_s), "%uh", (uint32_t)(total/3600));
-    else snprintf(total_s, sizeof(total_s), "%ud", (uint32_t)(total/86400));
-    snprintf(lbl[0], 24, "L1 %s@%s", total_s, ivl_s);
-    /* L2 */
-    total = (uint64_t)cfg->l2_capacity * cfg->l2_agg_interval_sec;
-    uint32_t ivl2 = cfg->l2_agg_interval_sec;
-    if (ivl2 < 60) snprintf(ivl_s, sizeof(ivl_s), "%us", ivl2);
-    else snprintf(ivl_s, sizeof(ivl_s), "%um", ivl2/60);
-    if (total < 3600) snprintf(total_s, sizeof(total_s), "%um", (uint32_t)(total/60));
-    else if (total < 86400) snprintf(total_s, sizeof(total_s), "%uh", (uint32_t)(total/3600));
-    else snprintf(total_s, sizeof(total_s), "%ud", (uint32_t)(total/86400));
-    snprintf(lbl[1], 24, "L2 %s@%s", total_s, ivl_s);
-    /* L3 */
-    total = (uint64_t)cfg->l3_capacity * cfg->l3_agg_interval_sec;
-    uint32_t ivl3 = cfg->l3_agg_interval_sec;
-    if (ivl3 < 3600) snprintf(ivl_s, sizeof(ivl_s), "%um", ivl3/60);
-    else snprintf(ivl_s, sizeof(ivl_s), "%uh", ivl3/3600);
-    if (total < 86400) snprintf(total_s, sizeof(total_s), "%uh", (uint32_t)(total/3600));
-    else snprintf(total_s, sizeof(total_s), "%ud", (uint32_t)(total/86400));
-    snprintf(lbl[2], 24, "L3 %s@%s", total_s, ivl_s);
-
+    const struct ttc_config* cfg = &ctx->cfg;
+    char lbl[3][32];
+    make_ring_label(cfg, 1, lbl[0], sizeof(lbl[0]));
+    make_ring_label(cfg, 2, lbl[1], sizeof(lbl[1]));
+    make_ring_label(cfg, 3, lbl[2], sizeof(lbl[2]));
     printf("\n");
     ttc_print_ring_level(ctx, 1, r.ring.l1_meta, lbl[0]);
     ttc_print_ring_level(ctx, 2, r.ring.l2_meta, lbl[1]);
@@ -257,20 +257,22 @@ static int systemd_available(void) {
 static void systemd_show_status(const struct ttc_ctx* ctx) {
   const char* units[] = {"tinytd", "tinytrack"};
   for (int u = 0; u < 2; u++) {
-    printf("%s--- %s ---%s\n",
-           ttc_color(ctx, COL_BOLD), units[u], ttc_color(ctx, COL_RESET));
+    printf("%s--- %s ---%s\n", ttc_color(ctx, COL_BOLD), units[u],
+           ttc_color(ctx, COL_RESET));
     char cmd[256];
     snprintf(cmd, sizeof(cmd),
              "systemctl show %s --property=ActiveState,SubState,"
              "MainPID,ExecMainStartTimestamp,LoadState 2>/dev/null",
              units[u]);
     FILE* f = popen(cmd, "r");
-    if (!f) continue;
+    if (!f)
+      continue;
     char line[256];
     while (fgets(line, sizeof(line), f)) {
       line[strcspn(line, "\n")] = '\0';
       char* eq = strchr(line, '=');
-      if (!eq) continue;
+      if (!eq)
+        continue;
       *eq = '\0';
       const char* key = line;
       const char* val = eq + 1;
@@ -325,8 +327,8 @@ int ttc_cmd_service(const struct ttc_ctx* ctx, const char* action) {
                "kill $(cat '%s' 2>/dev/null) 2>/dev/null;"
                "kill $(cat '%s' 2>/dev/null) 2>/dev/null;"
                "sleep 1; tinytd -c '%s' & tinytrack -c '%s' &",
-               ctx->gw_pid_file, ctx->pid_file,
-               ctx->config_path, ctx->config_path);
+               ctx->gw_pid_file, ctx->pid_file, ctx->config_path,
+               ctx->config_path);
 
   } else if (strcmp(action, "enable") == 0 || strcmp(action, "disable") == 0) {
     if (!use_systemd) {
@@ -358,15 +360,15 @@ int ttc_cmd_logs(const struct ttc_ctx* ctx, int lines, const char* level) {
   /* Show logs for both services */
   const char* units[] = {"tinytd", "tinytrack"};
   for (int i = 0; i < 2; i++) {
-    printf("%s=== %s ===%s\n",
-           ttc_color(ctx, COL_BOLD), units[i], ttc_color(ctx, COL_RESET));
+    printf("%s=== %s ===%s\n", ttc_color(ctx, COL_BOLD), units[i],
+           ttc_color(ctx, COL_RESET));
     if (use_journal) {
       if (level && strlen(level) > 0)
-        snprintf(cmd, sizeof(cmd),
-                 "journalctl -u %s -n %d -p %s --no-pager", units[i], lines, level);
+        snprintf(cmd, sizeof(cmd), "journalctl -u %s -n %d -p %s --no-pager",
+                 units[i], lines, level);
       else
-        snprintf(cmd, sizeof(cmd),
-                 "journalctl -u %s -n %d --no-pager", units[i], lines);
+        snprintf(cmd, sizeof(cmd), "journalctl -u %s -n %d --no-pager",
+                 units[i], lines);
     } else {
       snprintf(cmd, sizeof(cmd),
                "grep %s /var/log/syslog 2>/dev/null | tail -n %d"

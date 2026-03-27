@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include "dashboard.h"
 
+#include <errno.h>
 #include <ncurses.h>
 #include <signal.h>
 #include <stdint.h>
@@ -79,38 +80,25 @@ static void fmt_bytes(unsigned long b, char* buf, size_t len) {
     snprintf(buf, len, "%luB", b);
 }
 
+static void fmt_duration(uint64_t sec, char* buf, size_t len) {
+  if (sec == 0)             snprintf(buf, len, "0 sec");
+  else if (sec < 60)        snprintf(buf, len, "%llu sec", (unsigned long long)sec);
+  else if (sec < 3600)      snprintf(buf, len, "%llu min", (unsigned long long)(sec / 60));
+  else if (sec < 86400)     snprintf(buf, len, "%llu hr",  (unsigned long long)(sec / 3600));
+  else if (sec < 604800)    snprintf(buf, len, "%llu day", (unsigned long long)(sec / 86400));
+  else if (sec < 2592000)   snprintf(buf, len, "%llu wk",  (unsigned long long)(sec / 604800));
+  else if (sec < 31536000)  snprintf(buf, len, "%llu mo",  (unsigned long long)(sec / 2592000));
+  else                      snprintf(buf, len, "%llu yr",  (unsigned long long)(sec / 31536000));
+}
+
 static void compute_ring_label(int level, uint32_t capacity,
                                uint32_t slot_interval_sec, char* buf,
                                size_t len) {
-  /* slot_interval_sec: how many real seconds one slot represents
-   * L1: collection_interval_ms / 1000  (e.g. 1s)
-   * L2: l2_agg_interval_sec            (e.g. 60s = 1m)
-   * L3: l3_agg_interval_sec            (e.g. 3600s = 1h)
-   *
-   * total_sec = capacity * slot_interval_sec
-   * We pick the largest unit that divides evenly for display.
-   */
   uint64_t total_sec = (uint64_t)capacity * slot_interval_sec;
-
-  /* Format slot interval */
-  char ivl[12];
-  if (slot_interval_sec < 60)
-    snprintf(ivl, sizeof(ivl), "%us", slot_interval_sec);
-  else if (slot_interval_sec < 3600)
-    snprintf(ivl, sizeof(ivl), "%um", slot_interval_sec / 60);
-  else
-    snprintf(ivl, sizeof(ivl), "%uh", slot_interval_sec / 3600);
-
-  /* Format total retention */
-  char total[12];
-  if (total_sec < 3600)
-    snprintf(total, sizeof(total), "%um", (uint32_t)(total_sec / 60));
-  else if (total_sec < 86400)
-    snprintf(total, sizeof(total), "%uh", (uint32_t)(total_sec / 3600));
-  else
-    snprintf(total, sizeof(total), "%ud", (uint32_t)(total_sec / 86400));
-
-  snprintf(buf, len, "L%d %s@%s", level, total, ivl);
+  char ivl[16], total[16];
+  fmt_duration(slot_interval_sec, ivl, sizeof(ivl));
+  fmt_duration(total_sec, total, sizeof(total));
+  snprintf(buf, len, "L%d %s @ %s", level, total, ivl);
 }
 
 static void draw_bar(WINDOW* w, int y, int x, int width, double pct,
@@ -308,7 +296,8 @@ static void draw_help(int rows, int cols) {
 
 static pid_t dash_read_pid(const char* path) {
   FILE* f = fopen(path, "r");
-  if (!f) return -1;
+  if (!f)
+    return -1;
   pid_t pid = -1;
   fscanf(f, "%d", &pid);
   fclose(f);
@@ -316,7 +305,8 @@ static pid_t dash_read_pid(const char* path) {
 }
 
 static int dash_proc_running(pid_t pid) {
-  if (pid <= 0) return 0;
+  if (pid <= 0)
+    return 0;
   return kill(pid, 0) == 0 || errno == EPERM;
 }
 
@@ -327,7 +317,8 @@ static int dash_fetch_logs(const char* unit, char dst[][128], int n) {
            "journalctl -u %s -n %d --no-pager --output=short-iso 2>/dev/null",
            unit, n);
   FILE* f = popen(cmd, "r");
-  if (!f) return 0;
+  if (!f)
+    return 0;
   int count = 0;
   char line[256];
   /* collect all lines, keep last n */
@@ -346,8 +337,8 @@ static int dash_fetch_logs(const char* unit, char dst[][128], int n) {
   return count;
 }
 
-static void draw_services(WINDOW* w, int row, int cols,
-                          dash_state* st, const struct ttc_ctx* ctx) {
+static void draw_services(WINDOW* w, int row, int cols, dash_state* st,
+                          const struct ttc_ctx* ctx) {
   (void)cols;
 
   wattron(w, COLOR_PAIR(CP_TITLE) | A_BOLD);
@@ -395,9 +386,11 @@ static void draw_services(WINDOW* w, int row, int cols,
     if (strstr(st->log_lines[i], "err") || strstr(st->log_lines[i], "ERR") ||
         strstr(st->log_lines[i], "fail") || strstr(st->log_lines[i], "FAIL"))
       pair = CP_CRIT;
-    else if (strstr(st->log_lines[i], "warn") || strstr(st->log_lines[i], "WARN"))
+    else if (strstr(st->log_lines[i], "warn") ||
+             strstr(st->log_lines[i], "WARN"))
       pair = CP_WARN;
-    else if (strstr(st->log_lines[i], "start") || strstr(st->log_lines[i], "ready"))
+    else if (strstr(st->log_lines[i], "start") ||
+             strstr(st->log_lines[i], "ready"))
       pair = CP_OK;
     wattron(w, COLOR_PAIR(pair));
     mvwprintw(w, row++, 1, "%.78s", st->log_lines[i]);
@@ -441,12 +434,15 @@ int ttc_cmd_dashboard(const struct ttc_ctx* ctx) {
           ttc_reader_open(&st.reader, ctx->mmap_path) == TTR_READER_OK;
 
     if (st.reader_ok && !st.labels_ready) {
-      const struct ttc_config *cfg = &ctx->cfg;
+      const struct ttc_config* cfg = &ctx->cfg;
       uint32_t l1_ivl = cfg->collection_interval_ms / 1000;
-      if (l1_ivl == 0) l1_ivl = 1;
-      compute_ring_label(1, cfg->l1_capacity, l1_ivl,             st.ring_label[0], 24);
-      compute_ring_label(2, cfg->l2_capacity, cfg->l2_agg_interval_sec, st.ring_label[1], 24);
-      compute_ring_label(3, cfg->l3_capacity, cfg->l3_agg_interval_sec, st.ring_label[2], 24);
+      if (l1_ivl == 0)
+        l1_ivl = 1;
+      compute_ring_label(1, cfg->l1_capacity, l1_ivl, st.ring_label[0], 24);
+      compute_ring_label(2, cfg->l2_capacity, cfg->l2_agg_interval_sec,
+                         st.ring_label[1], 24);
+      compute_ring_label(3, cfg->l3_capacity, cfg->l3_agg_interval_sec,
+                         st.ring_label[2], 24);
       st.labels_ready = 1;
     }
 
@@ -473,9 +469,9 @@ int ttc_cmd_dashboard(const struct ttc_ctx* ctx) {
     draw_header(stdscr, cols, st.tinytd_running);
 
     /* Update daemon status every refresh */
-    st.tinytd_pid        = dash_read_pid(ctx->pid_file);
-    st.tinytrack_pid     = dash_read_pid(ctx->gw_pid_file);
-    st.tinytd_running    = dash_proc_running(st.tinytd_pid);
+    st.tinytd_pid = dash_read_pid(ctx->pid_file);
+    st.tinytrack_pid = dash_read_pid(ctx->gw_pid_file);
+    st.tinytd_running = dash_proc_running(st.tinytd_pid);
     st.tinytrack_running = dash_proc_running(st.tinytrack_pid);
 
     /* Fetch logs once per 5s in services mode */
@@ -495,7 +491,8 @@ int ttc_cmd_dashboard(const struct ttc_ctx* ctx) {
         draw_tsdb(stdscr, 2, cols, &st.reader.ring,
                   (const char (*)[24])st.ring_label);
       else
-        mvprintw(4, 2, "Daemon not running. Waiting for %s ...", ctx->mmap_path);
+        mvprintw(4, 2, "Daemon not running. Waiting for %s ...",
+                 ctx->mmap_path);
     } else {
       draw_services(stdscr, 2, cols, &st, ctx);
     }
