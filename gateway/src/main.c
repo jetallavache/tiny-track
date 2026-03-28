@@ -66,6 +66,7 @@ static int drop_privileges(const char* user, const char* group) {
     tt_log_err("setgid failed");
     return -1;
   }
+  setgroups(0, NULL); /* drop supplementary groups inherited from root */
 
   struct passwd* pw = getpwnam(user);
   if (!pw) {

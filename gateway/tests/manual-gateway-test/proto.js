@@ -88,30 +88,33 @@ function parseFrame(buffer) {
 
 /* ------------------------------------------------------------------ */
 /* Parse tt_metrics from DataView at offset                            */
-/* struct tt_metrics (52 bytes, packed):                               */
+/* struct tt_metrics (52 bytes, packed, little-endian):               */
 /*   timestamp:8  cpu:2  mem:2  net_rx:4  net_tx:4                    */
 /*   load1:2  load5:2  load15:2  nr_running:4  nr_total:4             */
 /*   du_usage:2  du_total:8  du_free:8                                 */
 /* ------------------------------------------------------------------ */
 
 function parseMetrics(view, offset = 0) {
-  const tsHi = view.getUint32(offset);
-  const tsLo = view.getUint32(offset + 4);
+  const LE = true; /* tt_metrics is stored little-endian (native x86) */
+
+  /* uint64 timestamp: read as two uint32 LE and combine */
+  const tsLo = view.getUint32(offset,     LE);
+  const tsHi = view.getUint32(offset + 4, LE);
   const timestamp = tsHi * 2**32 + tsLo; /* ms since epoch */
 
   return {
     timestamp,
-    cpu_usage:   view.getUint16(offset + 8),   /* * 100 */
-    mem_usage:   view.getUint16(offset + 10),
-    net_rx:      view.getUint32(offset + 12),  /* bytes/sec */
-    net_tx:      view.getUint32(offset + 16),
-    load_1min:   view.getUint16(offset + 20),  /* * 100 */
-    load_5min:   view.getUint16(offset + 22),
-    load_15min:  view.getUint16(offset + 24),
-    nr_running:  view.getUint32(offset + 26),
-    nr_total:    view.getUint32(offset + 30),
-    du_usage:    view.getUint16(offset + 34),
-    /* du_total_bytes and du_free_bytes at +36 and +44 (uint64, skip for display) */
+    cpu_usage:   view.getUint16(offset + 8,  LE), /* * 100 */
+    mem_usage:   view.getUint16(offset + 10, LE), /* * 100 */
+    net_rx:      view.getUint32(offset + 12, LE), /* bytes/sec */
+    net_tx:      view.getUint32(offset + 16, LE), /* bytes/sec */
+    load_1min:   view.getUint16(offset + 20, LE), /* * 100 */
+    load_5min:   view.getUint16(offset + 22, LE), /* * 100 */
+    load_15min:  view.getUint16(offset + 24, LE), /* * 100 */
+    nr_running:  view.getUint32(offset + 26, LE),
+    nr_total:    view.getUint32(offset + 30, LE),
+    du_usage:    view.getUint16(offset + 34, LE), /* * 100 */
+    /* du_total_bytes at +36, du_free_bytes at +44 (uint64 LE) */
   };
 }
 

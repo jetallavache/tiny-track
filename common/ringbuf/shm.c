@@ -26,6 +26,7 @@ void* ttr_shm_create(const char* path, size_t len, int mode) {
                strerror(errno));
     return (void*)TTR_SHM_OPENFD_ERR;
   }
+  fchmod(fd, mode); /* enforce exact mode, bypass umask */
   if (ftruncate(fd, len) < 0) {
     tt_log_err("ftruncate: %s", strerror(errno));
     close(fd);

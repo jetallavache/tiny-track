@@ -45,7 +45,7 @@ int ttd_config_load(const char* path, struct ttd_config* cfg) {
                      "/var/lib/tinytrack/tinytd-shadow.dat");
   cfg->shadow_sync_interval_sec =
       tt_config_read_int(path, "storage.shadow_sync_interval_sec", 60);
-  cfg->file_mode = tt_config_read_int(path, "storage.file_mode", 0644);
+  cfg->file_mode = tt_config_read_int(path, "storage.file_mode", 0640);
 
   /* [ringbuffer] */
   cfg->l1_capacity = tt_config_read_int(path, "ringbuffer.l1_capacity", 3600);

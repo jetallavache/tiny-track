@@ -352,32 +352,54 @@ int ttc_cmd_service(const struct ttc_ctx* ctx, const char* action) {
   return ret == 0 ? 0 : 1;
 }
 
-int ttc_cmd_logs(const struct ttc_ctx* ctx, int lines, const char* level) {
+int ttc_cmd_logs(const struct ttc_ctx* ctx, int lines, const char* level,
+                 const char* service) {
   if (lines <= 0)
     lines = 50;
 
   int use_journal = system("journalctl --version >/dev/null 2>&1") == 0;
   char cmd[512];
 
-  /* Show logs for both services */
   const char* units[] = {"tinytd", "tinytrack"};
-  for (int i = 0; i < 2; i++) {
+  int from = 0, to = 2;
+
+  /* Filter by service if specified */
+  if (service && strlen(service) > 0) {
+    if (strcmp(service, "tinytd") == 0) {
+      from = 0; to = 1;
+    } else if (strcmp(service, "tinytrack") == 0) {
+      from = 1; to = 2;
+    } else {
+      fprintf(stderr, "Error: unknown service '%s'. Use: tinytd, tinytrack\n",
+              service);
+      fprintf(stderr, "Usage: tiny-cli logs [--lines N] [--level LEVEL] "
+                      "[--service tinytd|tinytrack]\n");
+      return 1;
+    }
+  }
+
+  for (int i = from; i < to; i++) {
     printf("%s=== %s ===%s\n", ttc_color(ctx, COL_BOLD), units[i],
            ttc_color(ctx, COL_RESET));
+    fflush(stdout);
     if (use_journal) {
       if (level && strlen(level) > 0)
-        snprintf(cmd, sizeof(cmd), "journalctl -u %s -n %d -p %s --no-pager",
-                 units[i], lines, level);
+        snprintf(cmd, sizeof(cmd),
+                 "journalctl -u %s --identifier=%s -n %d -p %s --no-pager -q",
+                 units[i], units[i], lines, level);
       else
-        snprintf(cmd, sizeof(cmd), "journalctl -u %s -n %d --no-pager",
-                 units[i], lines);
+        snprintf(cmd, sizeof(cmd),
+                 "journalctl -u %s --identifier=%s -n %d --no-pager -q",
+                 units[i], units[i], lines);
     } else {
       snprintf(cmd, sizeof(cmd),
                "grep %s /var/log/syslog 2>/dev/null | tail -n %d"
                " || grep %s /var/log/messages 2>/dev/null | tail -n %d",
                units[i], lines, units[i], lines);
     }
-    system(cmd);
+    int rc = system(cmd);
+    if (rc != 0 && use_journal)
+      printf("  (no entries or insufficient permissions)\n");
     printf("\n");
   }
   return 0;

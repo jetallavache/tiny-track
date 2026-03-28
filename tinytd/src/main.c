@@ -65,6 +65,7 @@ static int drop_privileges(const char* user, const char* group) {
     tt_log_err("setgid failed");
     return -1;
   }
+  setgroups(0, NULL); /* drop supplementary groups inherited from root */
 
   struct passwd* pw = getpwnam(user);
   if (!pw) {
@@ -168,6 +169,12 @@ int main(int argc, char** argv) {
     tt_log_warning("Failed to write pid file: %s", cfg.pid_file);
 
   if (getuid() == 0) {
+    struct passwd* pw = getpwnam(cfg.user);
+    struct group*  gr = getgrnam(cfg.group);
+    if (pw && gr) {
+      chown(cfg.live_path,   pw->pw_uid, gr->gr_gid);
+      chown(cfg.shadow_path, pw->pw_uid, gr->gr_gid);
+    }
     if (drop_privileges(cfg.user, cfg.group) < 0) {
       tt_log_err("Failed to drop privileges");
       cleanup(&rt, &cst, &writer, cfg.pid_file);

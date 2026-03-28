@@ -24,17 +24,23 @@ function addLog(msg) {
 
 function fmtPct(val)  { return (val / 100).toFixed(1) + '%'; }
 function fmtLoad(val) { return (val / 100).toFixed(2); }
-function fmtKB(val)   { return (val / 1024).toFixed(1) + ' KB/s'; }
+function fmtNet(bytes) {
+  if (bytes >= 1024 * 1024 * 1024) return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB/s';
+  if (bytes >= 1024 * 1024)        return (bytes / (1024 * 1024)).toFixed(2) + ' MB/s';
+  if (bytes >= 1024)               return (bytes / 1024).toFixed(1) + ' KB/s';
+  return bytes + ' B/s';
+}
 
 function renderMetrics(m) {
+  const ts = m.timestamp > 0 ? new Date(m.timestamp).toLocaleTimeString() : 'N/A';
   metricsDiv.innerHTML =
     `<b>CPU:</b> ${fmtPct(m.cpu_usage)} &nbsp;` +
     `<b>MEM:</b> ${fmtPct(m.mem_usage)} &nbsp;` +
     `<b>DISK:</b> ${fmtPct(m.du_usage)}<br>` +
     `<b>Load:</b> ${fmtLoad(m.load_1min)} / ${fmtLoad(m.load_5min)} / ${fmtLoad(m.load_15min)}<br>` +
-    `<b>RX:</b> ${fmtKB(m.net_rx)} &nbsp;<b>TX:</b> ${fmtKB(m.net_tx)}<br>` +
-    `<b>Procs:</b> ${m.nr_running} / ${m.nr_total} &nbsp;` +
-    `<b>ts:</b> ${new Date(m.timestamp).toLocaleTimeString()}`;
+    `<b>RX:</b> ${fmtNet(m.net_rx)} &nbsp;<b>TX:</b> ${fmtNet(m.net_tx)}<br>` +
+    `<b>Procs:</b> ${m.nr_running} running / ${m.nr_total} total &nbsp;` +
+    `<b>ts:</b> ${ts}`;
 }
 
 function renderStats(s) {
@@ -56,7 +62,7 @@ const handlers = {
 
   onMetrics(m) {
     renderMetrics(m);
-    addLog(`← PKT_METRICS: CPU=${fmtPct(m.cpu_usage)} MEM=${fmtPct(m.mem_usage)}`);
+    addLog(`← PKT_METRICS: CPU=${fmtPct(m.cpu_usage)} MEM=${fmtPct(m.mem_usage)} RX=${fmtNet(m.net_rx)}`);
   },
 
   onAck({ cmdType, ok }) {

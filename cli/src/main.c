@@ -30,6 +30,8 @@ static void usage(void) {
       "  service ACTION    Manage service: start, stop, restart, status, "
       "enable, disable\n"
       "  logs              Show daemon logs (journalctl integration)\n"
+      "                    Options: [--lines N] [--level LEVEL]\n"
+      "                             [--service tinytd|tinytrack]\n"
       "  debug             Diagnostics and integrity check\n"
       "  dashboard         Interactive ncurses dashboard\n"
       "  script FILE       Execute a script file (- for stdin)\n"
@@ -140,15 +142,24 @@ int main(int argc, char** argv) {
   } else if (strcmp(cmd, "logs") == 0) {
     int lines = 50;
     const char* level = "";
+    const char* service = "";
     for (; optind < argc; optind++) {
       if (strcmp(argv[optind], "--lines") == 0 && optind + 1 < argc)
         lines = atoi(argv[++optind]);
       else if (strcmp(argv[optind], "--level") == 0 && optind + 1 < argc)
         level = argv[++optind];
-      else
+      else if (strcmp(argv[optind], "--service") == 0 && optind + 1 < argc)
+        service = argv[++optind];
+      else if (argv[optind][0] != '-')
         lines = atoi(argv[optind]);
+      else {
+        fprintf(stderr, "Unknown option: %s\n", argv[optind]);
+        fprintf(stderr, "Usage: tiny-cli logs [--lines N] [--level LEVEL] "
+                        "[--service tinytd|tinytrack]\n");
+        return 1;
+      }
     }
-    return ttc_cmd_logs(&ctx, lines, level);
+    return ttc_cmd_logs(&ctx, lines, level, service);
 
   } else if (strcmp(cmd, "script") == 0) {
     if (optind >= argc) {

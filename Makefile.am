@@ -31,20 +31,37 @@ install-data-hook:
 		useradd --system --no-create-home --shell /usr/sbin/nologin --gid tinytrack tinytrack; \
 	fi
 	@install -d -m 750 -o tinytd -g tinytd $(DESTDIR)/var/lib/tinytrack
+	@usermod -aG tinytd tinytrack
 	@echo "  tinytd user/group and /var/lib/tinytrack are ready."
 	@SUDO_USER=$${SUDO_USER:-$(LOGNAME)}; \
 	if [ -n "$$SUDO_USER" ] && [ "$$SUDO_USER" != "root" ]; then \
+		if ! id -nG "$$SUDO_USER" | grep -qw tinytd; then \
+			echo "  Adding $$SUDO_USER to tinytd group (for tiny-cli access)..."; \
+			usermod -aG tinytd "$$SUDO_USER"; \
+			echo ""; \
+			echo "  *** ACTION REQUIRED ***"; \
+			echo "  Group membership takes effect after re-login."; \
+			echo "  To apply immediately in the current session, run:"; \
+			echo "    newgrp tinytd"; \
+			echo ""; \
+		fi; \
 		if getent group systemd-journal > /dev/null 2>&1; then \
 			if ! id -nG "$$SUDO_USER" | grep -qw systemd-journal; then \
 				echo "  Adding $$SUDO_USER to systemd-journal group..."; \
 				usermod -aG systemd-journal "$$SUDO_USER"; \
 			fi; \
 		fi; \
-		JOURNAL_DIR=$$(ls -d /run/log/journal/* 2>/dev/null | head -1); \
-		if [ -n "$$JOURNAL_DIR" ] && command -v setfacl > /dev/null 2>&1; then \
+		if command -v setfacl > /dev/null 2>&1; then \
 			echo "  Granting $$SUDO_USER immediate journal read access via ACL..."; \
-			setfacl -m u:"$$SUDO_USER":rx /run/log/journal 2>/dev/null || true; \
-			setfacl -m u:"$$SUDO_USER":rx "$$JOURNAL_DIR" 2>/dev/null || true; \
+			for jdir in /run/log/journal /var/log/journal; do \
+				if [ -d "$$jdir" ]; then \
+					setfacl -m u:"$$SUDO_USER":rx "$$jdir" 2>/dev/null || true; \
+					find "$$jdir" -mindepth 1 -maxdepth 1 -type d | while read d; do \
+						setfacl -m u:"$$SUDO_USER":rx "$$d" 2>/dev/null || true; \
+						setfacl -Rm u:"$$SUDO_USER":r "$$d"/*.journal* 2>/dev/null || true; \
+					done; \
+				fi; \
+			done; \
 			echo "  Journal access granted (no re-login required)."; \
 		else \
 			echo "  Note: re-login required for systemd-journal group to take effect."; \
@@ -80,16 +97,27 @@ uninstall-hook:
 	fi
 	@SUDO_USER=$${SUDO_USER:-$(LOGNAME)}; \
 	if [ -n "$$SUDO_USER" ] && [ "$$SUDO_USER" != "root" ]; then \
+		if id -nG "$$SUDO_USER" | grep -qw tinytd; then \
+			echo "  Removing $$SUDO_USER from tinytd group..."; \
+			gpasswd -d "$$SUDO_USER" tinytd 2>/dev/null || true; \
+		fi; \
 		if id -nG "$$SUDO_USER" | grep -qw systemd-journal; then \
 			echo "  Removing $$SUDO_USER from systemd-journal group..."; \
 			gpasswd -d "$$SUDO_USER" systemd-journal 2>/dev/null || true; \
 		fi; \
 		if command -v setfacl > /dev/null 2>&1; then \
-			setfacl -x u:"$$SUDO_USER" /run/log/journal 2>/dev/null || true; \
-			JOURNAL_DIR=$$(ls -d /run/log/journal/* 2>/dev/null | head -1); \
-			[ -n "$$JOURNAL_DIR" ] && setfacl -x u:"$$SUDO_USER" "$$JOURNAL_DIR" 2>/dev/null || true; \
+			for jdir in /run/log/journal /var/log/journal; do \
+				if [ -d "$$jdir" ]; then \
+					setfacl -x u:"$$SUDO_USER" "$$jdir" 2>/dev/null || true; \
+					find "$$jdir" -mindepth 1 -maxdepth 1 -type d | while read d; do \
+						setfacl -x u:"$$SUDO_USER" "$$d" 2>/dev/null || true; \
+						setfacl -Rx u:"$$SUDO_USER" "$$d"/*.journal* 2>/dev/null || true; \
+					done; \
+				fi; \
+			done; \
 		fi; \
 	fi
+	@-rmdir /etc/tinytrack 2>/dev/null || true
 	@echo "  Uninstall complete."
 
 # Code formatting
