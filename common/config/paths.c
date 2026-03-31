@@ -17,7 +17,7 @@ static const char* cached_pid_file = NULL;
 
 static const char* get_path_from_config(const char* config_key,
                                         const char** cache) {
-  if (*cache)
+  if (*cache != NULL)
     return *cache;
 
   const char* config_file = tt_config_file_path();
@@ -26,10 +26,9 @@ static const char* get_path_from_config(const char* config_key,
       tt_config_ini_read(config_file, config_key, cfg_value,
                          sizeof(cfg_value)) == 0) {
     *cache = strdup(cfg_value);
-    return *cache;
   }
 
-  return NULL;
+  return *cache;
 }
 
 const char* tt_config_live_path(void) {

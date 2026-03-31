@@ -6,6 +6,7 @@
 
 #include "printf.h"
 #include "sock.h"
+#include "tls.h"
 #include "util.h"
 
 size_t ttg_net_vprintf(struct ttg_conn* c, const char* fmt, va_list* ap) {
@@ -37,10 +38,9 @@ void ttg_net_close_conn(struct ttg_conn* c) {
   LIST_DELETE(struct ttg_conn, &c->mgr->conns, c);
   ttg_event_call(c, TTG_EVENT_CLOSE, NULL);
   tt_log_debug("%lu %ld closed", c->id, c->fd);
-  /* s_tls_free(c); */
+  ttg_tls_free(c);
   ttg_iobuf_free(&c->recv);
   ttg_iobuf_free(&c->send);
-  /* ttg_iobuf_free(&c->rtls); */
   ttg_util_bzero((unsigned char*)c, sizeof(*c));
   free(c);
 }
@@ -60,7 +60,7 @@ struct ttg_conn* ttg_net_connect_svc(struct ttg_mgr* mgr, const char* url,
     c->fn = fn;
     c->is_client = true;
     c->fn_data = fn_data;
-    /* c->is_tls = (ttg_url_is_ssl(url) != 0); */
+    c->is_tls = (ttg_url_is_ssl(url) != 0);
     c->pfn = pfn;
     c->pfn_data = pfn_data;
     ttg_event_call(c, TTG_EVENT_OPEN, (void*)url);
@@ -89,8 +89,7 @@ struct ttg_conn* ttg_net_listen(struct ttg_mgr* mgr, const char* url,
     LIST_ADD_HEAD(struct ttg_conn, &mgr->conns, c);
     c->fn = fn;
     c->fn_data = fn_data;
-    /* c->is_tls = (mg_url_is_ssl(url) != 0); */
-
+    c->is_tls = (ttg_url_is_ssl(url) != 0);
     ttg_event_call(c, TTG_EVENT_OPEN, NULL);
     tt_log_debug("%lu %ld %s", c->id, c->fd, url);
   }
@@ -108,16 +107,16 @@ struct tt_timer* ttg_net_timer_add(struct ttg_mgr* mgr, uint64_t ms,
   return t;
 }
 
-void ttg_net_mgr_init(struct ttg_mgr* mgr) {
+void ttg_net_mgr_init(struct ttg_mgr* mgr, const struct ttg_tls_cfg* tls) {
   memset(mgr, 0, sizeof(*mgr));
   if ((mgr->epoll_fd = epoll_create1(EPOLL_CLOEXEC)) < 0)
     tt_log_err("epoll_create1 errno %d", errno);
   signal(SIGPIPE, SIG_IGN);
   mgr->pipe = TTG_INVALID_SOCKET;
-  /* s_tls_ctx_init(mgr); */
-  /* p_bin_full_init(&mgr->packet); */
-  /* c_state_init(&mgr->state); - TODO */
-  tt_log_debug("MG_IO_SIZE: %u, TLS: --", TTG_IO_SIZE);
+  if (tls)
+    ttg_tls_ctx_init(mgr, tls);
+  tt_log_debug("MG_IO_SIZE: %u, TLS: %s", TTG_IO_SIZE,
+               mgr->tls_ctx ? "OpenSSL" : "disabled");
 }
 
 void ttg_net_mgr_free(struct ttg_mgr* mgr) {
@@ -132,7 +131,7 @@ void ttg_net_mgr_free(struct ttg_mgr* mgr) {
   tt_log_debug("All connections closed");
   if (mgr->epoll_fd >= 0)
     close(mgr->epoll_fd), mgr->epoll_fd = -1;
-  /* mg_tls_ctx_free(mgr); */
+  ttg_tls_ctx_free(mgr);
 }
 
 void ttg_net_mgr_poll(struct ttg_mgr* mgr, int ms) {

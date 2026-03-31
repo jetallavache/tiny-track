@@ -41,6 +41,14 @@ void ttg_config_load(struct ttg_config* cfg, const char* config_path,
   cfg->update_interval_ms = tt_config_read_int(
       config_path, "gateway.update_interval", DEFAULT_INTERVAL);
 
+  /* TLS settings (optional) */
+  tt_config_read_str(config_path, "gateway.tls_cert", cfg->tls_cert,
+                     sizeof(cfg->tls_cert), "");
+  tt_config_read_str(config_path, "gateway.tls_key", cfg->tls_key,
+                     sizeof(cfg->tls_key), "");
+  tt_config_read_str(config_path, "gateway.tls_ca", cfg->tls_ca,
+                     sizeof(cfg->tls_ca), "");
+
   /* CLI overrides take priority */
   if (listen_override)
     snprintf(cfg->listen, sizeof(cfg->listen), "%s", listen_override);

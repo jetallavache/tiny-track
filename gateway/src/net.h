@@ -3,10 +3,11 @@
 
 #include <time.h>
 
-#include "common/log.h"
+#include "common/log/log.h"
 #include "common/timer.h"
 #include "event.h"
 #include "iobuf.h"
+#include "tls.h"
 
 #define TTG_DATA_SIZE 32
 #define TTG_SOCK_TYPE int
@@ -45,8 +46,8 @@ struct ttg_mgr {
   unsigned long nextid;   /* Next connection identifier */
   struct ttg_conn* conns; /* List of active connections */
 
-  void* userdata; /* Arbitrary user data pointer */
-  /* void *tls_ctx; */
+  void* userdata;          /* Arbitrary user data pointer */
+  void* tls_ctx;           /* struct ttg_tls_ctx*, NULL if TLS disabled */
   struct tt_timer* timers; /* Active timers */
   TTG_SOCK_TYPE pipe;
 };
@@ -71,7 +72,7 @@ struct ttg_conn {
    * encrypted data */
 
   char data[TTG_DATA_SIZE];
-  /* void *tls; */
+  void* tls; /* struct ttg_tls*, NULL if TLS disabled */
 
   /* client data: interval, alerts */
   /* client state */
@@ -99,7 +100,7 @@ struct ttg_conn {
                                  free memory */
 };
 
-void ttg_net_mgr_init(struct ttg_mgr*);
+void ttg_net_mgr_init(struct ttg_mgr*, const struct ttg_tls_cfg* tls);
 void ttg_net_mgr_poll(struct ttg_mgr*, int ms);
 void ttg_net_mgr_free(struct ttg_mgr*);
 

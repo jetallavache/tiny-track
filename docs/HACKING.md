@@ -48,7 +48,8 @@ Adding New Files
    - gateway/Makefile.am for gateway
 
 2. Regenerate:
-   autoreconf -fi
+
+    autoreconf -fi
 
 Adding Dependencies
 -------------------
@@ -63,6 +64,31 @@ Then regenerate and reconfigure.
 Testing Changes
 ---------------
 
-    make distcheck
+Fast suite (static analysis + unit + integration):
 
-This verifies the distribution is complete and builds correctly.
+    sh tests/run_tests.sh
+
+Full suite including gateway:
+
+    sh tests/run_tests.sh all
+
+See docs/TESTING.md for details on individual test suites.
+
+Test Configuration
+------------------
+
+All tests use a single shared config: tests/tinytrack.conf-test
+
+It contains sections for all components (tinytd, gateway) with
+paths under /tmp/ and debug settings suitable for test environments.
+
+Cleaning
+--------
+
+Remove all build and test artifacts:
+
+    sh scripts/clean.sh
+
+Verify distribution:
+
+    make distcheck

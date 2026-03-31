@@ -1,0 +1,32 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "start-tinytd-daemon",
+            "type": "shell",
+            "command": "pkill -x tinytd 2>/dev/null; rm -f /tmp/tinytd-live.dat; ./tinytd/tinytd -c etc/tinytrack.conf-debug & until [ -f /tmp/tinytd-live.dat ]; do sleep 0.1; done",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "isBackground": false,
+            "presentation": {
+                "reveal": "silent",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "make -j$(nproc)",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$gcc"]
+        }
+    ]
+}

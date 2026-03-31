@@ -9,10 +9,14 @@ Required:
 - GNU Make
 - Autotools (autoconf, automake, libtool)
 - librt (usually part of glibc)
+- OpenSSL (libssl-dev / openssl-devel) - for gateway TLS support
 
 Optional:
-- libcrypto (OpenSSL) - for gateway WebSocket support
 - systemd - for service unit installation
+- cppcheck - for static analysis
+- valgrind - for memory checks
+- python3 + pytest - for gateway tests
+- node + npm - for JS integration tests
 
 Quick Build
 -----------
@@ -65,7 +69,7 @@ Code formatting (requires clang-format):
 Gateway integration tests (requires node + built binaries):
 
     make check-gateway              Run basic WebSocket protocol tests
-    make check-gateway-extended     Run extended integration tests (9 suites)
+    make check-gateway-extended     Run extended integration tests
 
     # Custom port:
     make check-gateway-extended GATEWAY_TEST_PORT=4099
@@ -88,9 +92,9 @@ Coverage (requires ./configure --enable-coverage):
 
 Cleaning:
 
-    scripts/clean.sh        Full clean: distclean + autotools files +
+    sh scripts/clean.sh     Full clean: distclean + autotools files +
                             coverage artifacts + valgrind logs +
-                            test runtime files (/tmp/tinytd-test-*.dat)
+                            test runtime files + Python/Node caches
 
 Installation Layout
 -------------------
@@ -100,12 +104,13 @@ Default installation (prefix=/usr/local):
     /usr/local/bin/tinytd           - Monitoring daemon
     /usr/local/bin/tiny-cli         - CLI client
     /usr/local/bin/tinytrack        - HTTP/WebSocket gateway
-    /usr/local/etc/tinytrack.conf   - Configuration file
+    /usr/local/etc/tinytrack/tinytrack.conf  - Configuration file
     /usr/local/share/doc/tinytrack/ - Documentation
 
 With systemd:
 
-    /lib/systemd/system/tinytd.service - Systemd unit
+    /lib/systemd/system/tinytd.service    - tinytd service unit
+    /lib/systemd/system/tinytrack.service - tinytrack service unit
 
 Development
 -----------
@@ -122,7 +127,7 @@ Troubleshooting
 If configure fails with "librt not found":
     Install glibc development package (glibc-devel or libc6-dev)
 
-If gateway build fails:
+If gateway build fails with OpenSSL errors:
     Install OpenSSL development package (openssl-devel or libssl-dev)
 
 If systemd unit is not installed:

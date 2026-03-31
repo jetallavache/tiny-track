@@ -9,7 +9,7 @@
 #include <string.h>
 
 #include "b64.h"
-#include "common/log.h"
+#include "common/log/log.h"
 #include "http.h"
 #include "printf.h"
 #include "sock.h"
@@ -75,10 +75,10 @@ static uint32_t be32(const uint8_t* p) {
 }
 
 static size_t ws_process(uint8_t* buf, size_t len, struct ws_msg* msg) {
-  size_t i, n = 0, mask_len = 0;
+  size_t i, mask_len = 0;
   memset(msg, 0, sizeof(*msg));
   if (len >= 2) {
-    n = buf[1] & 0x7f;               /* Frame length */
+    size_t n = buf[1] & 0x7f;        /* Frame length */
     mask_len = buf[1] & 128 ? 4 : 0; /* Last bit is the mask bit */
     msg->flags = buf[0];
     if (n < 126 && len >= mask_len) {

@@ -41,8 +41,8 @@ typedef struct {
   /* log lines (last N from journalctl) */
   char log_lines[64][256];
   int log_count;
-  int log_scroll;    /* scroll offset (0 = bottom) */
-  int log_filter;    /* 0=all, 1=tinytd, 2=tinytrack */
+  int log_scroll; /* scroll offset (0 = bottom) */
+  int log_filter; /* 0=all, 1=tinytd, 2=tinytrack */
   time_t log_fetched;
 } dash_state;
 
@@ -83,14 +83,22 @@ static void fmt_bytes(unsigned long b, char* buf, size_t len) {
 }
 
 static void fmt_duration(uint64_t sec, char* buf, size_t len) {
-  if (sec == 0)             snprintf(buf, len, "0 sec");
-  else if (sec < 60)        snprintf(buf, len, "%llu sec", (unsigned long long)sec);
-  else if (sec < 3600)      snprintf(buf, len, "%llu min", (unsigned long long)(sec / 60));
-  else if (sec < 86400)     snprintf(buf, len, "%llu hr",  (unsigned long long)(sec / 3600));
-  else if (sec < 604800)    snprintf(buf, len, "%llu day", (unsigned long long)(sec / 86400));
-  else if (sec < 2592000)   snprintf(buf, len, "%llu wk",  (unsigned long long)(sec / 604800));
-  else if (sec < 31536000)  snprintf(buf, len, "%llu mo",  (unsigned long long)(sec / 2592000));
-  else                      snprintf(buf, len, "%llu yr",  (unsigned long long)(sec / 31536000));
+  if (sec == 0)
+    snprintf(buf, len, "0 sec");
+  else if (sec < 60)
+    snprintf(buf, len, "%llu sec", (unsigned long long)sec);
+  else if (sec < 3600)
+    snprintf(buf, len, "%llu min", (unsigned long long)(sec / 60));
+  else if (sec < 86400)
+    snprintf(buf, len, "%llu hr", (unsigned long long)(sec / 3600));
+  else if (sec < 604800)
+    snprintf(buf, len, "%llu day", (unsigned long long)(sec / 86400));
+  else if (sec < 2592000)
+    snprintf(buf, len, "%llu wk", (unsigned long long)(sec / 604800));
+  else if (sec < 31536000)
+    snprintf(buf, len, "%llu mo", (unsigned long long)(sec / 2592000));
+  else
+    snprintf(buf, len, "%llu yr", (unsigned long long)(sec / 31536000));
 }
 
 static void compute_ring_label(int level, uint32_t capacity,
@@ -275,9 +283,10 @@ static void draw_tsdb(WINDOW* w, int row, int cols, const struct ttr_reader* r,
 static void draw_hints(WINDOW* w, int rows, int mode) {
   wattron(w, COLOR_PAIR(CP_DIM));
   if (mode == 2)
-    mvwprintw(w, rows - 1, 1,
-              " q:quit  Tab:mode[%d/2]  f:filter  Up/Down:scroll  r:refresh  ?:help",
-              mode);
+    mvwprintw(
+        w, rows - 1, 1,
+        " q:quit  Tab:mode[%d/2]  f:filter  Up/Down:scroll  r:refresh  ?:help",
+        mode);
   else
     mvwprintw(w, rows - 1, 1, " q:quit  Tab:mode[%d/2]  ?:help", mode);
   wattroff(w, COLOR_PAIR(CP_DIM));
@@ -309,7 +318,8 @@ static pid_t dash_read_pid(const char* path) {
   if (!f)
     return -1;
   pid_t pid = -1;
-  fscanf(f, "%d", &pid);
+  if (fscanf(f, "%d", &pid) != 1)
+    pid = -1;
   fclose(f);
   return pid;
 }
@@ -390,8 +400,8 @@ static void draw_services(WINDOW* w, int row, int cols, dash_state* st,
   mvwprintw(w, row, 1, "[ Recent Logs ]");
   wattroff(w, COLOR_PAIR(CP_TITLE) | A_BOLD);
   wattron(w, COLOR_PAIR(CP_DIM));
-  mvwprintw(w, row, 17, " filter:%s  scroll:%d",
-            filter_labels[st->log_filter], st->log_scroll);
+  mvwprintw(w, row, 17, " filter:%s  scroll:%d", filter_labels[st->log_filter],
+            st->log_scroll);
   wattroff(w, COLOR_PAIR(CP_DIM));
   row++;
 
@@ -429,8 +439,8 @@ static void draw_services(WINDOW* w, int row, int cols, dash_state* st,
   for (int i = disp_start; i < vis_count && row < max_rows - 1; i++) {
     const char* line = st->log_lines[visible[i]];
     int pair = CP_DIM;
-    if (strstr(line, "err") || strstr(line, "ERR") ||
-        strstr(line, "fail") || strstr(line, "FAIL"))
+    if (strstr(line, "err") || strstr(line, "ERR") || strstr(line, "fail") ||
+        strstr(line, "FAIL"))
       pair = CP_CRIT;
     else if (strstr(line, "warn") || strstr(line, "WARN"))
       pair = CP_WARN;

@@ -1,12 +1,12 @@
 #include "sock.h"
 
-#include <alloca.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
 
-#include "common/log.h"
+#include "common/log/log.h"
 #include "printf.h"
+#include "tls.h"
 
 static bool atone(struct ttg_str str, struct ttg_addr* addr) {
   if (str.len > 0)
@@ -62,6 +62,7 @@ static socklen_t tousa(struct ttg_addr* a, union usa* usa) {
 
 static void setlocaddr(TTG_SOCK_TYPE fd, struct ttg_addr* a) {
   union usa usa;
+  memset(&usa, 0, sizeof(usa));
   socklen_t n = sizeof(usa);
   if (getsockname(fd, &usa.sa, &n) == 0) {
     a->port = usa.sin.sin_port;
@@ -182,28 +183,34 @@ void ttg_sock_accept_conn(struct ttg_mgr* mgr, struct ttg_conn* lsn) {
     c->pfn_data = lsn->pfn_data;
     c->fn = lsn->fn;
     c->fn_data = lsn->fn_data;
-    /* c->is_tls = lsn->is_tls; */
-    tt_log_debug("%lu %ld accepted %M -> %M", c->id, c->fd, ttg_print_ip_port,
-                 &c->remote, ttg_print_ip_port, &c->local);
+    if (lsn->is_tls) {
+      if (ttg_tls_init(c) != 0) {
+        tt_log_err("%lu TLS init failed, closing", c->id);
+        c->is_closing = 1;
+      }
+    }
+    // cppcheck-suppress unusedVariable
+    char rem[24];
+    // cppcheck-suppress unusedVariable
+    char loc[24];
+    tt_log_debug("%lu %d accepted %s -> %s", c->id, FD(c),
+                 ttg_addr_str(&c->remote, rem, sizeof(rem)),
+                 ttg_addr_str(&c->local,  loc, sizeof(loc)));
     ttg_event_call(c, TTG_EVENT_OPEN, NULL);
     ttg_event_call(c, TTG_EVENT_ACCEPT, NULL);
-    if (!c->is_tls_hs)
-      c->is_tls = 0; /* user did not call mg_tls_init() */
   }
 }
 
 void ttg_sock_connect_conn(struct ttg_conn* c) {
   union usa usa;
   socklen_t n = sizeof(usa);
-  /* Use getpeername() to test whether we have connected */
   if (getpeername(FD(c), &usa.sa, &n) == 0) {
     c->is_connecting = 0;
     setlocaddr(FD(c), &c->local);
     ttg_event_call(c, TTG_EVENT_CONNECT, NULL);
     TTG_EPOLL_MOD(c, 0);
-    /* if (c->is_tls_hs) mg_tls_handshake(c); */
-    if (!c->is_tls_hs)
-      c->is_tls = 0; /* user did not call mg_tls_init() */
+    if (c->is_tls_hs)
+      ttg_tls_handshake(c);
   } else {
     ttg_event_error(c, "socket error");
   }
@@ -256,11 +263,13 @@ static void iolog(struct ttg_conn* c, char* buf, long n, bool r) {
     /* Do nothing */
   } else if (n <= 0) {
     c->is_closing = 1; /* Termination. Don't call mg_error() */
-  } else if (n > 0) {
+  } else {             /* n > 0 */
     if (c->is_hexdumping) {
-      tt_log_info("\n-- %lu %M %s %M %ld", c->id, ttg_print_ip_port, &c->local,
-                  r ? "<-" : "->", ttg_print_ip_port, &c->remote, n);
-      /* out_hexdump(buf, (size_t)n); */
+      char loc[24], rem[24];
+      tt_log_info("\n-- %lu %s %s %s %ld", c->id,
+                  ttg_addr_str(&c->local,  loc, sizeof(loc)),
+                  r ? "<-" : "->",
+                  ttg_addr_str(&c->remote, rem, sizeof(rem)), n);
     }
     if (r) {
       c->recv.len += (size_t)n;
@@ -277,18 +286,14 @@ static void iolog(struct ttg_conn* c, char* buf, long n, bool r) {
 }
 
 void ttg_sock_read_conn(struct ttg_conn* c) {
+  if (c->is_tls_hs) {
+    ttg_tls_handshake(c);
+    return;
+  }
   if (ioalloc(c, &c->recv)) {
     char* buf = (char*)&c->recv.buf[c->recv.len];
     size_t len = c->recv.size - c->recv.len;
-    long n = -1;
-    if (c->is_tls) {
-      /* TODO: It's good to think about how we will integrate tls into the
-       * implementation. */
-    } else {
-      n = iorecv(c, buf, len);
-    }
-    tt_log_debug("%lu %ld %lu:%lu:%lu %ld err %d", c->id, c->fd, c->send.len,
-                 c->recv.len, 0, n, TTG_SOCK_ERR(n));
+    long n = c->is_tls ? ttg_tls_recv(c, buf, len) : iorecv(c, buf, len);
     iolog(c, buf, n, true);
   }
 }
@@ -296,14 +301,7 @@ void ttg_sock_read_conn(struct ttg_conn* c) {
 void ttg_sock_write_conn(struct ttg_conn* c) {
   char* buf = (char*)c->send.buf;
   size_t len = c->send.len;
-
-  /*   long n = c->is_tls ? mg_tls_send(c, buf, len) : mg_io_send(c, buf, len);
-   */
-  long n = iosend(c, buf, len);
-
-  tt_log_debug("%lu %ld snd %ld/%ld rcv %ld/%ld n=%ld err=%d", c->id, c->fd,
-               (long)c->send.len, (long)c->send.size, (long)c->recv.len,
-               (long)c->recv.size, n, TTG_SOCK_ERR(n));
+  long n = c->is_tls ? ttg_tls_send(c, buf, len) : iosend(c, buf, len);
   iolog(c, buf, n, false);
 }
 
@@ -331,15 +329,15 @@ void ttg_sock_iotest(struct ttg_mgr* mgr, int ms) {
   size_t max = 1;
   for (struct ttg_conn* c = mgr->conns; c != NULL; c = c->next) {
     c->is_readable = c->is_writable = 0;
-    /* if (c->rtls.len > 0 || mg_tls_pending(c) > 0) */
-    /*   ms = 1, c->is_readable = 1; */
     if (can_write(c))
       TTG_EPOLL_MOD(c, 1);
     if (c->is_closing)
       ms = 1;
+    if (ttg_tls_pending(c) > 0)
+      ms = 1, c->is_readable = 1;
     max++;
   }
-  struct epoll_event* evs = (struct epoll_event*)alloca(max * sizeof(evs[0]));
+  struct epoll_event evs[max];
   int n = epoll_wait(mgr->epoll_fd, evs, (int)max, ms);
   for (int i = 0; i < n; i++) {
     struct ttg_conn* c = (struct ttg_conn*)evs[i].data.ptr;
@@ -350,7 +348,7 @@ void ttg_sock_iotest(struct ttg_mgr* mgr, int ms) {
       bool wr = evs[i].events & EPOLLOUT;
       c->is_readable = can_read(c) && rd ? 1U : 0;
       c->is_writable = can_write(c) && wr ? 1U : 0;
-      /* if (c->rtls.len > 0 || mg_tls_pending(c) > 0 ) c->is_readable = 1; */
+      if (ttg_tls_pending(c) > 0 ) c->is_readable = 1;
     }
   }
   (void)skip_iotest;

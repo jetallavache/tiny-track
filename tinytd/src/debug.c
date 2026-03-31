@@ -66,6 +66,7 @@ void ttd_debug_dump_l1(const void* live_addr, uint32_t l1_capacity) {
 
 void ttd_debug_dump_agg(int level, const struct tt_metrics* agg, uint32_t head,
                         uint32_t capacity) {
+  (void)head; (void)capacity;
   char ts[16];
   fmt_ts(agg->timestamp, ts, sizeof(ts));
   fprintf(stderr,

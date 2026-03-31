@@ -1,4 +1,10 @@
 .kiro
+docs/dev-history.md
+test-driver
+etc/certs/*.crt
+etc/certs/*.key
+etc/certs/*.ca
+etc/certs/*.csr
 
 # Autotools
 /autom4te.cache/

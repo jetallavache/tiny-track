@@ -5,7 +5,7 @@
 #include <string.h>
 #include <time.h>
 
-#include "common/log.h"
+#include "common/log/log.h"
 #include "common/proto/v1.h"
 #include "common/proto/v2.h"
 #include "http.h"

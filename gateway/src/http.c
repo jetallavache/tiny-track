@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "common/log.h"
+#include "common/log/log.h"
 #include "printf.h"
 
 static int ncasecmp(const char* s1, const char* s2, size_t len) {
@@ -77,7 +77,7 @@ static const char* skiptorn(const char* s, const char* end, struct ttg_str* v) {
     s++, v->len++; /* To newline */
   if (s >= end || (s[0] == '\r' && s[1] != '\n'))
     return NULL; /* Stray \r */
-  if (s < end && s[0] == '\r')
+  if (s[0] == '\r')
     s++; /* Skip \r */
   if (s >= end || *s++ != '\n')
     return NULL; /* Skip \n */

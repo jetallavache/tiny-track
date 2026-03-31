@@ -20,25 +20,46 @@
 #include "reader.h"
 
 static void fmt_duration(uint64_t sec, char* buf, size_t len) {
-  if (sec == 0)             snprintf(buf, len, "0 sec");
-  else if (sec < 60)        snprintf(buf, len, "%llu sec", (unsigned long long)sec);
-  else if (sec < 3600)      snprintf(buf, len, "%llu min", (unsigned long long)(sec / 60));
-  else if (sec < 86400)     snprintf(buf, len, "%llu hr",  (unsigned long long)(sec / 3600));
-  else if (sec < 604800)    snprintf(buf, len, "%llu day", (unsigned long long)(sec / 86400));
-  else if (sec < 2592000)   snprintf(buf, len, "%llu wk",  (unsigned long long)(sec / 604800));
-  else if (sec < 31536000)  snprintf(buf, len, "%llu mo",  (unsigned long long)(sec / 2592000));
-  else                      snprintf(buf, len, "%llu yr",  (unsigned long long)(sec / 31536000));
+  if (sec == 0)
+    snprintf(buf, len, "0 sec");
+  else if (sec < 60)
+    snprintf(buf, len, "%llu sec", (unsigned long long)sec);
+  else if (sec < 3600)
+    snprintf(buf, len, "%llu min", (unsigned long long)(sec / 60));
+  else if (sec < 86400)
+    snprintf(buf, len, "%llu hr", (unsigned long long)(sec / 3600));
+  else if (sec < 604800)
+    snprintf(buf, len, "%llu day", (unsigned long long)(sec / 86400));
+  else if (sec < 2592000)
+    snprintf(buf, len, "%llu wk", (unsigned long long)(sec / 604800));
+  else if (sec < 31536000)
+    snprintf(buf, len, "%llu mo", (unsigned long long)(sec / 2592000));
+  else
+    snprintf(buf, len, "%llu yr", (unsigned long long)(sec / 31536000));
 }
 
-static void make_ring_label(const struct ttc_config* cfg, int level,
-                            char* buf, size_t len) {
+static void make_ring_label(const struct ttc_config* cfg, int level, char* buf,
+                            size_t len) {
   uint32_t ivl_sec;
   uint32_t cap;
   switch (level) {
-    case 1: cap = cfg->l1_capacity; ivl_sec = cfg->collection_interval_ms / 1000; if (!ivl_sec) ivl_sec = 1; break;
-    case 2: cap = cfg->l2_capacity; ivl_sec = cfg->l2_agg_interval_sec; break;
-    case 3: cap = cfg->l3_capacity; ivl_sec = cfg->l3_agg_interval_sec; break;
-    default: snprintf(buf, len, "L%d", level); return;
+    case 1:
+      cap = cfg->l1_capacity;
+      ivl_sec = cfg->collection_interval_ms / 1000;
+      if (!ivl_sec)
+        ivl_sec = 1;
+      break;
+    case 2:
+      cap = cfg->l2_capacity;
+      ivl_sec = cfg->l2_agg_interval_sec;
+      break;
+    case 3:
+      cap = cfg->l3_capacity;
+      ivl_sec = cfg->l3_agg_interval_sec;
+      break;
+    default:
+      snprintf(buf, len, "L%d", level);
+      return;
   }
   char ivl[16], total[16];
   fmt_duration(ivl_sec, ivl, sizeof(ivl));
@@ -51,7 +72,8 @@ static pid_t read_pidfile(const char* path) {
   if (!f)
     return -1;
   pid_t pid = -1;
-  fscanf(f, "%d", &pid);
+  if (fscanf(f, "%d", &pid) != 1)
+    pid = -1;
   fclose(f);
   return pid;
 }
@@ -366,14 +388,17 @@ int ttc_cmd_logs(const struct ttc_ctx* ctx, int lines, const char* level,
   /* Filter by service if specified */
   if (service && strlen(service) > 0) {
     if (strcmp(service, "tinytd") == 0) {
-      from = 0; to = 1;
+      from = 0;
+      to = 1;
     } else if (strcmp(service, "tinytrack") == 0) {
-      from = 1; to = 2;
+      from = 1;
+      to = 2;
     } else {
       fprintf(stderr, "Error: unknown service '%s'. Use: tinytd, tinytrack\n",
               service);
-      fprintf(stderr, "Usage: tiny-cli logs [--lines N] [--level LEVEL] "
-                      "[--service tinytd|tinytrack]\n");
+      fprintf(stderr,
+              "Usage: tiny-cli logs [--lines N] [--level LEVEL] "
+              "[--service tinytd|tinytrack]\n");
       return 1;
     }
   }
@@ -499,14 +524,16 @@ int ttc_cmd_debug(const struct ttc_ctx* ctx) {
   struct stat st;
 
   /* --- tinytd --- */
-  printf(" %s[tinytd]%s\n", ttc_color(ctx, COL_BOLD), ttc_color(ctx, COL_RESET));
+  printf(" %s[tinytd]%s\n", ttc_color(ctx, COL_BOLD),
+         ttc_color(ctx, COL_RESET));
 
   int td_ok = daemon_running(ctx);
   pid_t td_pid = read_pidfile(ctx->pid_file);
-  printf(" %-28s %s%s%s", "status:",
-         td_ok ? ttc_color(ctx, COL_GREEN) : ttc_color(ctx, COL_RED),
+  printf(" %-28s %s%s%s",
+         "status:", td_ok ? ttc_color(ctx, COL_GREEN) : ttc_color(ctx, COL_RED),
          td_ok ? "running" : "stopped", ttc_color(ctx, COL_RESET));
-  if (td_pid > 0) printf("  pid=%d", (int)td_pid);
+  if (td_pid > 0)
+    printf("  pid=%d", (int)td_pid);
   printf("\n");
 
   int pid_ok = stat(ctx->pid_file, &st) == 0;
@@ -525,7 +552,8 @@ int ttc_cmd_debug(const struct ttc_ctx* ctx) {
   struct ttc_reader r;
   int err = ttc_reader_open(&r, ctx->mmap_path);
   printf(" %-28s %s%s%s\n", "mmap magic:",
-         err == TTR_READER_OK ? ttc_color(ctx, COL_GREEN) : ttc_color(ctx, COL_RED),
+         err == TTR_READER_OK ? ttc_color(ctx, COL_GREEN)
+                              : ttc_color(ctx, COL_RED),
          err == TTR_READER_OK ? "valid" : ttc_reader_strerror(err),
          ttc_color(ctx, COL_RESET));
 
@@ -536,28 +564,30 @@ int ttc_cmd_debug(const struct ttc_ctx* ctx) {
     make_ring_label(cfg, 2, lbl[1], sizeof(lbl[1]));
     make_ring_label(cfg, 3, lbl[2], sizeof(lbl[2]));
 
-    const struct ttr_meta* metas[3] = {
-        r.ring.l1_meta, r.ring.l2_meta, r.ring.l3_meta};
+    const struct ttr_meta* metas[3] = {r.ring.l1_meta, r.ring.l2_meta,
+                                       r.ring.l3_meta};
     for (int i = 0; i < 3; i++) {
       char ts[16];
       ttc_fmt_ts(metas[i]->last_ts, ts, sizeof(ts));
       printf(" %-28s fill=%u/%u  last=%s\n", lbl[i],
              metas[i]->head < metas[i]->capacity ? metas[i]->head
-                                                  : metas[i]->capacity,
+                                                 : metas[i]->capacity,
              metas[i]->capacity, ts);
     }
     ttc_reader_close(&r);
   }
 
   /* --- tinytrack --- */
-  printf("\n %s[tinytrack]%s\n", ttc_color(ctx, COL_BOLD), ttc_color(ctx, COL_RESET));
+  printf("\n %s[tinytrack]%s\n", ttc_color(ctx, COL_BOLD),
+         ttc_color(ctx, COL_RESET));
 
   int gw_ok = gw_running(ctx);
   pid_t gw_pid = read_pidfile(ctx->gw_pid_file);
-  printf(" %-28s %s%s%s", "status:",
-         gw_ok ? ttc_color(ctx, COL_GREEN) : ttc_color(ctx, COL_RED),
+  printf(" %-28s %s%s%s",
+         "status:", gw_ok ? ttc_color(ctx, COL_GREEN) : ttc_color(ctx, COL_RED),
          gw_ok ? "running" : "stopped", ttc_color(ctx, COL_RESET));
-  if (gw_pid > 0) printf("  pid=%d", (int)gw_pid);
+  if (gw_pid > 0)
+    printf("  pid=%d", (int)gw_pid);
   printf("\n");
 
   int gw_pid_ok = stat(ctx->gw_pid_file, &st) == 0;
@@ -568,7 +598,8 @@ int ttc_cmd_debug(const struct ttc_ctx* ctx) {
   printf(" %-28s %s\n", "listen:", ctx->gw_listen);
 
   /* --- common --- */
-  printf("\n %s[common]%s\n", ttc_color(ctx, COL_BOLD), ttc_color(ctx, COL_RESET));
+  printf("\n %s[common]%s\n", ttc_color(ctx, COL_BOLD),
+         ttc_color(ctx, COL_RESET));
 
   int cfg_ok = stat(ctx->config_path, &st) == 0;
   printf(" %-28s %s%s%s\n", "config file:",

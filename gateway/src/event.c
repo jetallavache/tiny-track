@@ -2,7 +2,7 @@
 
 #include <stdarg.h>
 
-#include "common/log.h"
+#include "common/log/log.h"
 #include "net.h"
 #include "printf.h"
 

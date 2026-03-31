@@ -3,8 +3,11 @@
 
 #include <stdarg.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #include "iobuf.h"
+
+struct ttg_addr; /* forward declaration */
 
 typedef void (*ttg_pfn_t)(char, void*);                 /* Output function */
 typedef size_t (*ttg_pm_t)(ttg_pfn_t, void*, va_list*); /* %M printer */
@@ -15,6 +18,9 @@ size_t ttg_vsnprintf(char* buf, size_t len, const char* fmt, va_list* ap);
 
 /* %M print helper functions */
 size_t ttg_print_ip_port(void (*out)(char, void*), void* arg, va_list* ap);
+
+/* Format struct ttg_addr* into buf as "ip:port". Returns buf. */
+char* ttg_addr_str(const struct ttg_addr* a, char* buf, size_t len);
 
 /* Various output functions */
 void ttg_pfn_iobuf(char ch, void* param); /* param: struct ttg_iobuf * */

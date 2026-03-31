@@ -12,6 +12,13 @@ dist_doc_DATA = README.md docs/INSTALL.md LICENSE
 man1_MANS = docs/man/tiny-cli.1
 man8_MANS = docs/man/tinytd.8 docs/man/tinytrack.8
 
+# ---------------------------------------------------------------------------
+# Test targets (delegate to tests/run_tests.sh)
+# ---------------------------------------------------------------------------
+test-fast test-unit test-integration test-smoke test-system \
+test-perf test-bench test-sanitize test-static test-all:
+	@$(MAKE) -C tests $@
+
 # Post-install: create system user/group and data directory
 install-data-hook:
 	@if ! getent group tinytd > /dev/null 2>&1; then \
@@ -150,7 +157,7 @@ valgrind-tinytd:
 	  --track-origins=yes \
 	  --error-exitcode=1 \
 	  --log-file=valgrind-tinytd.log \
-	  timeout 5 tinytd/tinytd -c tests/tinytd-test.conf; true
+	  timeout 5 tinytd/tinytd -c tests/tinytrack.conf-test; true
 	@echo "Valgrind report: valgrind-tinytd.log"
 	@grep -E "ERROR SUMMARY|definitely lost|indirectly lost|possibly lost" valgrind-tinytd.log
 
@@ -160,7 +167,7 @@ valgrind-cli:
 	@test -f cli/tiny-cli || { echo "Run 'make' first"; exit 1; }
 	@test -f tinytd/tinytd || { echo "Run 'make' first"; exit 1; }
 	@echo "Starting tinytd..."
-	@tinytd/tinytd -c tests/tinytd-test.conf 2>/dev/null & TDPID=$$!; \
+	@tinytd/tinytd -c tests/tinytrack.conf-test 2>/dev/null & TDPID=$$!; \
 	  i=0; while [ $$i -lt 20 ] && [ ! -f /tmp/tinytd-test-live.dat ]; do sleep 0.5; i=$$((i+1)); done; \
 	  echo "Running valgrind on tiny-cli..."; \
 	  valgrind \
@@ -170,7 +177,7 @@ valgrind-cli:
 	    --track-origins=yes \
 	    --error-exitcode=42 \
 	    --log-file=valgrind-tiny-cli.log \
-	    cli/tiny-cli -p /tmp/tinytd-test-live.dat -c tests/tinytd-test.conf status; STATUS=$$?; \
+	    cli/tiny-cli -p /tmp/tinytd-test-live.dat -c tests/tinytrack.conf-test status; STATUS=$$?; \
 	  kill $$TDPID 2>/dev/null; wait $$TDPID 2>/dev/null; \
 	  echo "Valgrind report: valgrind-tiny-cli.log"; \
 	  grep -E "ERROR SUMMARY|definitely lost|indirectly lost|possibly lost" valgrind-tiny-cli.log; \
@@ -183,7 +190,7 @@ valgrind-gateway:
 	@test -f tinytd/tinytd || { echo "Run 'make' first"; exit 1; }
 	@command -v node >/dev/null 2>&1 || { echo "node not found"; exit 1; }
 	@echo "Starting tinytd..."
-	@tinytd/tinytd -c tests/tinytd-test.conf 2>/dev/null & TDPID=$$!; \
+	@tinytd/tinytd -c tests/tinytrack.conf-test 2>/dev/null & TDPID=$$!; \
 	  i=0; while [ $$i -lt 20 ] && [ ! -f /tmp/tinytd-test-live.dat ]; do sleep 0.5; i=$$((i+1)); done; \
 	  echo "Running valgrind on tinytrack (gateway)..."; \
 	  valgrind \
@@ -193,7 +200,7 @@ valgrind-gateway:
 	    --track-origins=yes \
 	    --error-exitcode=42 \
 	    --log-file=valgrind-tinytrack.log \
-	    gateway/tinytrack -c tests/tinytd-test.conf -p 4037 2>/dev/null & GWPID=$$!; \
+	    gateway/tinytrack -c tests/tinytrack.conf-test -p 4037 2>/dev/null & GWPID=$$!; \
 	  sleep 2; \
 	  cd gateway/tests; node test_gateway.js ws://127.0.0.1:4037/websocket; cd ../..; \
 	  sleep 1; \
@@ -210,12 +217,12 @@ coverage:
 	@test -f common/ringbuf/libcommon_a-writer.gcno || \
 	  { echo "Rebuild with: ./configure --enable-coverage && make"; exit 1; }
 	@echo "Running daemons for coverage data..."
-	@timeout 10 tinytd/tinytd -c tests/tinytd-test.conf 2>/dev/null & \
+	@timeout 10 tinytd/tinytd -c tests/tinytrack.conf-test 2>/dev/null & \
 	  TDPID=$$!; sleep 3; \
-	  cli/tiny-cli -c tests/tinytd-test.conf status  2>/dev/null; \
-	  cli/tiny-cli -c tests/tinytd-test.conf debug   2>/dev/null; \
-	  cli/tiny-cli -c tests/tinytd-test.conf metrics 2>/dev/null; \
-	  gateway/tinytrack -c tests/tinytd-test.conf & GWPID=$$!; sleep 2; \
+	  cli/tiny-cli -c tests/tinytrack.conf-test status  2>/dev/null; \
+	  cli/tiny-cli -c tests/tinytrack.conf-test debug   2>/dev/null; \
+	  cli/tiny-cli -c tests/tinytrack.conf-test metrics 2>/dev/null; \
+	  gateway/tinytrack -c tests/tinytrack.conf-test & GWPID=$$!; sleep 2; \
 	  kill $$GWPID 2>/dev/null; wait $$GWPID 2>/dev/null; \
 	  kill $$TDPID 2>/dev/null; wait $$TDPID 2>/dev/null; true
 	@echo "Collecting coverage..."

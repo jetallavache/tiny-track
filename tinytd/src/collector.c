@@ -181,7 +181,7 @@ float ttd_collect_cpu(struct ttd_collector_state* st) {
   return (float)(total_diff - idle_diff) * 100.0f / total_diff;
 }
 
-float ttd_collect_memory() {
+float ttd_collect_memory(void) {
   struct ttd_collector_meminfo mem;
   if (!readpr_meminf(&mem))
     return 0.0f;
@@ -213,7 +213,7 @@ void ttd_collect_net(struct ttd_collector_state* st, unsigned long* rx,
   st->net_time_prev = now;
 }
 
-struct ttd_collector_loadavg ttd_collect_loadavg() {
+struct ttd_collector_loadavg ttd_collect_loadavg(void) {
   struct ttd_collector_loadavg load = {0};
   readpr_loadavg(&load);
   return load;

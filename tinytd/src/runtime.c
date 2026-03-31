@@ -7,7 +7,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "common/log.h"
+#include "common/log/log.h"
 #include "common/timer.h"
 #include "debug.h"
 
@@ -111,8 +111,9 @@ void ttd_runtime_poll(struct ttd_runtime* rt, int timeout_ms) {
 
   /* Handle timer event */
   if (nfds > 0 && events[0].data.fd == rt->timer_fd) {
-    uint64_t expirations;
-    read(rt->timer_fd, &expirations, sizeof(expirations));
+    uint64_t expirations = 0;
+    if (read(rt->timer_fd, &expirations, sizeof(expirations)) < 0)
+      expirations = 0;
 
     /* tt_log_debug("Timer fired, collecting metrics (rt=%p, writer=%p)",
                  (void*)rt, (void*)rt->writer); */

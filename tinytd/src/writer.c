@@ -1,6 +1,6 @@
 #include "writer.h"
 
-#include "common/log.h"
+#include "common/log/log.h"
 #include "common/metrics.h"
 #include "common/ringbuf.h"
 #include "debug.h"

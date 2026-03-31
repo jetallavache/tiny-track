@@ -22,6 +22,7 @@ REQUIREMENTS
 * GCC with C11 support
 * POSIX-compliant system
 * /dev/shm support (tmpfs)
+* OpenSSL (for TLS gateway support)
 
 INSTALLATION
 ------------
@@ -31,16 +32,20 @@ From source:
     ./bootstrap.sh
     ./configure
     make
-    make install
+    sudo make install
 
-See INSTALL for detailed instructions.
+See docs/INSTALL.md for detailed instructions.
 
 USAGE
 -----
 
-Start daemon:
+Start daemon (foreground):
 
-    <!-- tinytd -->
+    tinytd --no-daemon --config /etc/tinytrack/tinytrack.conf
+
+Start daemon (background):
+
+    tinytd --daemon --config /etc/tinytrack/tinytrack.conf
 
 Query status:
 
@@ -49,7 +54,7 @@ Query status:
 
 Start gateway:
 
-    tinytrack --port 4026
+    tinytrack --no-daemon --port 4026
 
 ARCHITECTURE
 ------------
@@ -62,11 +67,25 @@ ARCHITECTURE
         +---> tiny-cli (CLI consumer)
         +---> tinytrack (HTTP/WS gateway)
 
+TESTING
+-------
+
+    sh tests/run_tests.sh              # fast suite: static + tinytd + cli
+    sh tests/run_tests.sh all          # everything including gateway
+
+See docs/TESTING.md for full details.
+
+CLEANING
+--------
+
+    sh scripts/clean.sh                # remove all build and test artifacts
+
 DOCUMENTATION
 -------------
 
 * docs/INSTALL.md   - Installation instructions
 * docs/BUILD.md     - Building from source
+* docs/TESTING.md   - Testing guide
 * docs/HACKING.md   - Developer guide
 
 See man pages: tinytd(8), tiny-cli(1), tinytrack(8)

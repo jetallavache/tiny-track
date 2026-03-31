@@ -2,16 +2,16 @@ bin_PROGRAMS = tinytrack
 
 # Gateway integration tests
 GATEWAY_TEST_PORT = 4028
-GATEWAY_TEST_CONF = $(top_srcdir)/tests/tinytd-test.conf
+GATEWAY_TEST_CONF = $(top_srcdir)/tests/tinytrack.conf-test
 
 .PHONY: check-gateway check-gateway-extended
 
 check-gateway: tinytrack
 	@command -v node >/dev/null 2>&1 || { echo "node not found"; exit 1; }
 	@cd $(abs_top_srcdir)/gateway/tests; \
-	  $(abs_top_builddir)/tinytd/tinytd -c $(abs_top_srcdir)/tests/tinytd-test.conf 2>/dev/null & TDPID=$$!; \
+	  $(abs_top_builddir)/tinytd/tinytd -c $(abs_top_srcdir)/tests/tinytrack.conf-test 2>/dev/null & TDPID=$$!; \
 	  sleep 2; \
-	  $(abs_top_builddir)/gateway/tinytrack -c $(abs_top_srcdir)/tests/tinytd-test.conf -p $(GATEWAY_TEST_PORT) 2>/dev/null & GWPID=$$!; \
+	  $(abs_top_builddir)/gateway/tinytrack -c $(abs_top_srcdir)/tests/tinytrack.conf-test -p $(GATEWAY_TEST_PORT) 2>/dev/null & GWPID=$$!; \
 	  sleep 1; \
 	  node test_gateway.js ws://127.0.0.1:$(GATEWAY_TEST_PORT)/websocket; STATUS=$$?; \
 	  kill $$GWPID $$TDPID 2>/dev/null; wait $$GWPID $$TDPID 2>/dev/null; \
@@ -20,9 +20,9 @@ check-gateway: tinytrack
 check-gateway-extended: tinytrack
 	@command -v node >/dev/null 2>&1 || { echo "node not found"; exit 1; }
 	@cd $(abs_top_srcdir)/gateway/tests; \
-	  $(abs_top_builddir)/tinytd/tinytd -c $(abs_top_srcdir)/tests/tinytd-test.conf 2>/dev/null & TDPID=$$!; \
+	  $(abs_top_builddir)/tinytd/tinytd -c $(abs_top_srcdir)/tests/tinytrack.conf-test 2>/dev/null & TDPID=$$!; \
 	  sleep 2; \
-	  $(abs_top_builddir)/gateway/tinytrack -c $(abs_top_srcdir)/tests/tinytd-test.conf -p $(GATEWAY_TEST_PORT) 2>/dev/null & GWPID=$$!; \
+	  $(abs_top_builddir)/gateway/tinytrack -c $(abs_top_srcdir)/tests/tinytrack.conf-test -p $(GATEWAY_TEST_PORT) 2>/dev/null & GWPID=$$!; \
 	  sleep 1; \
 	  node test_gateway_extended.js ws://127.0.0.1:$(GATEWAY_TEST_PORT)/websocket; STATUS=$$?; \
 	  kill $$GWPID $$TDPID 2>/dev/null; wait $$GWPID $$TDPID 2>/dev/null; \
@@ -39,6 +39,7 @@ tinytrack_SOURCES = \
 	src/http.c src/http.h \
 	src/ws.c src/ws.h \
 	src/sock.c src/sock.h \
+	src/tls.c src/tls.h \
 	src/event.c src/event.h \
 	src/iobuf.c src/iobuf.h \
 	src/printf.c src/printf.h \
@@ -47,4 +48,4 @@ tinytrack_SOURCES = \
 	src/util.c src/url.h
 
 tinytrack_CFLAGS = -I$(top_srcdir) $(AM_CFLAGS)
-tinytrack_LDADD = $(top_builddir)/common/libcommon.a -lrt -lcrypto
+tinytrack_LDADD = $(top_builddir)/common/libcommon.a -lrt -lssl -lcrypto

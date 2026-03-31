@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "common/log.h"
+#include "common/log/log.h"
 
 static size_t roundup(size_t size, size_t align) {
   return align == 0 ? size : (size + align - 1) / align * align;
@@ -25,7 +25,6 @@ int ttg_iobuf_resize(struct ttg_iobuf* io, size_t new_size) {
     io->buf = NULL;
     io->len = io->size = 0;
   } else if (new_size != io->size) {
-    /* NOTE(lsm): do not use realloc here. Use s_calloc/s_free only */
     void* p = calloc(1, new_size);
     if (p != NULL) {
       size_t len = new_size < io->len ? new_size : io->len;
@@ -37,7 +36,7 @@ int ttg_iobuf_resize(struct ttg_iobuf* io, size_t new_size) {
       io->size = new_size;
     } else {
       ok = 0;
-      tt_log_err("%lld->%lld", (uint64_t)io->size, (uint64_t)new_size);
+      tt_log_err("iobuf_resize: OOM %zu->%zu", io->size, new_size);
     }
   }
   return ok;

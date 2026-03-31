@@ -9,7 +9,7 @@ Prerequisites
 * GNU Make
 * autoconf, automake, libtool (for building from git)
 * librt (usually part of glibc)
-* libcrypto (OpenSSL) - optional, for gateway
+* OpenSSL (libssl-dev / openssl-devel) - required for gateway TLS support
 
 Building from Source
 --------------------
@@ -56,10 +56,13 @@ Post-Installation
 `sudo make install` handles all of the following automatically.
 The commands below are provided for reference or manual setup.
 
-Create system user and group (required for privilege dropping):
+Create system users and groups (required for privilege dropping):
 
     sudo groupadd --system tinytd
     sudo useradd --system --no-create-home --shell /usr/sbin/nologin --gid tinytd tinytd
+
+    sudo groupadd --system tinytrack
+    sudo useradd --system --no-create-home --shell /usr/sbin/nologin --gid tinytrack tinytrack
 
 Create data directory and set ownership:
 
@@ -67,12 +70,13 @@ Create data directory and set ownership:
     sudo chown tinytd:tinytd /var/lib/tinytrack
     sudo chmod 750 /var/lib/tinytrack
 
-Install systemd service (optional):
+Install systemd services (optional):
 
-    sudo cp etc/systemd/tinytd.service /etc/systemd/system/
+    sudo cp etc/systemd/tinytd.service    /etc/systemd/system/
+    sudo cp etc/systemd/tinytrack.service /etc/systemd/system/
     sudo systemctl daemon-reload
-    sudo systemctl enable tinytd
-    sudo systemctl start tinytd
+    sudo systemctl enable tinytd tinytrack
+    sudo systemctl start  tinytd tinytrack
 
 Verification
 ------------
@@ -81,9 +85,9 @@ Check installation:
 
     tiny-cli --version
 
-Test daemon:
+Test daemon (foreground):
 
-    tinytd &
+    tinytd --no-daemon --config /etc/tinytrack/tinytrack.conf &
     sleep 2
     tiny-cli status
     pkill tinytd
@@ -92,15 +96,17 @@ Uninstallation
 --------------
 
 `sudo make uninstall` removes everything automatically:
-stops the daemon, deletes runtime files, data directory,
-and the tinytd system user and group.
+stops the daemons, deletes runtime files, data directory,
+and the system users and groups.
 
 To uninstall manually:
 
-    pkill -x tinytd
+    pkill -x tinytd tinytrack
     sudo userdel tinytd
     sudo groupdel tinytd
-    sudo rm -f /var/run/tinytd.pid
+    sudo userdel tinytrack
+    sudo groupdel tinytrack
+    sudo rm -f /var/run/tinytd.pid /var/run/tinytrack.pid
     sudo rm -f /dev/shm/tinytd-live.dat
     sudo rm -rf /var/lib/tinytrack
     sudo make uninstall

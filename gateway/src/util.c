@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "common/log.h"
+#include "common/log/log.h"
 
 uint64_t ttg_util_millis(void) {
   struct timespec ts = {0, 0};

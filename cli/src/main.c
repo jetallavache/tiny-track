@@ -154,8 +154,9 @@ int main(int argc, char** argv) {
         lines = atoi(argv[optind]);
       else {
         fprintf(stderr, "Unknown option: %s\n", argv[optind]);
-        fprintf(stderr, "Usage: tiny-cli logs [--lines N] [--level LEVEL] "
-                        "[--service tinytd|tinytrack]\n");
+        fprintf(stderr,
+                "Usage: tiny-cli logs [--lines N] [--level LEVEL] "
+                "[--service tinytd|tinytrack]\n");
         return 1;
       }
     }

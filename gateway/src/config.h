@@ -1,7 +1,7 @@
 #ifndef TTG_CONFIG_H
 #define TTG_CONFIG_H
 
-#include "common/log.h"
+#include "common/log/log.h"
 
 /* Gateway runtime configuration */
 struct ttg_config {
@@ -13,9 +13,14 @@ struct ttg_config {
   enum tt_log_level log_level;
 
   /* Gateway */
-  char listen[128];       /* ws://HOST:PORT               */
+  char listen[128];       /* ws://HOST:PORT or wss://HOST:PORT */
   char shm_path[256];     /* Path to live mmap file       */
   int update_interval_ms; /* Default push interval, ms    */
+
+  /* TLS (optional — only used when listen starts with wss://) */
+  char tls_cert[256]; /* PEM certificate file, or ""  */
+  char tls_key[256];  /* PEM private key file, or ""  */
+  char tls_ca[256];   /* PEM CA bundle, or ""         */
 };
 
 /*

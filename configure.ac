@@ -1,4 +1,4 @@
-AC_INIT([tinytrack], [0.1.3], [bugs@example.com])
+AC_INIT([tinytrack], [0.1.4], [bugs@example.com])
 AC_CONFIG_SRCDIR([tinytd/src/main.c])
 AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign subdir-objects])
@@ -39,6 +39,8 @@ AC_CHECK_LIB([ncurses], [initscr], [],
     [AC_MSG_ERROR([libncurses is required (install ncurses-devel)])])
 AC_CHECK_LIB([crypto], [SHA256_Init], [],
     [AC_MSG_WARN([libcrypto not found, gateway will not be built])])
+AC_CHECK_LIB([ssl], [SSL_CTX_new], [],
+    [AC_MSG_WARN([libssl not found, TLS support disabled])])
 
 PKG_PROG_PKG_CONFIG
 
