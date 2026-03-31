@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#include "common/log.h"
+#include "common/log/log.h"
 
 /* Read an integer from config */
 int tt_config_read_int(const char* filepath, const char* key, int default_val);

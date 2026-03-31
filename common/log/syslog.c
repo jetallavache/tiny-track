@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <syslog.h>
 
-#include "common/log_internal.h"
+#include "log_internal.h"
 
 bool tt_log_syslog_available(void) {
   return true; /* syslog is always available on POSIX */

@@ -8,7 +8,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "common/log.h"
+#include "common/log/log.h"
 #include "layout.h"
 #include "seqlock.h"
 #include "shm.h"
@@ -237,7 +237,7 @@ static int ring_aggregate(struct ttr_writer* ctx, int src_level,
 
   uint32_t n = available < src->capacity ? available : src->capacity;
 
-  uint8_t* tmp = alloca(n * cs);
+  uint8_t tmp[n * cs];
   for (uint32_t i = 0; i < n; i++) {
     uint32_t idx = (src->head - n + i + src->capacity) % src->capacity;
     memcpy(tmp + i * cs, src_data + idx * cs, cs);
@@ -299,8 +299,8 @@ int ttr_writer_shadow_sync(struct ttr_writer* ctx) {
     tt_log_err("shadow_sync: msync failed: %s", strerror(errno));
 
   gettimeofday(&t1, NULL);
-  long us = (t1.tv_sec - t0.tv_sec) * 1000000L + (t1.tv_usec - t0.tv_usec);
-  tt_log_debug("shadow_sync: copied %zu bytes in %ld us", len, us);
+  tt_log_debug("shadow_sync: copied %zu bytes in %ld us", len,
+               (t1.tv_sec - t0.tv_sec) * 1000000L + (t1.tv_usec - t0.tv_usec));
 
   ctx->dirty_min = ctx->total_size;
   ctx->dirty_max = 0;

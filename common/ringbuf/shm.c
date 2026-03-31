@@ -7,7 +7,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "common/log.h"
+#include "common/log/log.h"
 
 static void* mmap_fd(int fd, size_t len, int prot) {
   void* addr = mmap(NULL, len, prot, MAP_SHARED, fd, 0);

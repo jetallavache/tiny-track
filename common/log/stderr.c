@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <time.h>
 
-#include "common/log_internal.h"
+#include "log_internal.h"
 
 static const char* tt_log_level_str(enum tt_log_level level) {
   switch (level) {

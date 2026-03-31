@@ -4,8 +4,8 @@
 #include <string.h>
 #include <time.h>
 
-#include "common/log.h"
-#include "common/log_internal.h"
+#include "log.h"
+#include "log_internal.h"
 
 static struct tt_log_state g_log_state = {.backend = TT_LOG_BACKEND_STDERR,
                                           .min_level = TT_LOG_INFO,

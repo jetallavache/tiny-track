@@ -1,4 +1,4 @@
-#include "common/log_internal.h"
+#include "log_internal.h"
 
 #ifdef HAVE_SYSTEMD
 #include <stdio.h>

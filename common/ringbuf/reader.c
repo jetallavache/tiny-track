@@ -3,7 +3,7 @@
 #include <string.h>
 #include <time.h>
 
-#include "common/log.h"
+#include "common/log/log.h"
 #include "layout.h"
 #include "seqlock.h"
 #include "shm.h"
@@ -81,7 +81,10 @@ int ttr_reader_get_latest(struct ttr_reader* ctx, void* out, size_t out_size) {
   }
 
   const struct ttr_header* hdr = (const struct ttr_header*)ctx->addr;
-  if ((uint64_t)time(NULL) * 1000 - hdr->last_update_ts > 3000)
+  struct timespec ts;
+  clock_gettime(CLOCK_REALTIME, &ts);
+  uint64_t now_ms = (uint64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+  if (now_ms > hdr->last_update_ts && now_ms - hdr->last_update_ts > 3000)
     return TTR_READER_ERR_STALE;
 
   struct ttr_meta* meta = ctx->l1_meta;
@@ -92,9 +95,11 @@ int ttr_reader_get_latest(struct ttr_reader* ctx, void* out, size_t out_size) {
   do {
     seq = ttr_seqlock_read_begin(&meta->seq);
     uint32_t head = meta->head;
-    if (head == 0)
+    /* head==0 with no data written yet (first_ts==0) means empty */
+    if (head == 0 && meta->first_ts == 0)
       return TTR_READER_ERR_NODATA;
-    uint32_t idx = (head - 1 + meta->capacity) % meta->capacity;
+    /* latest sample is at (head - 1 + capacity) % capacity */
+    uint32_t idx = (head == 0 ? meta->capacity : head) - 1;
     memcpy(out, ctx->l1_data + idx * cs, copy_size);
   } while (ttr_seqlock_read_retry(&meta->seq, seq));
 

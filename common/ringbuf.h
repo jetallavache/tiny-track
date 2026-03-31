@@ -1,8 +1,8 @@
-#ifndef TTR_RINGBUF_H
-#define TTR_RINGBUF_H
+#ifndef TT_RINGBUF_H
+#define TT_RINGBUF_H
 
-#include "ringbuf/layout.h"
-#include "ringbuf/reader.h"
+#include "ringbuf/shm.h"
 #include "ringbuf/writer.h"
+#include "ringbuf/reader.h"
 
-#endif /* TTR_RINGBUF_H */
+#endif /* TT_RINGBUF_H */
