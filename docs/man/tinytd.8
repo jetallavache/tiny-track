@@ -3,11 +3,11 @@
 tinytd \- lightweight system metrics collection daemon
 .SH SYNOPSIS
 .B tinytd
-[\fB\-d\fR]
-[\fB\-c\fR \fIconfig-file\fR]
+[\fB\-d\fR|\fB\-\-daemon\fR|\fB\-n\fR|\fB\-\-no\-daemon\fR]
+[\fB\-c\fR|\fB\-\-config\fR \fIconfig-file\fR]
 .br
 .B tinytd
-\fB\-h\fR
+\fB\-h\fR|\fB\-\-help\fR
 .SH DESCRIPTION
 .B tinytd
 is a minimal system monitoring daemon designed for resource-constrained
@@ -22,15 +22,18 @@ and
 read the ring buffer directly via mmap with zero-copy access.
 .SH OPTIONS
 .TP
-.B \-d
-Run as a background daemon (double-fork). Without this flag the process
-runs in the foreground, which is useful for debugging.
+.BR \-d ", " \-\-daemon
+Run as a background daemon (double-fork). This is the default behaviour.
 .TP
-.BI \-c " config-file"
+.BR \-n ", " \-\-no\-daemon
+Run in the foreground. Useful for debugging, containers, and systemd
+services with \fBType=simple\fR.
+.TP
+.BI \-c " config-file" ", " \-\-config " config-file"
 Path to the configuration file.
 Default: \fI/etc/tinytrack/tinytrack.conf\fR.
 .TP
-.B \-h
+.BR \-h ", " \-\-help
 Print a short usage summary and exit.
 .SH SIGNALS
 .TP

@@ -2,17 +2,21 @@
 #include <grp.h>
 #include <pwd.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "common/log.h"
+#include "common/log/log.h"
 #include "config.h"
 #include "http.h"
 #include "net.h"
 #include "reader.h"
 #include "session.h"
+#include "tls.h"
+#include "url.h"
 
 static volatile sig_atomic_t running = 1;
 
@@ -86,20 +90,21 @@ int main(int argc, char** argv) {
   const char* listen_override = NULL;
   const char* shm_override = NULL;
   static char listen_buf[64];
-  int do_daemonize = 0;
+  int do_daemonize = 1;
 
   static const struct option long_opts[] = {
-      {"config", required_argument, NULL, 'c'},
-      {"port", required_argument, NULL, 'p'},
-      {"listen", required_argument, NULL, 'l'},
-      {"shm", required_argument, NULL, 's'},
-      {"daemon", no_argument, NULL, 'd'},
-      {"help", no_argument, NULL, 'h'},
+      {"config",    required_argument, NULL, 'c'},
+      {"port",      required_argument, NULL, 'p'},
+      {"listen",    required_argument, NULL, 'l'},
+      {"shm",       required_argument, NULL, 's'},
+      {"daemon",    no_argument,       NULL, 'd'},
+      {"no-daemon", no_argument,       NULL, 'n'},
+      {"help",      no_argument,       NULL, 'h'},
       {NULL, 0, NULL, 0},
   };
 
   int opt;
-  while ((opt = getopt_long(argc, argv, "c:p:l:s:dh", long_opts, NULL)) != -1) {
+  while ((opt = getopt_long(argc, argv, "c:p:l:s:dnh", long_opts, NULL)) != -1) {
     switch (opt) {
       case 'c':
         config_path = optarg;
@@ -113,6 +118,9 @@ int main(int argc, char** argv) {
       case 'd':
         do_daemonize = 1;
         break;
+      case 'n':
+        do_daemonize = 0;
+        break;
       case 'p':
         snprintf(listen_buf, sizeof(listen_buf), "ws://0.0.0.0:%s", optarg);
         listen_override = listen_buf;
@@ -122,22 +130,24 @@ int main(int argc, char** argv) {
             "Usage: tinytrack [-d] [-c CONFIG] [-p PORT] "
             "[-l ws://HOST:PORT] [-s SHM_PATH]\n\n"
             "Options:\n"
-            "  -d             Run as daemon (background)\n"
-            "  -c CONFIG      Path to configuration file\n"
-            "  -p PORT        Listen port (shorthand for -l)\n"
-            "  -l ws://H:P    Listen address\n"
-            "  -s SHM_PATH    Path to tinytd live mmap file\n"
-            "  -h             Show this help and exit\n\n"
+            "  -d, --daemon      Run as daemon (background, default)\n"
+            "  -n, --no-daemon   Run in foreground\n"
+            "  -c, --config CONFIG  Path to configuration file\n"
+            "  -p, --port PORT   Listen port (shorthand for -l)\n"
+            "  -l, --listen ws://H:P  Listen address\n"
+            "  -s, --shm PATH    Path to tinytd live mmap file\n"
+            "  -h, --help        Show this help and exit\n\n"
             "Signals:\n"
             "  SIGTERM/SIGINT  Graceful shutdown\n");
         return 0;
       default:
-        fprintf(stderr, "Try 'tinytrack -h' for usage.\n");
+        fprintf(stderr, "Try 'tinytrack --help' for usage.\n");
         return 1;
     }
   }
 
   struct ttg_config cfg;
+  memset(&cfg, 0, sizeof(cfg));
   ttg_config_load(&cfg, config_path, listen_override, shm_override);
 
   /* Daemonize before tt_log_init (closes all fds) */
@@ -151,7 +161,7 @@ int main(int argc, char** argv) {
       .async = false,
   };
   tt_log_init(&log_cfg);
-  tt_log_notice("tinytrack gateway starting...");
+  tt_log_notice("tinytrack gateway starting (config=%s)", config_path);
 
   signal(SIGTERM, signal_handler);
   signal(SIGINT, signal_handler);
@@ -178,8 +188,29 @@ int main(int argc, char** argv) {
 
   ttg_session_init(&reader);
 
+  bool use_tls = ((ttg_url_is_ssl(cfg.listen)) != 0);
+  if (use_tls && (cfg.tls_cert[0] == '\0' || cfg.tls_key[0] == '\0')) {
+    tt_log_err("wss:// requires gateway.tls_cert and gateway.tls_key");
+    ttg_reader_close(&reader);
+    unlink(cfg.pid_file);
+    return 1;
+  }
+
+  struct ttg_tls_cfg tls_cfg = {
+      .cert_file = cfg.tls_cert[0] ? cfg.tls_cert : NULL,
+      .key_file = cfg.tls_key[0] ? cfg.tls_key : NULL,
+      .ca_file = cfg.tls_ca[0] ? cfg.tls_ca : NULL,
+  };
+
   struct ttg_mgr mgr;
-  ttg_net_mgr_init(&mgr);
+  ttg_net_mgr_init(&mgr, use_tls ? &tls_cfg : NULL);
+  if (use_tls && !mgr.tls_ctx) {
+    tt_log_err("TLS initialisation failed");
+    ttg_reader_close(&reader);
+    unlink(cfg.pid_file);
+    return 1;
+  }
+
   ttg_net_timer_add(&mgr, 500, TIMER_REPEAT, ttg_session_timer_fn, &mgr);
 
   tt_log_info("WS listener on %s/websocket", cfg.listen);

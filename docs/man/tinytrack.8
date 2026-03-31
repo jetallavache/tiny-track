@@ -3,14 +3,14 @@
 tinytrack \- HTTP/WebSocket gateway for TinyTrack metrics
 .SH SYNOPSIS
 .B tinytrack
-[\fB\-d\fR]
-[\fB\-c\fR \fIconfig-file\fR]
-[\fB\-p\fR \fIport\fR]
-[\fB\-l\fR \fIws://host:port\fR]
-[\fB\-s\fR \fIshm-path\fR]
+[\fB\-d\fR|\fB\-\-daemon\fR|\fB\-n\fR|\fB\-\-no\-daemon\fR]
+[\fB\-c\fR|\fB\-\-config\fR \fIconfig-file\fR]
+[\fB\-p\fR|\fB\-\-port\fR \fIport\fR]
+[\fB\-l\fR|\fB\-\-listen\fR \fIws://host:port\fR]
+[\fB\-s\fR|\fB\-\-shm\fR \fIshm-path\fR]
 .br
 .B tinytrack
-\fB\-h\fR
+\fB\-h\fR|\fB\-\-help\fR
 .SH DESCRIPTION
 .B tinytrack
 is the HTTP/WebSocket gateway for the TinyTrack monitoring system.
@@ -23,25 +23,28 @@ Clients can subscribe to live metric streams, request historical data
 from any ring level (L1/L2/L3), and send control commands.
 .SH OPTIONS
 .TP
-.B \-d
-Run as a background daemon (double-fork). Without this flag the process
-runs in the foreground, which is useful for debugging.
+.BR \-d ", " \-\-daemon
+Run as a background daemon (double-fork). This is the default behaviour.
 .TP
-.BI \-c " config-file"
+.BR \-n ", " \-\-no\-daemon
+Run in the foreground. Useful for debugging, containers, and systemd
+services with \fBType=simple\fR.
+.TP
+.BI \-c " config-file" ", " \-\-config " config-file"
 Path to the configuration file.
 Default: \fI/etc/tinytrack/tinytrack.conf\fR.
 .TP
-.BI \-p " port"
-Listen port. Shorthand for \fB\-l ws://0.0.0.0:\fIport\fR.
+.BI \-p " port" ", " \-\-port " port"
+Listen port. Shorthand for \fB\-\-listen ws://0.0.0.0:\fIport\fR.
 .TP
-.BI \-l " ws://host:port"
+.BI \-l " ws://host:port" ", " \-\-listen " ws://host:port"
 Full listen address. Overrides \fBgateway.listen\fR in the config file.
 .TP
-.BI \-s " shm-path"
+.BI \-s " shm-path" ", " \-\-shm " shm-path"
 Path to the tinytd live mmap file. Overrides \fBstorage.live_path\fR
 in the config file.
 .TP
-.B \-h
+.BR \-h ", " \-\-help
 Print a short usage summary and exit.
 .SH SIGNALS
 .TP

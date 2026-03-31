@@ -1,3 +1,4 @@
+#include <getopt.h>
 #include <grp.h>
 #include <pwd.h>
 #include <signal.h>
@@ -8,7 +9,7 @@
 
 #include "collector.h"
 #include "common/config.h"
-#include "common/log.h"
+#include "common/log/log.h"
 #include "config.h"
 #include "runtime.h"
 #include "writer.h"
@@ -40,7 +41,7 @@ static void daemonize(void) {
     exit(EXIT_SUCCESS);
 
   umask(0);
-  chdir("/");
+  if (chdir("/") != 0) { /* best-effort, ignore error in daemon */ }
 
   for (int fd = sysconf(_SC_OPEN_MAX); fd >= 0; fd--)
     close(fd);
@@ -95,31 +96,43 @@ int main(int argc, char** argv) {
   struct ttd_writer writer = {0};
   struct ttd_collector_state cst = {0};
   struct ttd_runtime rt = {0};
-  int do_daemonize = 0;
+  int do_daemonize = 1;
   const char* config_path = NULL;
 
+  static const struct option long_opts[] = {
+      {"config",    required_argument, NULL, 'c'},
+      {"daemon",    no_argument,       NULL, 'd'},
+      {"no-daemon", no_argument,       NULL, 'n'},
+      {"help",      no_argument,       NULL, 'h'},
+      {NULL, 0, NULL, 0},
+  };
+
   int opt;
-  while ((opt = getopt(argc, argv, "dc:h")) != -1) {
+  while ((opt = getopt_long(argc, argv, "dc:nh", long_opts, NULL)) != -1) {
     switch (opt) {
       case 'd':
         do_daemonize = 1;
+        break;
+      case 'n':
+        do_daemonize = 0;
         break;
       case 'c':
         config_path = optarg;
         break;
       case 'h':
         printf(
-            "Usage: tinytd [-d] [-c config-file]\n\n"
+            "Usage: tinytd [-d] [-c CONFIG]\n\n"
             "Options:\n"
-            "  -d             Run as daemon (background)\n"
-            "  -c config-file Path to configuration file\n"
-            "                 Default: /etc/tinytrack/tinytrack.conf\n"
-            "  -h             Show this help and exit\n\n"
+            "  -d, --daemon      Run as daemon (background, default)\n"
+            "  -n, --no-daemon   Run in foreground\n"
+            "  -c, --config CONFIG  Path to configuration file\n"
+            "                    Default: /etc/tinytrack/tinytrack.conf\n"
+            "  -h, --help        Show this help and exit\n\n"
             "Signals:\n"
             "  SIGTERM/SIGINT  Graceful shutdown\n");
         return 0;
       default:
-        fprintf(stderr, "Try 'tinytd -h' for usage.\n");
+        fprintf(stderr, "Try 'tinytd --help' for usage.\n");
         return 1;
     }
   }
@@ -170,10 +183,12 @@ int main(int argc, char** argv) {
 
   if (getuid() == 0) {
     struct passwd* pw = getpwnam(cfg.user);
-    struct group*  gr = getgrnam(cfg.group);
+    struct group* gr = getgrnam(cfg.group);
     if (pw && gr) {
-      chown(cfg.live_path,   pw->pw_uid, gr->gr_gid);
-      chown(cfg.shadow_path, pw->pw_uid, gr->gr_gid);
+      if (chown(cfg.live_path, pw->pw_uid, gr->gr_gid) != 0)
+        tt_log_warning("chown %s failed", cfg.live_path);
+      if (chown(cfg.shadow_path, pw->pw_uid, gr->gr_gid) != 0)
+        tt_log_warning("chown %s failed", cfg.shadow_path);
     }
     if (drop_privileges(cfg.user, cfg.group) < 0) {
       tt_log_err("Failed to drop privileges");
