@@ -1,92 +1,29 @@
 TinyTrack Tests
 ===============
 
-This directory contains tests for TinyTrack components.
+See docs/TESTING.md for the full testing guide.
 
-Manual Tests
-------------
+Quick Start
+-----------
 
-### Gateway WebSocket Test
+    sh tests/run_tests.sh              # fast suite: static + tinytd + cli
+    sh tests/run_tests.sh all          # everything including gateway
 
-Located in `manual-gateway-test/`:
+Test Configuration
+------------------
 
-- `index.html` - WebSocket client
-- `script.js` - Client implementation
-- `README.md` - Usage instructions
+All tests use a single shared config: tests/tinytrack.conf-test
 
-Run:
-```bash
-cd manual-gateway-test
-python3 -m http.server 8000
-# Open http://localhost:8000 in browser
-```
+Manual Gateway Test
+-------------------
 
-Performance Tests
------------------
+Located in `tests/gateway/manual-gateway-test/`:
 
-### Benchmark Suite
+    cd tests/gateway/manual-gateway-test
+    python3 -m http.server 8000
+    # Open http://localhost:8000 in browser
 
-`bench_performance.c` - Comprehensive performance benchmarks:
+Cleanup
+-------
 
-- Writer throughput (ops/sec)
-- Reader throughput (ops/sec)
-- Concurrent readers scalability
-- Seqlock contention rate
-- Memory usage analysis
-
-Run:
-```bash
-./run_benchmark.sh
-```
-
-Expected results (typical hardware):
-- Writer: ~1-2M ops/sec
-- Reader: ~5-10M ops/sec
-- Memory: ~1.5 MB per process
-
-### Seqlock Correctness Test
-
-`test_seqlock.c` - Validates lock-free synchronization:
-
-- Multi-threaded stress test
-- Detects torn reads
-- Verifies data consistency
-- 8 concurrent readers, 10 second duration
-
-Run:
-```bash
-./run_seqlock_test.sh
-```
-
-Expected: 0% inconsistent reads (✅ PASS)
-
-Building Tests Manually
-------------------------
-
-```bash
-# Benchmark
-gcc -O2 -std=c11 -pthread -I. \
-    tests/bench_performance.c \
-    common/ring/writer.c \
-    common/ring/reader.c \
-    common/ring/shm.c \
-    common/sink/core.c \
-    -lrt -o bench_performance
-
-# Seqlock test
-gcc -O2 -std=c11 -pthread -I. \
-    tests/test_seqlock.c \
-    common/ring/writer.c \
-    common/ring/reader.c \
-    common/ring/shm.c \
-    common/sink/core.c \
-    -lrt -o test_seqlock
-```
-
-Notes
------
-
-- Tests use `/dev/shm` for shared memory
-- Requires root or proper permissions
-- Clean up with `rm /dev/shm/tinytd-*` if needed
-
+    sh scripts/clean.sh
