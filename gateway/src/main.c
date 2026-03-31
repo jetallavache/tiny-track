@@ -1,3 +1,4 @@
+#include <fcntl.h>
 #include <getopt.h>
 #include <grp.h>
 #include <pwd.h>
@@ -47,8 +48,18 @@ static void daemonize(void) {
   umask(0);
   chdir("/");
 
-  for (int fd = sysconf(_SC_OPEN_MAX); fd >= 0; fd--)
+  for (int fd = sysconf(_SC_OPEN_MAX); fd >= 3; fd--)
     close(fd);
+
+  /* Redirect stdin/stdout/stderr to /dev/null so fd 0-2 stay reserved */
+  int devnull = open("/dev/null", O_RDWR);
+  if (devnull >= 0) {
+    dup2(devnull, STDIN_FILENO);
+    dup2(devnull, STDOUT_FILENO);
+    dup2(devnull, STDERR_FILENO);
+    if (devnull > 2)
+      close(devnull);
+  }
 }
 
 static int write_pid_file(const char* path) {

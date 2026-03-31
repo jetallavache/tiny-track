@@ -8,8 +8,9 @@
 # =============================================================================
 
 [tinytd]
-log_level = debug
-pid_file  = /tmp/tinytd-test.pid
+log_level   = debug
+log_backend = stderr
+pid_file    = /tmp/tinytd-test.pid
 
 [collection]
 interval_ms      = 500
@@ -36,5 +37,6 @@ auto_recover = true
 [gateway]
 pid_file        = /tmp/tinytrack-test.pid
 log_level       = debug
+log_backend     = stderr
 listen          = ws://0.0.0.0:14028
 update_interval = 500

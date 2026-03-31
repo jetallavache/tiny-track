@@ -114,19 +114,40 @@ suite_sanitize() {
     rm -f /tmp/tt-asan-build-$$.log
     printf "  ASan build OK\n"
 
-    # Start tinytd + asan tinytrack
+    # Start tinytd + asan tinytrack (use isolated live/shadow paths)
     ASAN_PORT=14029
-    LIVE=$(grep live_path   "$TEST_CONF" | awk '{print $3}')
-    SHADOW=$(grep shadow_path "$TEST_CONF" | awk '{print $3}')
+    ASAN_LIVE="/tmp/tinytd-asan-live.dat"
+    ASAN_SHADOW="/tmp/tinytd-asan-shadow.dat"
+    rm -f "$ASAN_LIVE" "$ASAN_SHADOW"
 
-    tinytd/tinytd -c tests/tinytrack.conf-test >/dev/null 2>&1 &
+    # Build isolated config with separate storage paths
+    ASAN_CONF="/tmp/tt-asan-conf-$$.ini"
+    sed -e "s|live_path.*=.*|live_path = $ASAN_LIVE|" \
+        -e "s|shadow_path.*=.*|shadow_path = $ASAN_SHADOW|" \
+        "$TEST_CONF" > "$ASAN_CONF"
+
+    # Kill any process still holding ASAN_PORT
+    fuser -k ${ASAN_PORT}/tcp 2>/dev/null || \
+        ss -tlnp "sport = :${ASAN_PORT}" 2>/dev/null | awk 'NR>1{match($6,/pid=([0-9]+)/,a); if(a[1]) system("kill "a[1])}' || true
+    sleep 0.3
+
+    # Wait for port to be free
+    i=0
+    while [ $i -lt 20 ]; do
+        python3 -c "import socket; socket.create_connection(('127.0.0.1', $ASAN_PORT), 0.1)" 2>/dev/null || break
+        sleep 0.2; i=$((i+1))
+    done
+
+    tinytd/tinytd --no-daemon -c "$ASAN_CONF" >/dev/null 2>&1 &
     TD_PID=$!
-    sleep 1
+    # Wait for live file
+    i=0
+    while [ $i -lt 30 ] && [ ! -f "$ASAN_LIVE" ]; do sleep 0.2; i=$((i+1)); done
 
     ASAN_LOG="/tmp/tt-asan-gw-$$.log"
     ASAN_OPTIONS="log_path=${ASAN_LOG}:detect_leaks=0" \
     UBSAN_OPTIONS="print_stacktrace=1:halt_on_error=0" \
-        "$ASAN_BIN" -c tests/tinytrack.conf-test -p $ASAN_PORT >"$ASAN_LOG.stdout" 2>&1 &
+        "$ASAN_BIN" --no-daemon -c "$ASAN_CONF" -p $ASAN_PORT >"$ASAN_LOG.stdout" 2>&1 &
     GW_PID=$!
 
     # Wait for gateway to be ready
@@ -186,7 +207,7 @@ suite_sanitize() {
     kill "$GW_PID" "$TD_PID" 2>/dev/null
     wait "$GW_PID" "$TD_PID" 2>/dev/null
     rm -f "$ASAN_BIN" "${ASAN_LOG}"* /tmp/tt-asan-build-$$.log
-    rm -f "$LIVE" "$SHADOW"
+    rm -f "$ASAN_LIVE" "$ASAN_SHADOW" "$ASAN_CONF"
 }
 
 suite_valgrind() {
@@ -196,16 +217,33 @@ suite_valgrind() {
     fi
 
     VALGRIND_PORT=14030
-    LIVE=$(grep live_path "$TEST_CONF" | awk '{print $3}')
+    VG_LIVE="/tmp/tinytd-vg-live.dat"
+    VG_SHADOW="/tmp/tinytd-vg-shadow.dat"
     VALGRIND_LOG="/tmp/tt-valgrind-gw-$$.log"
+    rm -f "$VG_LIVE" "$VG_SHADOW"
 
-    # Ensure tinytd is running
+    VG_CONF="/tmp/tt-vg-conf-$$.ini"
+    sed -e "s|live_path.*=.*|live_path = $VG_LIVE|" \
+        -e "s|shadow_path.*=.*|shadow_path = $VG_SHADOW|" \
+        "$TEST_CONF" > "$VG_CONF"
+
+    # Kill any process still holding VALGRIND_PORT
+    fuser -k ${VALGRIND_PORT}/tcp 2>/dev/null || \
+        ss -tlnp "sport = :${VALGRIND_PORT}" 2>/dev/null | awk 'NR>1{match($6,/pid=([0-9]+)/,a); if(a[1]) system("kill "a[1])}' || true
+    sleep 0.3
+
+    # Wait for port to be free
+    i=0
+    while [ $i -lt 20 ]; do
+        python3 -c "import socket; socket.create_connection(('127.0.0.1', $VALGRIND_PORT), 0.1)" 2>/dev/null || break
+        sleep 0.2; i=$((i+1))
+    done
+
     _td_pid=""
-    if ! [ -f "$LIVE" ]; then
-        tinytd/tinytd -c tests/tinytrack.conf-test >/dev/null 2>&1 &
-        _td_pid=$!
-        sleep 1
-    fi
+    tinytd/tinytd --no-daemon -c "$VG_CONF" >/dev/null 2>&1 &
+    _td_pid=$!
+    i=0
+    while [ $i -lt 30 ] && [ ! -f "$VG_LIVE" ]; do sleep 0.2; i=$((i+1)); done
 
     printf "  Starting tinytrack under valgrind (port %d)...\n" $VALGRIND_PORT
     valgrind \
@@ -215,7 +253,7 @@ suite_valgrind() {
         --track-origins=yes \
         --error-exitcode=42 \
         --log-file="$VALGRIND_LOG" \
-        gateway/tinytrack -c tests/tinytrack.conf-test -p $VALGRIND_PORT \
+        gateway/tinytrack --no-daemon -c "$VG_CONF" -p $VALGRIND_PORT \
         >/dev/null 2>&1 &
     GW_PID=$!
 
@@ -274,7 +312,7 @@ suite_valgrind() {
         [ -n "$leaks" ] && printf "  [${FAIL}] valgrind: %s\n" "$leaks" && fail=$((fail + 1))
     fi
 
-    rm -f "$VALGRIND_LOG"
+    rm -f "$VALGRIND_LOG" "$VG_LIVE" "$VG_SHADOW" "$VG_CONF"
 }
 
 SUITES="${*:-ws http tls load sock js}"

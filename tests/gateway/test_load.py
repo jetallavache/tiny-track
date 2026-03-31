@@ -53,8 +53,13 @@ def _http_get_time(host, port, path="/api/metrics/live"):
             if not chunk:
                 break
             data += chunk
+            if b"\r\n\r\n" in data:
+                break
     elapsed = time.monotonic() - t0
-    status = int(data.split(b" ")[1]) if data else 0
+    # Parse status from first line: "HTTP/1.1 200 OK"
+    first_line = data.split(b"\r\n")[0] if data else b""
+    parts = first_line.split(b" ")
+    status = int(parts[1]) if len(parts) >= 2 and parts[1].isdigit() else 0
     return status, elapsed
 
 
@@ -139,8 +144,9 @@ def test_ws_no_fd_leak_under_load(gateway):
 
 def test_ws_throughput(gateway):
     """Single connection: receive at least 3 pushed PKT_METRICS in 5 seconds."""
-    ws = WSClient(gateway["host"], gateway["port"], timeout=6.0)
-    recv_until(ws, PKT_METRICS)
+    ws = WSClient(gateway["host"], gateway["port"], timeout=10.0)
+    first = recv_until(ws, PKT_METRICS, timeout=10.0)
+    assert first is not None, "no initial PKT_METRICS received"
 
     count = 0
     deadline = time.time() + 5.0
