@@ -1,4 +1,4 @@
-import { useState, useEffect, CSSProperties } from 'react';
+import { useState, useEffect, useCallback, CSSProperties } from 'react';
 import { useTinyTrack } from '../TinyTrackProvider.js';
 import { TtMetrics, TtHistoryResp } from '../../client.js';
 import { RING_L1, RING_L2, RING_L3 } from '../../proto.js';
@@ -13,7 +13,11 @@ export interface TimeSeriesChartProps {
   style?: CSSProperties;
 }
 
-const LEVEL_LABELS = { [RING_L1]: 'L1 (1h)', [RING_L2]: 'L2 (24h)', [RING_L3]: 'L3 (7d)' };
+const LEVEL_LABELS: Record<number, string> = {
+  [RING_L1]: 'L1 (1h)',
+  [RING_L2]: 'L2 (24h)',
+  [RING_L3]: 'L3 (7d)',
+};
 
 export function TimeSeriesChart({
   metric,
@@ -25,22 +29,24 @@ export function TimeSeriesChart({
 }: TimeSeriesChartProps) {
   const { client, connected } = useTinyTrack();
   const [data, setData] = useState<TtMetrics[]>([]);
-  const [subscribed, setSubscribed] = useState(false);
 
-  // Subscribe to level on mount
+  const addSamples = useCallback((samples: TtMetrics[]) => {
+    setData(prev => [...prev, ...samples].slice(-maxSamples));
+  }, [maxSamples]);
+
   useEffect(() => {
-    if (!connected || !client || subscribed) return;
+    if (!connected || !client) return;
+
+    // Subscribe to this ring level for live pushes
     client.subscribe(level, 0);
+    // Request historical data immediately
     client.getHistory(level, maxSamples);
-    setSubscribed(true);
 
     const onHistory = (r: TtHistoryResp) => {
-      if (r.level === level) {
-        setData(prev => [...prev, ...r.samples].slice(-maxSamples));
-      }
+      if (r.level === level) addSamples(r.samples);
     };
     const onMetrics = (m: TtMetrics) => {
-      setData(prev => [...prev, m].slice(-maxSamples));
+      addSamples([m]);
     };
 
     client.on('history', onHistory);
@@ -49,12 +55,15 @@ export function TimeSeriesChart({
       client.off('history', onHistory);
       client.off('metrics', onMetrics);
     };
-  }, [connected, client, level, maxSamples, subscribed]);
+  }, [connected, client, level, maxSamples, addSamples]);
 
   const values = data.map(m => extractValue(m, metric));
-  const max = metric === 'cpu' || metric === 'mem' || metric === 'disk' ? 10000 : Math.max(...values, 1);
+  const maxVal = (metric === 'cpu' || metric === 'mem' || metric === 'disk')
+    ? 10000
+    : Math.max(...values, 1);
   const latest = data[data.length - 1];
-  const latestVal = latest ? extractValue(latest, metric) : 0;
+  const latestVal = latest ? extractValue(latest, metric) : null;
+  const color = metricColor(metric);
 
   const s = css;
   return (
@@ -63,11 +72,28 @@ export function TimeSeriesChart({
         <span style={s.title}>{metricLabel(metric)}</span>
         <span style={s.badge}>{LEVEL_LABELS[level]}</span>
         <span style={{ flex: 1 }} />
-        <span style={s.value}>{formatValue(latestVal, metric)}</span>
+        <span style={{ ...s.value, color }}>
+          {latestVal !== null ? formatValue(latestVal, metric) : '—'}
+        </span>
       </div>
-      <svg width="100%" height={height} style={{ display: 'block' }}>
-        {data.length > 1 && <Chart data={values} max={max} height={height} color={metricColor(metric)} />}
+
+      <svg
+        width="100%"
+        height={height}
+        viewBox={`0 0 400 ${height}`}
+        preserveAspectRatio="none"
+        style={{ display: 'block' }}
+      >
+        {values.length > 1 && (
+          <ChartPath values={values} maxVal={maxVal} height={height} color={color} />
+        )}
+        {values.length === 0 && (
+          <text x="200" y={height / 2} textAnchor="middle" fill="#4b5563" fontSize="12">
+            waiting for data…
+          </text>
+        )}
       </svg>
+
       <div style={s.footer}>
         <span style={s.label}>{data.length} samples</span>
         {latest && (
@@ -81,23 +107,29 @@ export function TimeSeriesChart({
 }
 
 // ---------------------------------------------------------------------------
-// Chart SVG
+// SVG chart — uses fixed viewBox so % coords work reliably
 // ---------------------------------------------------------------------------
 
-function Chart({ data, max, height, color }: { data: number[]; max: number; height: number; color: string }) {
-  if (data.length < 2) return null;
-  const w = 100; // percent
-  const pts = data.map((v, i) => {
-    const x = (i / (data.length - 1)) * w;
-    const y = height - (v / max) * (height - 10);
-    return `${x}%,${y}`;
+function ChartPath({ values, maxVal, height, color }: {
+  values: number[]; maxVal: number; height: number; color: string;
+}) {
+  const W = 400;
+  const PAD = 4;
+  const n = values.length;
+
+  const pts = values.map((v, i) => {
+    const x = (i / (n - 1)) * W;
+    const y = PAD + (1 - v / maxVal) * (height - PAD * 2);
+    return [x, y] as [number, number];
   });
-  const polyline = pts.join(' ');
-  const area = `${pts[0]} ${pts.slice(1).join(' ')} 100%,${height} 0%,${height}`;
+
+  const line = pts.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+  const area = `${line} L${W},${height} L0,${height} Z`;
+
   return (
     <>
-      <polygon points={area} fill={color + '22'} />
-      <polyline points={polyline} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" />
+      <path d={area} fill={color + '20'} />
+      <path d={line} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" />
     </>
   );
 }
@@ -125,11 +157,11 @@ function formatValue(val: number, metric: string): string {
 }
 
 function metricLabel(m: string): string {
-  return { cpu: 'CPU', mem: 'Memory', load: 'Load (1m)', net: 'Network', disk: 'Disk' }[m] || m;
+  return ({ cpu: 'CPU', mem: 'Memory', load: 'Load avg', net: 'Network', disk: 'Disk' } as Record<string, string>)[m] || m;
 }
 
 function metricColor(m: string): string {
-  return { cpu: '#4ade80', mem: '#60a5fa', load: '#a78bfa', net: '#f59e0b', disk: '#fb923c' }[m] || '#9ca3af';
+  return ({ cpu: '#4ade80', mem: '#60a5fa', load: '#a78bfa', net: '#f59e0b', disk: '#fb923c' } as Record<string, string>)[m] || '#9ca3af';
 }
 
 // ---------------------------------------------------------------------------
@@ -147,20 +179,12 @@ const css = {
     padding: 10,
     display: 'flex',
     flexDirection: 'column' as const,
-    gap: 8,
+    gap: 6,
   },
-  header: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-  },
-  footer: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    fontSize: 10,
-  },
-  title: { fontSize: 13, fontWeight: 600, color: '#f3f4f6' },
-  badge: { fontSize: 9, padding: '1px 4px', background: '#1f2937', borderRadius: 3, color: '#9ca3af' },
-  label: { color: '#6b7280' },
-  value: { color: '#f3f4f6', fontWeight: 600 },
+  header: { display: 'flex', alignItems: 'center', gap: 8 },
+  footer: { display: 'flex', justifyContent: 'space-between', fontSize: 10 },
+  title:  { fontSize: 13, fontWeight: 600, color: '#f3f4f6' },
+  badge:  { fontSize: 9, padding: '1px 4px', background: '#1f2937', borderRadius: 3, color: '#9ca3af' },
+  label:  { color: '#6b7280' },
+  value:  { fontWeight: 600 },
 } as const;
