@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, CSSProperties } from 'react';
 import { useTinyTrack } from '../TinyTrackProvider.js';
 import { TtMetrics } from '../../client.js';
-import { CMD_SET_INTERVAL, RING_L1 } from '../../proto.js';
+import { RING_L1 } from '../../proto.js';
 import { fmtPct, fmtBytes, fmtLoad, fmtUptime, bar, detectAlerts } from './utils.js';
 import { Sparkline } from './Sparkline.js';
 
@@ -9,7 +9,7 @@ export type DashboardMode = 'compact' | 'expanded';
 
 export interface DashboardProps {
   mode?: DashboardMode;
-  historySize?: number;  // samples to keep for sparklines, default 60
+  historySize?: number;
   className?: string;
   style?: CSSProperties;
 }
@@ -20,21 +20,20 @@ const INTERVAL_LABELS = ['1s', '5s', '10s', '30s'];
 export function Dashboard({ mode: modeProp, historySize = 60, className, style }: DashboardProps) {
   const { client, metrics, stats, connected } = useTinyTrack();
   const [mode, setMode] = useState<DashboardMode>(modeProp ?? 'compact');
-  const [intervalIdx, setIntervalIdx] = useState(1); // 5s default
+  const [intervalIdx, setIntervalIdx] = useState(1);
   const history = useRef<TtMetrics[]>([]);
+  const prevMetrics = useRef<TtMetrics | null>(null);
 
-  // Accumulate history for sparklines
   useEffect(() => {
     if (!metrics) return;
     history.current = [...history.current.slice(-(historySize - 1)), metrics];
+    prevMetrics.current = metrics;
   }, [metrics, historySize]);
 
-  // Apply interval change
   useEffect(() => {
     client?.setInterval(INTERVALS[intervalIdx]);
   }, [client, intervalIdx]);
 
-  // Request history on connect
   useEffect(() => {
     if (connected && client) {
       client.getHistory(RING_L1, historySize);
@@ -43,15 +42,16 @@ export function Dashboard({ mode: modeProp, historySize = 60, className, style }
 
   const s = css;
   const m = metrics;
-  const alerts = m ? detectAlerts(m) : [];
+  const alerts = m ? detectAlerts(m, prevMetrics.current) : [];
   const uptime = stats ? fmtUptime(Date.now(), stats.l1.firstTs) : '—';
   const cpuHistory  = history.current.map(x => x.cpu);
   const memHistory  = history.current.map(x => x.mem);
   const netHistory  = history.current.map(x => x.netRx + x.netTx);
+  const duUsed = m ? m.duTotal - m.duFree : 0;
 
   return (
     <div className={className} style={{ ...s.root, ...style }}>
-      {/* Header row */}
+      {/* Header */}
       <div style={s.row}>
         <span style={s.badge(connected ? '#22c55e' : '#ef4444')}>
           {connected ? '● live' : '○ off'}
@@ -66,18 +66,15 @@ export function Dashboard({ mode: modeProp, historySize = 60, className, style }
 
       <div style={s.divider} />
 
-      {/* CPU + Mem row */}
+      {/* CPU + Mem */}
       <div style={s.row}>
         <MetricBar label="CPU" value={m?.cpu ?? 0} color="#4ade80" />
         <MetricBar label="Mem" value={m?.mem ?? 0} color="#60a5fa" />
-        <span style={s.label}>Load:</span>
-        <span style={s.value}>{m ? fmtLoad(m.load1) : '—'}</span>
       </div>
 
       {mode === 'expanded' && (
         <>
           <div style={s.divider} />
-          {/* Sparklines */}
           <div style={s.sparkRow}>
             <SparkBlock label="CPU" data={cpuHistory} max={10000} color="#4ade80" />
             <SparkBlock label="Mem" data={memHistory} max={10000} color="#60a5fa" />
@@ -88,7 +85,22 @@ export function Dashboard({ mode: modeProp, historySize = 60, className, style }
 
       <div style={s.divider} />
 
-      {/* Disk + Net row */}
+      {/* Load 1/5/15 */}
+      <div style={s.row}>
+        <span style={s.label}>Load:</span>
+        <span style={s.value}>{m ? fmtLoad(m.load1) : '—'}</span>
+        <span style={{ ...s.label, fontSize: 10 }}>/</span>
+        <span style={{ ...s.value, fontSize: 10 }}>{m ? fmtLoad(m.load5) : '—'}</span>
+        <span style={{ ...s.label, fontSize: 10 }}>/</span>
+        <span style={{ ...s.value, fontSize: 10 }}>{m ? fmtLoad(m.load15) : '—'}</span>
+        <span style={{ flex: 1 }} />
+        <span style={s.label}>Proc:</span>
+        <span style={s.value}>{m ? `${m.nrRunning}/${m.nrTotal}` : '—'}</span>
+      </div>
+
+      <div style={s.divider} />
+
+      {/* Disk */}
       <div style={s.row}>
         <span style={s.label}>Disk:</span>
         {mode === 'expanded' ? (
@@ -99,6 +111,9 @@ export function Dashboard({ mode: modeProp, historySize = 60, className, style }
           <span style={{ ...s.mono, color: '#f59e0b' }}>{bar(m?.duUsage ?? 0)}</span>
         )}
         <span style={s.value}>{m ? fmtPct(m.duUsage) : '—'}</span>
+        <span style={{ ...s.label, fontSize: 10 }}>
+          {m ? `${fmtBytes(duUsed)} / ${fmtBytes(m.duTotal)}` : '—'}
+        </span>
         <span style={{ flex: 1 }} />
         <span style={s.label}>Net:</span>
         <span style={{ ...s.value, color: '#34d399' }}>↑{m ? fmtBytes(m.netTx) : '—'}</span>
@@ -129,11 +144,6 @@ export function Dashboard({ mode: modeProp, historySize = 60, className, style }
         >
           {INTERVAL_LABELS.map((l, i) => <option key={i} value={i}>{l}</option>)}
         </select>
-        {m && (
-          <span style={{ ...s.label, marginLeft: 'auto' }}>
-            Proc: {m.nrRunning}/{m.nrTotal}
-          </span>
-        )}
       </div>
     </div>
   );
@@ -164,7 +174,7 @@ function SparkBlock({ label, data, max, color }: { label: string; data: number[]
 }
 
 // ---------------------------------------------------------------------------
-// Styles (inline, zero deps)
+// Styles
 // ---------------------------------------------------------------------------
 
 const css = {

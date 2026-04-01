@@ -32,16 +32,42 @@ export function bar(pct: number, width = 8): string {
   return '▓'.repeat(filled) + '░'.repeat(width - filled);
 }
 
-/** Detect alerts from latest metrics */
+/** Load trend: compare 1m vs 15m to detect rising/falling */
+export type LoadTrend = 'rising' | 'falling' | 'stable';
+
+export function loadTrend(m: TtMetrics): LoadTrend {
+  const diff = m.load1 - m.load15;
+  if (diff > 20) return 'rising';   // >0.2 difference
+  if (diff < -20) return 'falling';
+  return 'stable';
+}
+
 export interface Alert { id: string; label: string; level: 'warn' | 'crit' }
 
-export function detectAlerts(m: TtMetrics): Alert[] {
+export function detectAlerts(m: TtMetrics, prev: TtMetrics | null): Alert[] {
   const alerts: Alert[] = [];
-  if (m.cpu > 8000)  alerts.push({ id: 'cpu-crit',  label: 'CPU >80%',  level: 'crit' });
-  else if (m.cpu > 6000) alerts.push({ id: 'cpu-warn', label: 'CPU >60%', level: 'warn' });
-  if (m.mem > 9000)  alerts.push({ id: 'mem-crit',  label: 'Mem >90%',  level: 'crit' });
-  else if (m.mem > 7500) alerts.push({ id: 'mem-warn', label: 'Mem >75%', level: 'warn' });
-  if (m.duUsage > 8000) alerts.push({ id: 'disk-crit', label: 'Disk >80%', level: 'crit' });
+
+  // CPU
+  if (m.cpu > 8000)       alerts.push({ id: 'cpu-crit',  label: 'CPU >80%',  level: 'crit' });
+  else if (m.cpu > 6000)  alerts.push({ id: 'cpu-warn',  label: 'CPU >60%',  level: 'warn' });
+
+  // Memory
+  if (m.mem > 9000)       alerts.push({ id: 'mem-crit',  label: 'Mem >90%',  level: 'crit' });
+  else if (m.mem > 7500)  alerts.push({ id: 'mem-warn',  label: 'Mem >75%',  level: 'warn' });
+
+  // Disk
+  if (m.duUsage > 8000)      alerts.push({ id: 'disk-crit', label: 'Disk >80%', level: 'crit' });
   else if (m.duUsage > 6000) alerts.push({ id: 'disk-warn', label: 'Disk >60%', level: 'warn' });
+
+  // Load trend (1m vs 15m)
+  const trend = loadTrend(m);
+  if (trend === 'rising')  alerts.push({ id: 'load-rise', label: '↑ Load rising',  level: 'warn' });
+  if (trend === 'falling') alerts.push({ id: 'load-fall', label: '↓ Load falling', level: 'warn' });
+
+  // Sudden load spike vs previous sample
+  if (prev && m.load1 - prev.load1 > 50) {
+    alerts.push({ id: 'load-spike', label: '⚡ Load spike', level: 'crit' });
+  }
+
   return alerts;
 }
