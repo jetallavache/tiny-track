@@ -65,3 +65,11 @@ package-lock.json
 __pycache__/
 *.py[cod]
 .pytest_cache/
+
+# SDK build output
+sdk/dist/
+sdk/*.tsbuildinfo
+
+# Demo build output
+demo/dist/
+demo/*.tsbuildinfo

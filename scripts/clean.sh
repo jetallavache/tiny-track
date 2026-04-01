@@ -50,5 +50,7 @@ rm -rf .pytest_cache/
 
 # Node.js dependencies
 rm -rf tests/gateway/node_modules/
+rm -rf sdk/node_modules/ sdk/dist/ sdk/*.tsbuildinfo
+rm -rf demo/node_modules/ demo/dist/ demo/*.tsbuildinfo
 
 echo "clean: done"
