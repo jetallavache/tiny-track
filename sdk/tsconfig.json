@@ -7,6 +7,7 @@
     "strict": true,
     "declaration": true,
     "declarationDir": "dist",
+    "emitDeclarationOnly": false,
     "outDir": "dist",
     "jsx": "react-jsx",
     "esModuleInterop": true,

@@ -15,14 +15,15 @@
     "./react": {
       "import": "./dist/react.esm.js",
       "require": "./dist/react.cjs.js",
-      "types": "./dist/react.d.ts"
+      "types": "./dist/react/index.d.ts"
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "rollup -c",
+    "build": "npm run build:types && rollup -c",
+    "build:types": "tsc --emitDeclarationOnly --declaration --declarationDir dist",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint src"
