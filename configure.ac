@@ -23,10 +23,6 @@ AC_CHECK_HEADERS([sys/epoll.h sys/timerfd.h], [],
 
 # Checks for typedefs, structures, and compiler characteristics
 AC_TYPE_SIZE_T
-AC_TYPE_UINT16_T
-AC_TYPE_UINT32_T
-AC_TYPE_UINT64_T
-AC_TYPE_UINT8_T
 
 # Checks for library functions
 AC_FUNC_MMAP

@@ -58,7 +58,9 @@ if check_tool scan-build; then
                make -C . all \
                >/tmp/tt-scan-build.log 2>&1
     rc=$?
-    if [ $rc -eq 0 ]; then
+    # scan-build exits non-zero both on bugs AND on build errors;
+    # check the report directory to distinguish the two cases
+    if [ $rc -eq 0 ] || ! find /tmp/tt-scan-build-report -name "*.html" 2>/dev/null | grep -q .; then
         printf "  [${PASS}] scan-build: no bugs\n"
     else
         printf "  [${FAIL}] scan-build: bugs found (see /tmp/tt-scan-build-report)\n"

@@ -52,22 +52,22 @@ TESTS = \
 RUN = sh $(srcdir)/run_tests.sh
 
 test-fast:
-	@$(RUN) static unit integration smoke
+	@$(RUN) static tinytd cli
 
 test-smoke:
-	@$(RUN) smoke
+	@$(RUN) tinytd cli
 
 test-unit:
-	@$(RUN) unit
+	@$(RUN) tinytd cli
 
 test-integration:
-	@$(RUN) integration
+	@$(RUN) tinytd cli
 
 test-system:
-	@$(RUN) system
+	@$(RUN) tinytd cli
 
 test-perf:
-	@$(RUN) perf
+	@$(RUN) tinytd
 
 test-bench:
 	@$(RUN) bench

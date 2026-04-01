@@ -16,7 +16,7 @@ man8_MANS = docs/man/tinytd.8 docs/man/tinytrack.8
 # Test targets (delegate to tests/run_tests.sh)
 # ---------------------------------------------------------------------------
 test-fast test-unit test-integration test-smoke test-system \
-test-perf test-bench test-sanitize test-static test-all:
+test-perf test-bench test-sanitize test-static test-gateway test-all:
 	@$(MAKE) -C tests $@
 
 # Post-install: create system user/group and data directory
@@ -129,7 +129,9 @@ uninstall-hook:
 
 # Code formatting
 .PHONY: format format-check valgrind-tinytd valgrind-cli valgrind-gateway coverage coverage-clean \
-        check-gateway check-gateway-extended
+        check-gateway check-gateway-extended \
+        test-fast test-unit test-integration test-smoke test-system \
+        test-perf test-bench test-sanitize test-static test-gateway test-all
 
 check-gateway:
 	$(MAKE) -C gateway check-gateway
@@ -157,9 +159,11 @@ valgrind-tinytd:
 	  --track-origins=yes \
 	  --error-exitcode=1 \
 	  --log-file=valgrind-tinytd.log \
-	  timeout 5 tinytd/tinytd -c tests/tinytrack.conf-test; true
+	  tinytd/tinytd --no-daemon -c tests/tinytrack.conf-test &
+	@sleep 5; pkill -f "tinytd.*tinytrack.conf-test" 2>/dev/null; sleep 1
 	@echo "Valgrind report: valgrind-tinytd.log"
 	@grep -E "ERROR SUMMARY|definitely lost|indirectly lost|possibly lost" valgrind-tinytd.log
+	@rm -f /tmp/tinytd-test-live.dat /tmp/tinytd-test-shadow.dat /tmp/tinytd-test.pid
 
 # Valgrind memory check — runs tiny-cli status against live tinytd
 valgrind-cli:
@@ -167,8 +171,9 @@ valgrind-cli:
 	@test -f cli/tiny-cli || { echo "Run 'make' first"; exit 1; }
 	@test -f tinytd/tinytd || { echo "Run 'make' first"; exit 1; }
 	@echo "Starting tinytd..."
-	@tinytd/tinytd -c tests/tinytrack.conf-test 2>/dev/null & TDPID=$$!; \
-	  i=0; while [ $$i -lt 20 ] && [ ! -f /tmp/tinytd-test-live.dat ]; do sleep 0.5; i=$$((i+1)); done; \
+	@LIVE=$$(grep live_path tests/tinytrack.conf-test | awk '{print $$3}'); \
+	  tinytd/tinytd --no-daemon -c tests/tinytrack.conf-test >/dev/null 2>&1 & TDPID=$$!; \
+	  i=0; while [ $$i -lt 20 ] && [ ! -f "$$LIVE" ]; do sleep 0.3; i=$$((i+1)); done; \
 	  echo "Running valgrind on tiny-cli..."; \
 	  valgrind \
 	    --tool=memcheck \
@@ -177,21 +182,23 @@ valgrind-cli:
 	    --track-origins=yes \
 	    --error-exitcode=42 \
 	    --log-file=valgrind-tiny-cli.log \
-	    cli/tiny-cli -p /tmp/tinytd-test-live.dat -c tests/tinytrack.conf-test status; STATUS=$$?; \
+	    cli/tiny-cli -c tests/tinytrack.conf-test status; STATUS=$$?; \
 	  kill $$TDPID 2>/dev/null; wait $$TDPID 2>/dev/null; \
+	  rm -f /tmp/tinytd-test-live.dat /tmp/tinytd-test-shadow.dat /tmp/tinytd-test.pid; \
 	  echo "Valgrind report: valgrind-tiny-cli.log"; \
 	  grep -E "ERROR SUMMARY|definitely lost|indirectly lost|possibly lost" valgrind-tiny-cli.log; \
 	  [ $$STATUS -eq 42 ] && exit 1 || exit 0
 
-# Valgrind memory check — runs tinytrack gateway for 5s with a WS client
+# Valgrind memory check — runs tinytrack gateway with a WS client
 valgrind-gateway:
 	@command -v valgrind >/dev/null 2>&1 || { echo "valgrind not found"; exit 1; }
 	@test -f gateway/tinytrack || { echo "Run 'make' first"; exit 1; }
 	@test -f tinytd/tinytd || { echo "Run 'make' first"; exit 1; }
 	@command -v node >/dev/null 2>&1 || { echo "node not found"; exit 1; }
 	@echo "Starting tinytd..."
-	@tinytd/tinytd -c tests/tinytrack.conf-test 2>/dev/null & TDPID=$$!; \
-	  i=0; while [ $$i -lt 20 ] && [ ! -f /tmp/tinytd-test-live.dat ]; do sleep 0.5; i=$$((i+1)); done; \
+	@LIVE=$$(grep live_path tests/tinytrack.conf-test | awk '{print $$3}'); \
+	  tinytd/tinytd --no-daemon -c tests/tinytrack.conf-test >/dev/null 2>&1 & TDPID=$$!; \
+	  i=0; while [ $$i -lt 20 ] && [ ! -f "$$LIVE" ]; do sleep 0.3; i=$$((i+1)); done; \
 	  echo "Running valgrind on tinytrack (gateway)..."; \
 	  valgrind \
 	    --tool=memcheck \
@@ -200,12 +207,15 @@ valgrind-gateway:
 	    --track-origins=yes \
 	    --error-exitcode=42 \
 	    --log-file=valgrind-tinytrack.log \
-	    gateway/tinytrack -c tests/tinytrack.conf-test -p 4037 2>/dev/null & GWPID=$$!; \
-	  sleep 2; \
-	  cd gateway/tests; node test_gateway.js ws://127.0.0.1:4037/websocket; cd ../..; \
+	    gateway/tinytrack --no-daemon -c tests/tinytrack.conf-test -p 14032 >/dev/null 2>&1 & GWPID=$$!; \
+	  i=0; while [ $$i -lt 20 ]; do \
+	    python3 -c "import socket; socket.create_connection(('127.0.0.1',14032),0.2)" 2>/dev/null && break; \
+	    sleep 0.3; i=$$((i+1)); done; \
+	  cd tests/gateway && node test_gateway.js ws://127.0.0.1:14032/websocket; cd ../..; \
 	  sleep 1; \
 	  kill $$GWPID 2>/dev/null; wait $$GWPID 2>/dev/null; STATUS=$$?; \
 	  kill $$TDPID 2>/dev/null; wait $$TDPID 2>/dev/null; \
+	  rm -f /tmp/tinytd-test-live.dat /tmp/tinytd-test-shadow.dat /tmp/tinytd-test.pid; \
 	  echo "Valgrind report: valgrind-tinytrack.log"; \
 	  grep -E "ERROR SUMMARY|definitely lost|indirectly lost|possibly lost" valgrind-tinytrack.log; \
 	  [ $$STATUS -eq 42 ] && exit 1 || exit 0
@@ -217,14 +227,17 @@ coverage:
 	@test -f common/ringbuf/libcommon_a-writer.gcno || \
 	  { echo "Rebuild with: ./configure --enable-coverage && make"; exit 1; }
 	@echo "Running daemons for coverage data..."
-	@timeout 10 tinytd/tinytd -c tests/tinytrack.conf-test 2>/dev/null & \
-	  TDPID=$$!; sleep 3; \
+	@LIVE=$$(grep live_path tests/tinytrack.conf-test | awk '{print $$3}'); \
+	  tinytd/tinytd --no-daemon -c tests/tinytrack.conf-test >/dev/null 2>&1 & TDPID=$$!; \
+	  i=0; while [ $$i -lt 20 ] && [ ! -f "$$LIVE" ]; do sleep 0.3; i=$$((i+1)); done; \
 	  cli/tiny-cli -c tests/tinytrack.conf-test status  2>/dev/null; \
 	  cli/tiny-cli -c tests/tinytrack.conf-test debug   2>/dev/null; \
 	  cli/tiny-cli -c tests/tinytrack.conf-test metrics 2>/dev/null; \
-	  gateway/tinytrack -c tests/tinytrack.conf-test & GWPID=$$!; sleep 2; \
+	  gateway/tinytrack --no-daemon -c tests/tinytrack.conf-test -p 14033 >/dev/null 2>&1 & GWPID=$$!; \
+	  sleep 2; \
 	  kill $$GWPID 2>/dev/null; wait $$GWPID 2>/dev/null; \
-	  kill $$TDPID 2>/dev/null; wait $$TDPID 2>/dev/null; true
+	  kill $$TDPID 2>/dev/null; wait $$TDPID 2>/dev/null; \
+	  rm -f /tmp/tinytd-test-live.dat /tmp/tinytd-test-shadow.dat /tmp/tinytd-test.pid; true
 	@echo "Collecting coverage..."
 	@mkdir -p $(COVERAGE_DIR)
 	@if command -v lcov >/dev/null 2>&1; then \
