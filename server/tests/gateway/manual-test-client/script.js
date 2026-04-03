@@ -1,10 +1,10 @@
 /* TinyTrack Gateway Manual Test Client */
 
-const log        = document.getElementById('log');
+const log = document.getElementById('log');
 const metricsDiv = document.getElementById('metrics');
-const statsDiv   = document.getElementById('stats');
+const statsDiv = document.getElementById('stats');
 const sysInfoDiv = document.getElementById('sysinfo');
-const wsStatus   = document.getElementById('wsStatus');
+const wsStatus = document.getElementById('wsStatus');
 
 let ws = null;
 let historyBuf = []; /* accumulate PKT_HISTORY_RESP batches */
@@ -23,12 +23,16 @@ function addLog(msg) {
 /* Display helpers                                                       */
 /* ------------------------------------------------------------------ */
 
-function fmtPct(val)  { return (val / 100).toFixed(1) + '%'; }
-function fmtLoad(val) { return (val / 100).toFixed(2); }
+function fmtPct(val) {
+  return (val / 100).toFixed(1) + '%';
+}
+function fmtLoad(val) {
+  return (val / 100).toFixed(2);
+}
 function fmtNet(bytes) {
   if (bytes >= 1024 * 1024 * 1024) return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB/s';
-  if (bytes >= 1024 * 1024)        return (bytes / (1024 * 1024)).toFixed(2) + ' MB/s';
-  if (bytes >= 1024)               return (bytes / 1024).toFixed(1) + ' KB/s';
+  if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(2) + ' MB/s';
+  if (bytes >= 1024) return (bytes / 1024).toFixed(1) + ' KB/s';
   return bytes + ' B/s';
 }
 
@@ -45,10 +49,8 @@ function renderMetrics(m) {
 }
 
 function renderStats(s) {
-  const row = (r) =>
-    `L${r.level}: capacity=${r.capacity} head=${r.head} filled=${r.filled}`;
-  statsDiv.innerHTML =
-    `<b>Ring buffer stats:</b><br>${row(s.l1)}<br>${row(s.l2)}<br>${row(s.l3)}`;
+  const row = (r) => `L${r.level}: capacity=${r.capacity} head=${r.head} filled=${r.filled}`;
+  statsDiv.innerHTML = `<b>Ring buffer stats:</b><br>${row(s.l1)}<br>${row(s.l2)}<br>${row(s.l3)}`;
 }
 
 function renderSysInfo(info) {
@@ -116,11 +118,15 @@ const handlers = {
 
 function renderHistory(samples) {
   if (!samples.length) return;
-  const rows = samples.slice(-20).map(m =>
-    `<tr><td>${new Date(m.timestamp).toLocaleTimeString()}</td>` +
-    `<td>${fmtPct(m.cpu_usage)}</td><td>${fmtPct(m.mem_usage)}</td>` +
-    `<td>${fmtLoad(m.load_1min)}</td></tr>`
-  ).join('');
+  const rows = samples
+    .slice(-20)
+    .map(
+      (m) =>
+        `<tr><td>${new Date(m.timestamp).toLocaleTimeString()}</td>` +
+        `<td>${fmtPct(m.cpu_usage)}</td><td>${fmtPct(m.mem_usage)}</td>` +
+        `<td>${fmtLoad(m.load_1min)}</td></tr>`,
+    )
+    .join('');
   metricsDiv.innerHTML +=
     `<br><b>History (last 20):</b><table border="1" cellpadding="3">` +
     `<tr><th>Time</th><th>CPU</th><th>MEM</th><th>Load1</th></tr>${rows}</table>`;
@@ -152,7 +158,10 @@ document.getElementById('wsConnect').addEventListener('click', () => {
 
   ws.onmessage = ({ data }) => {
     const frame = parseFrame(data);
-    if (!frame) { addLog('✗ Invalid frame'); return; }
+    if (!frame) {
+      addLog('✗ Invalid frame');
+      return;
+    }
     dispatchFrame(frame, handlers);
   };
 
@@ -206,7 +215,7 @@ document.getElementById('streamStop').addEventListener('click', () => {
 
 document.getElementById('subscribe').addEventListener('click', () => {
   const level = parseInt(document.getElementById('subLevel').value);
-  const ms    = parseInt(document.getElementById('intervalInput').value);
+  const ms = parseInt(document.getElementById('intervalInput').value);
   send(buildSubscribe(level, ms));
   addLog(`→ PKT_SUBSCRIBE: level=${level} interval=${ms}ms`);
 });

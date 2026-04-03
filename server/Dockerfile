@@ -23,6 +23,6 @@ COPY --from=builder /build/tinytd/tinytd /usr/local/bin/tinytd
 COPY --from=builder /build/cli/tiny-cli /usr/local/bin/tiny-cli
 COPY --from=builder /build/gateway/tinytrack /usr/local/bin/tinytrack
 
-EXPOSE 4026
+EXPOSE 27017
 
 CMD ["tinytd", "--no-daemon"]

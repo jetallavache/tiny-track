@@ -38,5 +38,5 @@ auto_recover = true
 pid_file        = /tmp/tinytrack-test.pid
 log_level       = debug
 log_backend     = stderr
-listen          = ws://0.0.0.0:14028
+listen          = ws://0.0.0.0:14029
 update_interval = 500

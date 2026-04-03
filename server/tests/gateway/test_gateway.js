@@ -10,7 +10,7 @@
 'use strict';
 
 const { WebSocket } = require('ws');
-const proto = require('./manual-gateway-test/proto.js');
+const proto = require('./manual-test-client/proto.js');
 
 const URL = process.argv[2] || 'ws://127.0.0.1:4028/websocket';
 const TIMEOUT_MS = 10000;

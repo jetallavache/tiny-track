@@ -17,9 +17,9 @@ All tests use a single shared config: tests/tinytrack.conf-test
 Manual Gateway Test
 -------------------
 
-Located in `tests/gateway/manual-gateway-test/`:
+Located in `tests/gateway/manual-test-client/`:
 
-    cd tests/gateway/manual-gateway-test
+    cd tests/gateway/manual-test-client
     python3 -m http.server 8000
     # Open http://localhost:8000 in browser
 

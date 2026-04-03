@@ -5,16 +5,53 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>TinyTrack Gateway Manual Test</title>
     <style>
-      body { font-family: monospace; padding: 20px; max-width: 900px; }
-      .section { margin: 16px 0; padding: 10px; border: 1px solid #ccc; }
-      button { padding: 4px 10px; margin: 3px; cursor: pointer; }
-      input, select { padding: 4px; margin: 3px; }
-      #metrics { background: #f0f0f0; padding: 10px; min-height: 60px; }
-      #stats   { background: #f0f0f0; padding: 10px; min-height: 40px; }
-      #sysinfo { background: #f0f0f0; padding: 10px; min-height: 40px; }
-      #log     { background: #1e1e1e; color: #ccc; height: 280px;
-                 overflow-y: scroll; padding: 10px; font-size: 0.85em; }
-      table    { border-collapse: collapse; font-size: 0.85em; }
+      body {
+        font-family: monospace;
+        padding: 20px;
+        max-width: 900px;
+      }
+      .section {
+        margin: 16px 0;
+        padding: 10px;
+        border: 1px solid #ccc;
+      }
+      button {
+        padding: 4px 10px;
+        margin: 3px;
+        cursor: pointer;
+      }
+      input,
+      select {
+        padding: 4px;
+        margin: 3px;
+      }
+      #metrics {
+        background: #f0f0f0;
+        padding: 10px;
+        min-height: 60px;
+      }
+      #stats {
+        background: #f0f0f0;
+        padding: 10px;
+        min-height: 40px;
+      }
+      #sysinfo {
+        background: #f0f0f0;
+        padding: 10px;
+        min-height: 40px;
+      }
+      #log {
+        background: #1e1e1e;
+        color: #ccc;
+        height: 280px;
+        overflow-y: scroll;
+        padding: 10px;
+        font-size: 0.85em;
+      }
+      table {
+        border-collapse: collapse;
+        font-size: 0.85em;
+      }
     </style>
   </head>
   <body>
@@ -22,29 +59,29 @@
 
     <!-- WebSocket -->
     <div class="section">
-      <b>WebSocket</b><br>
-      <input id="wsUrl" type="text" value="ws://localhost:4026/websocket" style="width:360px" />
+      <b>WebSocket</b><br />
+      <input id="wsUrl" type="text" value="ws://localhost:4026/websocket" style="width: 360px" />
       <button id="wsConnect">Connect</button>
       <button id="wsDisconnect">Disconnect</button>
-      <span id="wsStatus" style="margin-left:10px;color:red">Disconnected</span>
+      <span id="wsStatus" style="margin-left: 10px; color: red">Disconnected</span>
     </div>
 
     <!-- Commands -->
     <div class="section">
-      <b>Commands</b><br>
+      <b>Commands</b><br />
 
       Interval (ms):
-      <input id="intervalInput" type="number" value="1000" min="1000" max="60000" step="1000" style="width:80px" />
+      <input id="intervalInput" type="number" value="1000" min="1000" max="60000" step="1000" style="width: 80px" />
       <button id="setInterval">Set Interval</button>
       <button id="getSnapshot">Get Snapshot</button>
       <button id="getStats">Get Ring Stats</button>
       <button id="getSysInfo">Get Sys Info</button>
-      <br><br>
+      <br /><br />
 
       Streaming:
       <button id="streamStart">▶ Start</button>
       <button id="streamStop">⏸ Stop</button>
-      <br><br>
+      <br /><br />
 
       Subscribe level:
       <select id="subLevel">
@@ -53,7 +90,7 @@
         <option value="3">L3 (7d)</option>
       </select>
       <button id="subscribe">Subscribe</button>
-      <br><br>
+      <br /><br />
 
       History level:
       <select id="histLevel">
@@ -62,7 +99,7 @@
         <option value="3">L3</option>
       </select>
       Max samples:
-      <input id="histCount" type="number" value="60" min="1" max="600" style="width:60px" />
+      <input id="histCount" type="number" value="60" min="1" max="600" style="width: 60px" />
       <button id="getHistory">Get History</button>
     </div>
 
@@ -86,8 +123,8 @@
 
     <!-- HTTP REST -->
     <div class="section">
-      <b>HTTP REST</b><br>
-      <input id="apiUrl" type="text" value="http://localhost:4026/api/metrics/live" style="width:360px" />
+      <b>HTTP REST</b><br />
+      <input id="apiUrl" type="text" value="http://localhost:4026/api/metrics/live" style="width: 360px" />
       <button id="fetchMetrics">Fetch</button>
     </div>
 

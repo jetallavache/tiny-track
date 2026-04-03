@@ -5,7 +5,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/tinytd -c /etc/tinytrack/tinytrack.conf
+ExecStart=/usr/local/bin/tinytd --no-daemon --config /etc/tinytrack/tinytrack.conf
 Restart=on-failure
 RestartSec=5s
 

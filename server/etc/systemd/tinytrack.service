@@ -6,7 +6,7 @@ Requires=tinytd.service
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/tinytrack -c /etc/tinytrack/tinytrack.conf
+ExecStart=/usr/local/bin/tinytrack --no-daemon --config /etc/tinytrack/tinytrack.conf
 Restart=on-failure
 RestartSec=5s
 
