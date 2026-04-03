@@ -1,6 +1,10 @@
 #include "reader.h"
 
 #include <arpa/inet.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/utsname.h>
+#include <unistd.h>
 
 #include "common/ringbuf.h"
 #include "common/ringbuf/layout.h"
@@ -52,4 +56,39 @@ int ttg_reader_get_stats(struct ttg_reader* ctx, uint8_t level,
 
 void ttg_reader_close(struct ttg_reader* ctx) {
   ttr_reader_close(&ctx->ring);
+}
+
+int ttg_reader_get_sysinfo(struct ttg_reader* ctx, struct tt_proto_sysinfo* out) {
+  memset(out, 0, sizeof(*out));
+
+  /* hostname */
+  gethostname(out->hostname, sizeof(out->hostname) - 1);
+
+  /* OS string: "Linux 6.1.0 #1 SMP ..." */
+  struct utsname u;
+  if (uname(&u) == 0)
+    snprintf(out->os_type, sizeof(out->os_type), "%s %s", u.sysname, u.release);
+
+  /* uptime from /proc/uptime */
+  FILE* f = fopen("/proc/uptime", "r");
+  if (f) {
+    double up = 0;
+    fscanf(f, "%lf", &up);
+    fclose(f);
+    out->uptime_sec = htobe64((uint64_t)up);
+  }
+
+  /* ring capacities from shm metadata */
+  if (ctx->ring.l1_meta)
+    out->slots_l1 = htonl(ctx->ring.l1_meta->capacity);
+  if (ctx->ring.l2_meta)
+    out->slots_l2 = htonl(ctx->ring.l2_meta->capacity);
+  if (ctx->ring.l3_meta)
+    out->slots_l3 = htonl(ctx->ring.l3_meta->capacity);
+
+  /* interval from ring header (writer_pid field not useful; use defaults) */
+  out->interval_ms     = htonl(1000);   /* daemon default; TODO: read from shm header */
+  out->agg_interval_ms = htonl(60000);  /* L1→L2 aggregation default */
+
+  return 0;
 }

@@ -147,5 +147,27 @@ struct tt_proto_stats {
 /* ------------------------------------------------------------------ */
 
 #define CMD_GET_STATS 0x10u /* Request PKT_STATS; no arg           */
+#define CMD_GET_STAT  0x11u /* Request PKT_SYSINFO; no arg         */
+#define CMD_START     0x12u /* Resume metrics streaming (session)  */
+#define CMD_STOP      0x13u /* Pause  metrics streaming (session)  */
+
+/* ------------------------------------------------------------------ */
+/* PKT_SYSINFO payload  (response to CMD_GET_STAT)                     */
+/* ------------------------------------------------------------------ */
+
+#define PKT_SYSINFO 0x14u /* Server → Client  System info + buffer config */
+
+#pragma pack(push, 1)
+struct tt_proto_sysinfo {
+  char     hostname[64];     /* Null-terminated hostname                  */
+  char     os_type[64];      /* Null-terminated "Linux 6.x.y #N ..."      */
+  uint64_t uptime_sec;       /* System uptime in seconds                  */
+  uint32_t slots_l1;         /* Ring L1 capacity (samples)                */
+  uint32_t slots_l2;         /* Ring L2 capacity (samples)                */
+  uint32_t slots_l3;         /* Ring L3 capacity (samples)                */
+  uint32_t interval_ms;      /* Daemon collection interval, ms            */
+  uint32_t agg_interval_ms;  /* Aggregation interval (L1→L2), ms         */
+}; /* 164 bytes */
+#pragma pack(pop)
 
 #endif /* TT_PROTO_V2_H */

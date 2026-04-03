@@ -28,6 +28,12 @@ int ttg_reader_get_history(struct ttg_reader* ctx, uint8_t level,
 int ttg_reader_get_stats(struct ttg_reader* ctx, uint8_t level,
                          struct tt_proto_ring_stat* out);
 
+/*
+ * Fill tt_proto_sysinfo with hostname, OS string, uptime and ring capacities.
+ * Returns 0 on success.
+ */
+int ttg_reader_get_sysinfo(struct ttg_reader* ctx, struct tt_proto_sysinfo* out);
+
 void ttg_reader_close(struct ttg_reader* ctx);
 
 #endif

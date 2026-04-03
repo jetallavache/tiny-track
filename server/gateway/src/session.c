@@ -115,6 +115,17 @@ static void handle_subscribe(struct ttg_conn* c,
     ttg_ws_send(c, buf, n, TTG_WS_OP_BINARY);
 }
 
+static void send_sysinfo(struct ttg_conn* c) {
+  struct tt_proto_sysinfo info;
+  ttg_reader_get_sysinfo(g_reader, &info);
+
+  uint8_t buf[sizeof(struct tt_proto_header) + sizeof(info)];
+  size_t n = ttg_proto_build(buf, sizeof(buf), TT_PROTO_V2, PKT_SYSINFO,
+                             (uint32_t)time(NULL), &info, sizeof(info));
+  if (n > 0)
+    ttg_ws_send(c, buf, n, TTG_WS_OP_BINARY);
+}
+
 static void handle_cmd(struct ttg_conn* c, const struct tt_proto_cmd* cmd) {
   struct tt_proto_ack ack = {.cmd_type = cmd->cmd_type, .status = ACK_OK};
 
@@ -132,6 +143,14 @@ static void handle_cmd(struct ttg_conn* c, const struct tt_proto_cmd* cmd) {
     send_metrics(c);
   } else if (cmd->cmd_type == CMD_GET_STATS) {
     send_stats(c);
+  } else if (cmd->cmd_type == CMD_GET_STAT) {
+    send_sysinfo(c);
+  } else if (cmd->cmd_type == CMD_START) {
+    c->streaming_paused = 0;
+    tt_log_info("Client streaming resumed");
+  } else if (cmd->cmd_type == CMD_STOP) {
+    c->streaming_paused = 1;
+    tt_log_info("Client streaming paused");
   } else {
     ack.status = ACK_ERROR;
   }
@@ -170,6 +189,7 @@ static void on_ws_open(struct ttg_conn* c) {
   c->update_interval_ms = 1000;
   c->last_update_time = 0;
   c->sub_level = RING_LEVEL_L1;
+  c->streaming_paused = 0;
 
   tt_log_info("WebSocket client connected");
 
@@ -224,6 +244,8 @@ void ttg_session_timer_fn(void* arg) {
 
   for (struct ttg_conn* c = mgr->conns; c != NULL; c = c->next) {
     if (c->data[0] != WS_MARK)
+      continue;
+    if (c->streaming_paused)
       continue;
     if (now - c->last_update_time >= (time_t)(c->update_interval_ms / 1000)) {
       send_metrics(c);

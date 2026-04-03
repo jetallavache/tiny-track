@@ -85,6 +85,7 @@ struct ttg_conn {
   unsigned is_client : 1;     /* Outgoing (client) connection */
   unsigned is_accepted : 1;   /* Incoming (server) connection */
   unsigned is_resolving : 1;  /* Non-blocking DNS resolution in progress */
+  unsigned streaming_paused : 1; /* CMD_STOP received; skip timer pushes */
   unsigned is_connecting : 1; /* Non-blocking connect in progress */
   unsigned is_tls : 1;        /* TLS-enabled connection */
   unsigned is_tls_hs : 1;     /* TLS handshake in progress */
