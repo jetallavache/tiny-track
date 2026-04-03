@@ -8,7 +8,7 @@ GATEWAY_TEST_CONF = $(top_srcdir)/tests/tinytrack.conf-test
 
 check-gateway: tinytrack
 	@command -v node >/dev/null 2>&1 || { echo "node not found"; exit 1; }
-	@cd $(abs_top_srcdir)/gateway/tests; \
+	@cd $(abs_top_srcdir)/tests/gateway; \
 	  $(abs_top_builddir)/tinytd/tinytd -c $(abs_top_srcdir)/tests/tinytrack.conf-test 2>/dev/null & TDPID=$$!; \
 	  sleep 2; \
 	  $(abs_top_builddir)/gateway/tinytrack -c $(abs_top_srcdir)/tests/tinytrack.conf-test -p $(GATEWAY_TEST_PORT) 2>/dev/null & GWPID=$$!; \
@@ -19,7 +19,7 @@ check-gateway: tinytrack
 
 check-gateway-extended: tinytrack
 	@command -v node >/dev/null 2>&1 || { echo "node not found"; exit 1; }
-	@cd $(abs_top_srcdir)/gateway/tests; \
+	@cd $(abs_top_srcdir)/tests/gateway; \
 	  $(abs_top_builddir)/tinytd/tinytd -c $(abs_top_srcdir)/tests/tinytrack.conf-test 2>/dev/null & TDPID=$$!; \
 	  sleep 2; \
 	  $(abs_top_builddir)/gateway/tinytrack -c $(abs_top_srcdir)/tests/tinytrack.conf-test -p $(GATEWAY_TEST_PORT) 2>/dev/null & GWPID=$$!; \
