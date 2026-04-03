@@ -260,11 +260,12 @@ function dispatchFrame(frame, handlers) {
         hostname,
         os_type,
         uptime_sec,
-        slots_l1:         payload.getUint32(136),
-        slots_l2:         payload.getUint32(140),
-        slots_l3:         payload.getUint32(144),
-        interval_ms:      payload.getUint32(148),
-        agg_interval_ms:  payload.getUint32(152),
+        slots_l1:    payload.getUint32(136),
+        slots_l2:    payload.getUint32(140),
+        slots_l3:    payload.getUint32(144),
+        interval_ms: payload.getUint32(148),
+        agg_l2_ms:   payload.getUint32(152),
+        agg_l3_ms:   payload.getUint32(156),
       });
       break;
     }

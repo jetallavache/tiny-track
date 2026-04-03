@@ -65,7 +65,8 @@ function renderSysInfo(info) {
     `<b>Uptime:</b> ${fmtUptime(info.uptime_sec)}<br>` +
     `<b>Ring slots:</b> L1=${info.slots_l1} L2=${info.slots_l2} L3=${info.slots_l3}<br>` +
     `<b>Interval:</b> ${info.interval_ms}ms &nbsp;` +
-    `<b>Agg interval:</b> ${info.agg_interval_ms}ms`;
+    `<b>Agg L1→L2:</b> ${info.agg_l2_ms}ms &nbsp;` +
+    `<b>Agg L2→L3:</b> ${info.agg_l3_ms}ms`;
 }
 
 /* ------------------------------------------------------------------ */

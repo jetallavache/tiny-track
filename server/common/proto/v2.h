@@ -166,8 +166,9 @@ struct tt_proto_sysinfo {
   uint32_t slots_l2;         /* Ring L2 capacity (samples)                */
   uint32_t slots_l3;         /* Ring L3 capacity (samples)                */
   uint32_t interval_ms;      /* Daemon collection interval, ms            */
-  uint32_t agg_interval_ms;  /* Aggregation interval (L1→L2), ms         */
-}; /* 164 bytes */
+  uint32_t agg_l2_ms;        /* Aggregation interval L1→L2, ms           */
+  uint32_t agg_l3_ms;        /* Aggregation interval L2→L3, ms           */
+}; /* 168 bytes */
 #pragma pack(pop)
 
 #endif /* TT_PROTO_V2_H */

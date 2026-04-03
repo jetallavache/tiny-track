@@ -87,8 +87,9 @@ int ttg_reader_get_sysinfo(struct ttg_reader* ctx, struct tt_proto_sysinfo* out)
     out->slots_l3 = htonl(ctx->ring.l3_meta->capacity);
 
   /* interval from ring header (writer_pid field not useful; use defaults) */
-  out->interval_ms     = htonl(1000);   /* daemon default; TODO: read from shm header */
-  out->agg_interval_ms = htonl(60000);  /* L1→L2 aggregation default */
+  out->interval_ms = htonl(1000);   /* daemon default; TODO: read from shm header */
+  out->agg_l2_ms   = htonl(60000);  /* L1→L2: 1 min */
+  out->agg_l3_ms   = htonl(900000); /* L2→L3: 15 min */
 
   return 0;
 }
