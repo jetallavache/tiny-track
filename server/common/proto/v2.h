@@ -42,9 +42,9 @@
  *
  * Ring buffer statistics
  * ----------------------
- *   Server sends PKT_RING_STATS periodically (or on request via CMD_GET_RING_STATS).
- *   Contains head positions, fill levels, and timestamps for all three
- *   ring levels — useful for client-side progress bars and diagnostics.
+ *   Server sends PKT_RING_STATS periodically (or on request via
+ * CMD_GET_RING_STATS). Contains head positions, fill levels, and timestamps for
+ * all three ring levels — useful for client-side progress bars and diagnostics.
  */
 
 #ifndef TT_PROTO_V2_H
@@ -68,7 +68,7 @@
 #define PKT_HISTORY_REQ 0x10u  /* History request    (client → server) */
 #define PKT_HISTORY_RESP 0x11u /* History response   (server → client) */
 #define PKT_SUBSCRIBE 0x12u    /* Level subscription (client → server) */
-#define PKT_RING_STATS 0x13u        /* Ring buffer stats  (server → client) */
+#define PKT_RING_STATS 0x13u   /* Ring buffer stats  (server → client) */
 
 /* ------------------------------------------------------------------ */
 /* Ring level identifiers (used across v2 packets)                     */
@@ -146,10 +146,10 @@ struct tt_proto_stats {
 /* New v2 commands (extend PKT_CMD from v1)                            */
 /* ------------------------------------------------------------------ */
 
-#define CMD_GET_RING_STATS 0x10u /* Request PKT_RING_STATS; no arg           */
-#define CMD_GET_SYS_INFO  0x11u /* Request PKT_SYS_INFO; no arg         */
-#define CMD_START     0x12u /* Resume metrics streaming (session)  */
-#define CMD_STOP      0x13u /* Pause  metrics streaming (session)  */
+#define CMD_GET_RING_STATS 0x10u /* Request PKT_RING_STATS; no arg */
+#define CMD_GET_SYS_INFO 0x11u   /* Request PKT_SYS_INFO; no arg         */
+#define CMD_START 0x12u          /* Resume metrics streaming (session)  */
+#define CMD_STOP 0x13u           /* Pause  metrics streaming (session)  */
 
 /* ------------------------------------------------------------------ */
 /* PKT_SYS_INFO payload  (response to CMD_GET_SYS_INFO)                     */
@@ -159,15 +159,15 @@ struct tt_proto_stats {
 
 #pragma pack(push, 1)
 struct tt_proto_sysinfo {
-  char     hostname[64];     /* Null-terminated hostname                  */
-  char     os_type[64];      /* Null-terminated "Linux 6.x.y #N ..."      */
-  uint64_t uptime_sec;       /* System uptime in seconds                  */
-  uint32_t slots_l1;         /* Ring L1 capacity (samples)                */
-  uint32_t slots_l2;         /* Ring L2 capacity (samples)                */
-  uint32_t slots_l3;         /* Ring L3 capacity (samples)                */
-  uint32_t interval_ms;      /* Daemon collection interval, ms            */
-  uint32_t agg_l2_ms;        /* Aggregation interval L1→L2, ms           */
-  uint32_t agg_l3_ms;        /* Aggregation interval L2→L3, ms           */
+  char hostname[64];    /* Null-terminated hostname                  */
+  char os_type[64];     /* Null-terminated "Linux 6.x.y #N ..."      */
+  uint64_t uptime_sec;  /* System uptime in seconds                  */
+  uint32_t slots_l1;    /* Ring L1 capacity (samples)                */
+  uint32_t slots_l2;    /* Ring L2 capacity (samples)                */
+  uint32_t slots_l3;    /* Ring L3 capacity (samples)                */
+  uint32_t interval_ms; /* Daemon collection interval, ms            */
+  uint32_t agg_l2_ms;   /* Aggregation interval L1→L2, ms           */
+  uint32_t agg_l3_ms;   /* Aggregation interval L2→L3, ms           */
 }; /* 168 bytes */
 #pragma pack(pop)
 

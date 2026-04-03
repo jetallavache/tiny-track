@@ -81,20 +81,20 @@ struct ttg_conn {
   time_t last_update_time;     /* Last update time */
   uint8_t sub_level; /* Ring level subscription: RING_LEVEL_L1/L2/L3 */
 
-  unsigned is_listening : 1;  /* Listening for connections */
-  unsigned is_client : 1;     /* Outgoing (client) connection */
-  unsigned is_accepted : 1;   /* Incoming (server) connection */
-  unsigned is_resolving : 1;  /* Non-blocking DNS resolution in progress */
+  unsigned is_listening : 1;     /* Listening for connections */
+  unsigned is_client : 1;        /* Outgoing (client) connection */
+  unsigned is_accepted : 1;      /* Incoming (server) connection */
+  unsigned is_resolving : 1;     /* Non-blocking DNS resolution in progress */
   unsigned streaming_paused : 1; /* CMD_STOP received; skip timer pushes */
-  unsigned is_connecting : 1; /* Non-blocking connect in progress */
-  unsigned is_tls : 1;        /* TLS-enabled connection */
-  unsigned is_tls_hs : 1;     /* TLS handshake in progress */
-  unsigned is_websocket : 1;  /* WebSocket connection */
-  unsigned is_closing : 1;    /* Close and forcibly remove connection */
-  unsigned is_full : 1;       /* Stop reading until cleared */
-  unsigned is_resp : 1;       /* Response is still being generated */
-  unsigned is_readable : 1;   /* Connection ready for reading */
-  unsigned is_writable : 1;   /* Connection ready for writing*/
+  unsigned is_connecting : 1;    /* Non-blocking connect in progress */
+  unsigned is_tls : 1;           /* TLS-enabled connection */
+  unsigned is_tls_hs : 1;        /* TLS handshake in progress */
+  unsigned is_websocket : 1;     /* WebSocket connection */
+  unsigned is_closing : 1;       /* Close and forcibly remove connection */
+  unsigned is_full : 1;          /* Stop reading until cleared */
+  unsigned is_resp : 1;          /* Response is still being generated */
+  unsigned is_readable : 1;      /* Connection ready for reading */
+  unsigned is_writable : 1;      /* Connection ready for writing*/
 
   unsigned is_hexdumping : 1; /* Hexdump in/out traffic */
   unsigned is_draining : 1;   /* Send remaining data, then close and
