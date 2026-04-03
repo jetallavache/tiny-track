@@ -14,15 +14,15 @@ export const PROTO_MAGIC = 0xaa;
 export const HEADER_SIZE = 10;
 
 // Packet types
-export const PKT_METRICS      = 0x01;
-export const PKT_CONFIG       = 0x02;
-export const PKT_ALERT        = 0x03;
-export const PKT_CMD          = 0x04;
-export const PKT_ACK          = 0x05;
-export const PKT_HISTORY_REQ  = 0x10;
+export const PKT_METRICS = 0x01;
+export const PKT_CONFIG = 0x02;
+export const PKT_ALERT = 0x03;
+export const PKT_CMD = 0x04;
+export const PKT_ACK = 0x05;
+export const PKT_HISTORY_REQ = 0x10;
 export const PKT_HISTORY_RESP = 0x11;
-export const PKT_SUBSCRIBE    = 0x12;
-export const PKT_STATS        = 0x13;
+export const PKT_SUBSCRIBE = 0x12;
+export const PKT_STATS = 0x13;
 
 // Ring levels
 export const RING_L1 = 0x01;
@@ -31,46 +31,46 @@ export const RING_L3 = 0x03;
 
 // Commands
 export const CMD_SET_INTERVAL = 0x01;
-export const CMD_SET_ALERTS   = 0x02;
+export const CMD_SET_ALERTS = 0x02;
 export const CMD_GET_SNAPSHOT = 0x03;
-export const CMD_GET_STATS    = 0x10;
+export const CMD_GET_STATS = 0x10;
 
-export const ACK_OK    = 0x00;
+export const ACK_OK = 0x00;
 export const ACK_ERROR = 0x01;
 
 export interface TtMetrics {
-  timestamp:  number; // ms since epoch
-  cpu:        number; // 0..10000 (percent * 100)
-  mem:        number; // 0..10000
-  netRx:      number; // bytes/sec
-  netTx:      number; // bytes/sec
-  load1:      number; // load avg * 100
-  load5:      number;
-  load15:     number;
-  nrRunning:  number;
-  nrTotal:    number;
-  duUsage:    number; // 0..10000
-  duTotal:    number; // bytes
-  duFree:     number; // bytes
+  timestamp: number; // ms since epoch
+  cpu: number; // 0..10000 (percent * 100)
+  mem: number; // 0..10000
+  netRx: number; // bytes/sec
+  netTx: number; // bytes/sec
+  load1: number; // load avg * 100
+  load5: number;
+  load15: number;
+  nrRunning: number;
+  nrTotal: number;
+  duUsage: number; // 0..10000
+  duTotal: number; // bytes
+  duFree: number; // bytes
 }
 
 export interface TtConfig {
-  intervalMs:     number;
-  alertsEnabled:  boolean;
+  intervalMs: number;
+  alertsEnabled: boolean;
 }
 
 export interface TtAck {
   cmdType: number;
-  status:  number; // ACK_OK | ACK_ERROR
+  status: number; // ACK_OK | ACK_ERROR
 }
 
 export interface TtRingStat {
-  level:    number;
+  level: number;
   capacity: number;
-  head:     number;
-  filled:   number;
-  firstTs:  number;
-  lastTs:   number;
+  head: number;
+  filled: number;
+  firstTs: number;
+  lastTs: number;
 }
 
 export interface TtStats {
@@ -80,17 +80,17 @@ export interface TtStats {
 }
 
 export interface TtHistoryResp {
-  level:   number;
-  count:   number;
-  last:    boolean;
+  level: number;
+  count: number;
+  last: boolean;
   samples: TtMetrics[];
 }
 
 export interface TtFrame {
-  type:      number;
-  version:   number;
+  type: number;
+  version: number;
   timestamp: number;
-  payload:   DataView;
+  payload: DataView;
 }
 
 /** Parse the 10-byte header. Returns null if buffer is too short or magic is wrong. */
@@ -98,9 +98,9 @@ export function parseHeader(buf: ArrayBuffer, offset = 0): TtFrame | null {
   if (buf.byteLength - offset < HEADER_SIZE) return null;
   const v = new DataView(buf, offset);
   if (v.getUint8(0) !== PROTO_MAGIC) return null;
-  const version   = v.getUint8(1);
-  const type      = v.getUint8(2);
-  const length    = v.getUint16(3, false); // big-endian
+  const version = v.getUint8(1);
+  const type = v.getUint8(2);
+  const length = v.getUint16(3, false); // big-endian
   const timestamp = v.getUint32(5, false);
   if (buf.byteLength - offset < HEADER_SIZE + length) return null;
   return {
@@ -113,31 +113,31 @@ export function parseHeader(buf: ArrayBuffer, offset = 0): TtFrame | null {
 
 /** Parse PKT_METRICS payload (52 bytes, little-endian). */
 export function parseMetrics(p: DataView): TtMetrics {
-  // timestamp is uint64 — read as two uint32 and combine (ms precision)
-  const tsHi = p.getUint32(0, true);
-  const tsLo = p.getUint32(4, true);
+  // uint64 LE: lo word at offset 0, hi word at offset 4
+  const tsLo = p.getUint32(0, true);
+  const tsHi = p.getUint32(4, true);
   const timestamp = tsHi * 0x100000000 + tsLo;
   return {
     timestamp,
-    cpu:       p.getUint16(8,  true),
-    mem:       p.getUint16(10, true),
-    netRx:     p.getUint32(12, true),
-    netTx:     p.getUint32(16, true),
-    load1:     p.getUint16(20, true),
-    load5:     p.getUint16(22, true),
-    load15:    p.getUint16(24, true),
+    cpu: p.getUint16(8, true),
+    mem: p.getUint16(10, true),
+    netRx: p.getUint32(12, true),
+    netTx: p.getUint32(16, true),
+    load1: p.getUint16(20, true),
+    load5: p.getUint16(22, true),
+    load15: p.getUint16(24, true),
     nrRunning: p.getUint32(26, true),
-    nrTotal:   p.getUint32(30, true),
-    duUsage:   p.getUint16(34, true),
-    duTotal:   readUint64LE(p, 36),
-    duFree:    readUint64LE(p, 44),
+    nrTotal: p.getUint32(30, true),
+    duUsage: p.getUint16(34, true),
+    duTotal: readUint64LE(p, 36),
+    duFree: readUint64LE(p, 44),
   };
 }
 
 /** Parse PKT_CONFIG payload (5 bytes). */
 export function parseConfig(p: DataView): TtConfig {
   return {
-    intervalMs:    p.getUint32(0, false),
+    intervalMs: p.getUint32(0, false),
     alertsEnabled: p.getUint8(4) !== 0,
   };
 }
@@ -158,9 +158,9 @@ export function parseStats(p: DataView): TtStats {
 
 /** Parse PKT_HISTORY_RESP payload. */
 export function parseHistoryResp(p: DataView): TtHistoryResp {
-  const level  = p.getUint8(0);
-  const count  = p.getUint16(1, false);
-  const flags  = p.getUint8(3);
+  const level = p.getUint8(0);
+  const count = p.getUint16(1, false);
+  const flags = p.getUint8(3);
   const samples: TtMetrics[] = [];
   for (let i = 0; i < count; i++) {
     const off = 4 + i * 52;
@@ -235,23 +235,23 @@ function calcChecksum(h: DataView): number {
 
 function parseRingStat(p: DataView, off: number): TtRingStat {
   return {
-    level:    p.getUint8(off),
-    capacity: p.getUint32(off + 1,  false),
-    head:     p.getUint32(off + 5,  false),
-    filled:   p.getUint32(off + 9,  false),
-    firstTs:  readUint64BE(p, off + 13),
-    lastTs:   readUint64BE(p, off + 21),
+    level: p.getUint8(off),
+    capacity: p.getUint32(off + 1, false), // BE (htonl on server)
+    head: p.getUint32(off + 5, false), // BE (htonl on server)
+    filled: p.getUint32(off + 9, false), // BE (htonl on server)
+    firstTs: readUint64LE(p, off + 13), // LE (no hton on server, native x86)
+    lastTs: readUint64LE(p, off + 21), // LE (no hton on server, native x86)
   };
 }
 
 function readUint64LE(v: DataView, off: number): number {
-  const lo = v.getUint32(off,     true);
+  const lo = v.getUint32(off, true);
   const hi = v.getUint32(off + 4, true);
   return hi * 0x100000000 + lo;
 }
 
 function readUint64BE(v: DataView, off: number): number {
-  const hi = v.getUint32(off,     false);
+  const hi = v.getUint32(off, false);
   const lo = v.getUint32(off + 4, false);
   return hi * 0x100000000 + lo;
 }
@@ -259,6 +259,6 @@ function readUint64BE(v: DataView, off: number): number {
 function writeUint64BE(v: DataView, off: number, val: number): void {
   const hi = Math.floor(val / 0x100000000);
   const lo = val >>> 0;
-  v.setUint32(off,     hi, false);
+  v.setUint32(off, hi, false);
   v.setUint32(off + 4, lo, false);
 }
