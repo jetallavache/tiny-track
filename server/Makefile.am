@@ -1,7 +1,7 @@
 SUBDIRS = common tinytd cli gateway tests etc
 
 EXTRA_DIST = README.md docs/INSTALL.md LICENSE \
-             docs/man/tiny-cli.1 docs/man/tinytd.8 docs/man/tinytrack.8 \
+             etc/man/tiny-cli.1 etc/man/tinytd.8 etc/man/tinytrack.8 \
              scripts/completion/tiny-cli.bash \
              scripts/completion/tiny-cli.zsh \
              scripts/install-extras.sh
@@ -9,8 +9,8 @@ EXTRA_DIST = README.md docs/INSTALL.md LICENSE \
 dist_doc_DATA = README.md docs/INSTALL.md LICENSE
 
 # Man pages
-man1_MANS = docs/man/tiny-cli.1
-man8_MANS = docs/man/tinytd.8 docs/man/tinytrack.8
+man1_MANS = etc/man/tiny-cli.1
+man8_MANS = etc/man/tinytd.8 etc/man/tinytrack.8
 
 # ---------------------------------------------------------------------------
 # Test targets (delegate to tests/run_tests.sh)

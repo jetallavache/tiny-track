@@ -11,8 +11,8 @@ ZSHCOMPDIR="${ZSHCOMPDIR:-/usr/share/zsh/site-functions}"
 
 install_man() {
   install -d "$MANDIR/man1" "$MANDIR/man8"
-  install -m 644 docs/man/tiny-cli.1 "$MANDIR/man1/tiny-cli.1"
-  install -m 644 docs/man/tinytd.8   "$MANDIR/man8/tinytd.8"
+  install -m 644 etc/man/tiny-cli.1 "$MANDIR/man1/tiny-cli.1"
+  install -m 644 etc/man/tinytd.8   "$MANDIR/man8/tinytd.8"
   echo "Installed man pages to $MANDIR"
 }
 
