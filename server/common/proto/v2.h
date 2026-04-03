@@ -15,7 +15,7 @@
  *   PKT_HISTORY_REQ  (0x10)  Client → Server  Request historical data
  *   PKT_HISTORY_RESP (0x11)  Server → Client  Historical data batch
  *   PKT_SUBSCRIBE    (0x12)  Client → Server  Subscribe to ring level
- *   PKT_STATS        (0x13)  Server → Client  Ring buffer statistics
+ *   PKT_RING_STATS        (0x13)  Server → Client  Ring buffer statistics
  *
  * History flow
  * ------------
@@ -42,7 +42,7 @@
  *
  * Ring buffer statistics
  * ----------------------
- *   Server sends PKT_STATS periodically (or on request via CMD_GET_STATS).
+ *   Server sends PKT_RING_STATS periodically (or on request via CMD_GET_RING_STATS).
  *   Contains head positions, fill levels, and timestamps for all three
  *   ring levels — useful for client-side progress bars and diagnostics.
  */
@@ -68,7 +68,7 @@
 #define PKT_HISTORY_REQ 0x10u  /* History request    (client → server) */
 #define PKT_HISTORY_RESP 0x11u /* History response   (server → client) */
 #define PKT_SUBSCRIBE 0x12u    /* Level subscription (client → server) */
-#define PKT_STATS 0x13u        /* Ring buffer stats  (server → client) */
+#define PKT_RING_STATS 0x13u        /* Ring buffer stats  (server → client) */
 
 /* ------------------------------------------------------------------ */
 /* Ring level identifiers (used across v2 packets)                     */
@@ -121,7 +121,7 @@ struct tt_proto_subscribe {
 #pragma pack(pop)
 
 /* ------------------------------------------------------------------ */
-/* PKT_STATS payload  (52 bytes)                                       */
+/* PKT_RING_STATS payload  (52 bytes)                                       */
 /* One tt_proto_ring_stat per level, three levels total.              */
 /* ------------------------------------------------------------------ */
 
@@ -146,16 +146,16 @@ struct tt_proto_stats {
 /* New v2 commands (extend PKT_CMD from v1)                            */
 /* ------------------------------------------------------------------ */
 
-#define CMD_GET_STATS 0x10u /* Request PKT_STATS; no arg           */
-#define CMD_GET_STAT  0x11u /* Request PKT_SYSINFO; no arg         */
+#define CMD_GET_RING_STATS 0x10u /* Request PKT_RING_STATS; no arg           */
+#define CMD_GET_SYS_INFO  0x11u /* Request PKT_SYS_INFO; no arg         */
 #define CMD_START     0x12u /* Resume metrics streaming (session)  */
 #define CMD_STOP      0x13u /* Pause  metrics streaming (session)  */
 
 /* ------------------------------------------------------------------ */
-/* PKT_SYSINFO payload  (response to CMD_GET_STAT)                     */
+/* PKT_SYS_INFO payload  (response to CMD_GET_SYS_INFO)                     */
 /* ------------------------------------------------------------------ */
 
-#define PKT_SYSINFO 0x14u /* Server → Client  System info + buffer config */
+#define PKT_SYS_INFO 0x14u /* Server → Client  System info + buffer config */
 
 #pragma pack(push, 1)
 struct tt_proto_sysinfo {

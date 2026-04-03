@@ -87,7 +87,7 @@ static void send_stats(struct ttg_conn* c) {
   ttg_reader_get_stats(g_reader, RING_LEVEL_L3, &stats.l3);
 
   uint8_t buf[sizeof(struct tt_proto_header) + sizeof(stats)];
-  size_t n = ttg_proto_build(buf, sizeof(buf), TT_PROTO_V2, PKT_STATS,
+  size_t n = ttg_proto_build(buf, sizeof(buf), TT_PROTO_V2, PKT_RING_STATS,
                              (uint32_t)time(NULL), &stats, sizeof(stats));
   if (n > 0)
     ttg_ws_send(c, buf, n, TTG_WS_OP_BINARY);
@@ -120,7 +120,7 @@ static void send_sysinfo(struct ttg_conn* c) {
   ttg_reader_get_sysinfo(g_reader, &info);
 
   uint8_t buf[sizeof(struct tt_proto_header) + sizeof(info)];
-  size_t n = ttg_proto_build(buf, sizeof(buf), TT_PROTO_V2, PKT_SYSINFO,
+  size_t n = ttg_proto_build(buf, sizeof(buf), TT_PROTO_V2, PKT_SYS_INFO,
                              (uint32_t)time(NULL), &info, sizeof(info));
   if (n > 0)
     ttg_ws_send(c, buf, n, TTG_WS_OP_BINARY);
@@ -141,9 +141,9 @@ static void handle_cmd(struct ttg_conn* c, const struct tt_proto_cmd* cmd) {
     tt_log_info("Client alerts_enabled=%u", cmd->alerts_enabled);
   } else if (cmd->cmd_type == CMD_GET_SNAPSHOT) {
     send_metrics(c);
-  } else if (cmd->cmd_type == CMD_GET_STATS) {
+  } else if (cmd->cmd_type == CMD_GET_RING_STATS) {
     send_stats(c);
-  } else if (cmd->cmd_type == CMD_GET_STAT) {
+  } else if (cmd->cmd_type == CMD_GET_SYS_INFO) {
     send_sysinfo(c);
   } else if (cmd->cmd_type == CMD_START) {
     c->streaming_paused = 0;
