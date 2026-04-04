@@ -14,11 +14,13 @@ Data flow:
 
   /proc/stat          \
   /proc/meminfo        |
-  /proc/net/dev        +---> tinytd --[mmap write]--> /dev/shm/tinytd-live.dat
-  /proc/loadavg        |                                        |
-  statvfs(rootfs)     /                                         |
-                                                                +--[mmap read]--> tinytrack --> WebSocket clients
-                                                                +--[mmap read]--> tiny-cli
+  /proc/net/dev        +--> tinytd --[mmap write]--> /dev/shm/tinytd-live.dat
+  /proc/loadavg        |                                    |
+  statvfs(rootfs)     /                                     |
+                                              +-------------+
+                                              |
+                                              +--[mmap read]--> tinytrack --> WebSocket clients
+                                              +--[mmap read]--> tiny-cli
 
 
 TINYTD

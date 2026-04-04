@@ -22,6 +22,8 @@ server/depcomp
 server/install-sh
 server/missing
 server/stamp-h1
+server/**/Makefile
+server/**/Makefile.in
 Makefile
 Makefile.in
 .deps/

@@ -25,7 +25,8 @@ SECTION [tinytd]
 
   user            daemon user after privilege drop     (default: tinytd)
   group           daemon group                         (default: tinytd)
-  pid_file        path to PID file                     (default: /var/run/tinytd.pid)
+  pid_file        path to PID file
+                  (default: /var/run/tinytd.pid)
   log_backend     logging backend (see below)          (default: auto)
   log_level       minimum log level                    (default: info)
 
@@ -107,12 +108,14 @@ SECTION [gateway]
 
   user              gateway user after privilege drop  (default: tinytrack)
   group             gateway group                      (default: tinytrack)
-  pid_file          path to PID file                   (default: /var/run/tinytrack.pid)
+  pid_file          path to PID file
+                    (default: /var/run/tinytrack.pid)
   log_backend       logging backend                    (default: auto)
                     ENV: TT_LOG_BACKEND
   log_level         minimum log level                  (default: info)
                     ENV: TT_LOG_LEVEL
-  listen            listen address                     (default: ws://0.0.0.0:25015)
+  listen            listen address
+                    (default: ws://0.0.0.0:25015)
                     ENV: TT_LISTEN
                     Use wss:// to enable TLS.
   update_interval   push interval to clients, ms       (default: 1000)
