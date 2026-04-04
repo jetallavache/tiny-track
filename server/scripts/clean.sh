@@ -30,7 +30,7 @@ rm -rf coverage-report/
 find . \( -name '*.gcda' -o -name '*.gcno' -o -name '*.gcov' \) -delete 2>/dev/null || true
 
 # Valgrind / sanitizer / static analysis logs
-rm -f valgrind-*.log \
+rm -f valgrind-*.log valgrind-*.core.* \
       /tmp/tt-valgrind-*.log /tmp/tt-asan-*.log* /tmp/tt-asan-*.stdout \
       /tmp/tt-cppcheck.log /tmp/tt-scan-build.log /tmp/tt-wall.log
 rm -rf /tmp/tt-scan-build-report/

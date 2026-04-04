@@ -1,6 +1,6 @@
 .kiro
-docs/dev-history.md
-test-driver
+
+# Private OpenSSL gen
 server/etc/certs/*.crt
 server/etc/certs/*.key
 server/etc/certs/*.ca
@@ -30,6 +30,7 @@ Makefile.in
 vgcore.*
 *~
 .dirstamp
+test-driver
 
 # Build artifacts
 *.bin
@@ -41,9 +42,6 @@ server/gateway/tinytrack
 tinytrack-*.tar.gz
 tinytrack-*/
 
-# Debug
-*-debug
-
 # Coverage
 coverage-report/
 *.gcda
@@ -52,6 +50,7 @@ coverage-report/
 
 # Valgrind reports
 valgrind-*.log
+valgrind-*.core.*
 
 # Test runtime files
 /tmp/tinytd-test-live.dat
@@ -74,3 +73,4 @@ sdk/*.tsbuildinfo
 demo/dist/
 demo/*.tsbuildinfo
 docs/roadmap.md
+docs/dev-history.md

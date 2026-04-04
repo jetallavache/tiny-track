@@ -1,4 +1,4 @@
-AC_INIT([tinytrack], [0.1.5], [bugs@example.com])
+AC_INIT([tinytrack], [0.1.6], [bugs@example.com])
 AC_CONFIG_SRCDIR([tinytd/src/main.c])
 AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign subdir-objects])
@@ -14,7 +14,7 @@ AM_PROG_AR
 
 # Check for C11 support
 # NOTE: Using -O0 due to GCC optimization bug with pointer aliasing in tinytd
-CFLAGS="-std=c11 -D_POSIX_C_SOURCE=200809L -D_GNU_SOURCE -O0"
+CFLAGS="-std=c11 -D_POSIX_C_SOURCE=200809L -D_GNU_SOURCE -O2"
 
 # Checks for header files
 AC_CHECK_HEADERS([fcntl.h stdint.h stdlib.h string.h sys/time.h unistd.h])
