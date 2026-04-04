@@ -58,6 +58,8 @@ enum tt_log_backend tt_config_parse_log_backend(const char* backend_str) {
     return TT_LOG_BACKEND_STDERR;
   if (strcasecmp(backend_str, "stdout") == 0)
     return TT_LOG_BACKEND_STDOUT;
+  if (strcasecmp(backend_str, "docker") == 0)
+    return TT_LOG_BACKEND_DOCKER;
   if (strcasecmp(backend_str, "syslog") == 0)
     return TT_LOG_BACKEND_SYSLOG;
   if (strcasecmp(backend_str, "journal") == 0)

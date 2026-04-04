@@ -18,9 +18,11 @@ enum tt_log_level {
 
 /* Backend types */
 enum tt_log_backend {
-  TT_LOG_BACKEND_STDERR,  /* Output to stderr (for CLI) */
-  TT_LOG_BACKEND_STDOUT,  /* Output to stdout (for Docker) */
-  TT_LOG_BACKEND_SYSLOG,  /* Traditional syslog */
+  TT_LOG_BACKEND_STDERR, /* Output to stderr (for CLI) */
+  TT_LOG_BACKEND_STDOUT, /* Output to stdout with timestamp */
+  TT_LOG_BACKEND_DOCKER, /* Output to stdout without timestamp (Docker-friendly)
+                          */
+  TT_LOG_BACKEND_SYSLOG, /* Traditional syslog */
   TT_LOG_BACKEND_JOURNAL, /* systemd journal (preferred for daemon) */
   TT_LOG_BACKEND_AUTO     /* Auto-select: journal -> syslog -> stderr */
 };

@@ -54,6 +54,7 @@ int tt_log_init(const struct tt_log_config* config) {
       break;
     case TT_LOG_BACKEND_STDERR:
     case TT_LOG_BACKEND_STDOUT:
+    case TT_LOG_BACKEND_DOCKER:
       if (tt_log_stderr_init(&g_log_state) != 0) {
         return -1;
       }
@@ -85,6 +86,7 @@ void tt_log(enum tt_log_level level, const char* fmt, ...) {
       break;
     case TT_LOG_BACKEND_STDERR:
     case TT_LOG_BACKEND_STDOUT:
+    case TT_LOG_BACKEND_DOCKER:
       tt_log_stderr_write(&g_log_state, level, NULL, 0, NULL, fmt, args);
       break;
   }
@@ -112,6 +114,7 @@ void tt_log_meta(enum tt_log_level level, const char* file, int line,
       break;
     case TT_LOG_BACKEND_STDERR:
     case TT_LOG_BACKEND_STDOUT:
+    case TT_LOG_BACKEND_DOCKER:
       tt_log_stderr_write(&g_log_state, level, file, line, func, fmt, args);
       break;
   }
@@ -135,6 +138,7 @@ void tt_log_shutdown(void) {
       break;
     case TT_LOG_BACKEND_STDERR:
     case TT_LOG_BACKEND_STDOUT:
+    case TT_LOG_BACKEND_DOCKER:
       tt_log_stderr_shutdown(&g_log_state);
       break;
   }
