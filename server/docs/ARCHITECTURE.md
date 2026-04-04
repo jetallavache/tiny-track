@@ -1,170 +1,183 @@
-# Архитектура TinyTrack
+ARCHITECTURE
+============
 
-## Общая схема
+OVERVIEW
+--------
 
-```mermaid
-graph TB
-    subgraph kernel["Linux Kernel"]
-        proc["/proc/stat\n/proc/meminfo\n/proc/net/dev\n/proc/loadavg"]
-        vfs["statvfs(rootfs)"]
-    end
+TinyTrack consists of three binaries communicating via shared memory:
 
-    subgraph tinytd["tinytd — collector daemon"]
-        collector["Collector\nCPU · RAM · Net · Disk · Load"]
-        runtime["epoll Runtime\n(timerfd)"]
-        writer["Ring Buffer Writer\nL1 write · L2/L3 aggregate"]
-    end
+  tinytd      reads /proc and /sys, writes metrics to ring buffer in /dev/shm
+  tinytrack   reads ring buffer via mmap, streams to WebSocket clients
+  tiny-cli    reads ring buffer via mmap, displays in terminal
 
-    subgraph shm["Shared Memory /dev/shm"]
-        live["tinytd-live.dat\nmmap (tmpfs)"]
-        shadow["tinytd-shadow.dat\n(persistent, Adler32 CRC)"]
-    end
+Data flow:
 
-    subgraph readers["Readers"]
-        tinytrack["tinytrack\ngateway"]
-        cli["tiny-cli\nncurses dashboard"]
-    end
+  /proc/stat          \
+  /proc/meminfo        |
+  /proc/net/dev        +---> tinytd --[mmap write]--> /dev/shm/tinytd-live.dat
+  /proc/loadavg        |                                        |
+  statvfs(rootfs)     /                                         |
+                                                                +--[mmap read]--> tinytrack --> WebSocket clients
+                                                                +--[mmap read]--> tiny-cli
 
-    clients["WebSocket Clients\nbrowser · app · script"]
 
-    proc --> collector
-    vfs --> collector
-    collector --> runtime
-    runtime -->|"tt_metrics every interval_ms"| writer
-    writer -->|"mmap write (seqlock)"| live
-    writer -.->|"shadow sync every 60s"| shadow
-    shadow -.->|"recovery on start"| writer
+TINYTD
+------
 
-    live -->|"mmap read"| tinytrack
-    live -->|"mmap read"| cli
-    tinytrack -->|"WebSocket :25015\nbinary proto v1/v2"| clients
-```
+Metrics collector daemon.  Runs as a systemd service or in foreground
+with --no-daemon.
 
-## Компоненты
+Startup sequence:
 
-### tinytd
+  1. Load config, initialize sysfs paths (proc_root, rootfs_path)
+  2. Create or recover live file in /dev/shm
+  3. Drop privileges to tinytd:tinytd
+  4. Start epoll loop with timerfd at interval_ms
+  5. Each tick: read /proc/* -> write tt_metrics to L1 -> aggregate to L2/L3
 
-Демон сбора метрик. Работает как системный сервис (systemd) или в foreground (`--no-daemon`).
+The shadow file (/var/lib/tinytrack/tinytd-shadow.dat) is a persistent
+copy of the ring buffer, synced every shadow_sync_interval_sec seconds.
+On startup, if auto_recover=true, the live buffer is restored from shadow.
 
-**Жизненный цикл:**
-1. Читает конфиг → инициализирует sysfs пути
-2. Создаёт/восстанавливает live-файл в `/dev/shm`
-3. Сбрасывает привилегии до `tinytd:tinytd`
-4. Запускает epoll-цикл с `timerfd` на `interval_ms`
-5. Каждый тик: читает `/proc/*` → пишет `tt_metrics` в L1 → агрегирует в L2/L3
 
-### tinytrack
+TINYTRACK
+---------
 
-WebSocket/HTTP gateway. Читает live-файл через mmap и стримит метрики клиентам.
+WebSocket/HTTP gateway.  Single-threaded, event-driven with epoll
+(edge-triggered).
 
-**Особенности:**
-- Один epoll на все соединения (edge-triggered)
-- Поддержка TLS через OpenSSL
-- HTTP endpoint `/api/metrics/live` для REST-клиентов
-- Бинарный протокол v1/v2 (см. [протокол](#протокол))
+  - Reads live file via mmap (zero-copy)
+  - Pushes PKT_METRICS to all connected clients every update_interval ms
+  - Handles CMD_* commands from clients
+  - Optional TLS via OpenSSL
+  - HTTP endpoint GET /api/metrics/live returns JSON snapshot
 
-### tiny-cli
 
-CLI-клиент. Читает live-файл напрямую через mmap (без сети).
+TINY-CLI
+--------
 
-```
-tiny-cli status      — статус демона и буфера
-tiny-cli metrics     — live метрики (обновление каждую секунду)
-tiny-cli history l1  — история L1 (последний час)
-tiny-cli dashboard   — интерактивный ncurses дашборд
-```
+Command-line client.  Reads live file directly via mmap, no network.
 
-## Shared Memory Layout
+  tiny-cli status      daemon and ring buffer status
+  tiny-cli metrics     live metrics, refreshes every second
+  tiny-cli history l1  last hour  (L1 ring)
+  tiny-cli history l2  last 24h   (L2 ring)
+  tiny-cli history l3  last 30d   (L3 ring)
+  tiny-cli dashboard   interactive ncurses dashboard
 
-```mermaid
-block-beta
-    columns 1
-    header["ttr_header (256 bytes)\nmagic · version · writer_pid · interval_ms · agg intervals"]
-    consumers["ttr_consumer_table (2048 bytes)\n32 consumer slots"]
-    l1meta["L1 ttr_meta (64 bytes)\nseq · head · capacity · first_ts · last_ts"]
-    l1data["L1 data\n3600 × tt_metrics (~64 bytes each) ≈ 225 KB"]
-    l2meta["L2 ttr_meta (64 bytes)"]
-    l2data["L2 data\n1440 × tt_metrics ≈ 90 KB"]
-    l3meta["L3 ttr_meta (64 bytes)"]
-    l3data["L3 data\n720 × tt_metrics ≈ 45 KB"]
-```
 
-Итого: ~360 KB на дефолтных настройках.
+SHARED MEMORY LAYOUT
+--------------------
 
-**Seqlock** защищает каждый уровень от гонок между writer и readers без мьютексов.
+File: /dev/shm/tinytd-live.dat
 
-## Протокол
+  Offset   Size    Content
+  ------   ----    -------
+  0        256     ttr_header
+             magic (4), version (4), crc32 (4),
+             last_update_ts (8), last_shadow_sync_ts (8),
+             writer_pid (4), num_consumers (4),
+             interval_ms (4), l2_agg_interval_ms (4), l3_agg_interval_ms (4),
+             padding (204)
+  256      2048    ttr_consumer_table (32 x 64-byte slots)
+  2304     64      L1 ttr_meta
+             seq (4), head (4), tail (4), capacity (4), cell_size (4),
+             first_ts (8), last_ts (8), flags (4), padding (20)
+  2368     ~225KB  L1 data  (3600 x sizeof(tt_metrics))
+  ...      64      L2 ttr_meta
+  ...      ~90KB   L2 data  (1440 x sizeof(tt_metrics))
+  ...      64      L3 ttr_meta
+  ...      ~45KB   L3 data  (720 x sizeof(tt_metrics))
 
-Бинарный протокол поверх WebSocket. Каждый фрейм начинается с 10-байтового заголовка:
+Total: ~360 KB with default capacities.
 
-```
-+--------+--------+--------+-----------+-----------+----------+
-| magic  | ver    | type   | length    | timestamp | checksum |
-| 1 byte | 1 byte | 1 byte | 2 bytes   | 4 bytes   | 1 byte   |
-+--------+--------+--------+-----------+-----------+----------+
-|                    payload (0..N bytes)                      |
-+--------------------------------------------------------------+
-```
+Seqlock (ttr_meta.seq) protects each ring level from writer/reader races
+without mutexes.  Reader retries if seq changes during read.
 
-### Типы пакетов
 
-| Тип | Код | Направление | Описание |
-|-----|-----|-------------|----------|
-| `PKT_METRICS` | `0x01` | server→client | Снимок метрик |
-| `PKT_CONFIG` | `0x02` | server→client | Конфигурация демона |
-| `PKT_CMD` | `0x04` | client→server | Команда |
-| `PKT_ACK` | `0x05` | server→client | Подтверждение команды |
-| `PKT_HISTORY_REQ` | `0x10` | client→server | Запрос истории |
-| `PKT_HISTORY_RESP` | `0x11` | server→client | Ответ с историей |
-| `PKT_SUBSCRIBE` | `0x12` | client→server | Подписка на уровень |
-| `PKT_RING_STATS` | `0x13` | server→client | Статистика буфера |
-| `PKT_SYS_INFO` | `0x14` | server→client | Системная информация |
+PROTOCOL
+--------
 
-### Сессия
+Binary protocol over WebSocket.  All multi-byte fields are big-endian.
 
-```mermaid
-sequenceDiagram
-    participant C as Client
-    participant G as tinytrack
+Frame header (10 bytes):
 
-    C->>G: WebSocket Upgrade
-    G->>C: PKT_CONFIG (interval_ms, alerts)
-    G->>C: PKT_METRICS (every interval_ms)
-    G->>C: PKT_METRICS
-    C->>G: PKT_CMD (CMD_GET_SYS_INFO)
-    G->>C: PKT_SYS_INFO (hostname, os, uptime, slots)
-    C->>G: PKT_HISTORY_REQ (level=L2, max=100)
-    G->>C: PKT_HISTORY_RESP (batch 1)
-    G->>C: PKT_HISTORY_RESP (batch 2, last=1)
-    C->>G: PKT_CMD (CMD_SET_INTERVAL, 500ms)
-    G->>C: PKT_ACK (OK)
-    G->>C: PKT_METRICS (every 500ms)
-```
+  +--------+--------+--------+-----------+-----------+----------+
+  | magic  | ver    | type   | length    | timestamp | checksum |
+  | 1 byte | 1 byte | 1 byte | 2 bytes   | 4 bytes   | 1 byte   |
+  +--------+--------+--------+-----------+-----------+----------+
 
-## Docker — мониторинг хоста
+  magic     = 0xAA
+  checksum  = XOR of all header bytes except checksum itself
 
-```mermaid
-graph LR
-    subgraph host["Host System"]
-        hproc["/proc"]
-        hrootfs["/"]
-        hshm["/dev/shm"]
-    end
+Packet types:
 
-    subgraph container["Docker Container"]
-        hproc -->|"-v /proc:/host/proc:ro"| cproc["/host/proc"]
-        hrootfs -->|"-v /:/host/rootfs:ro"| crootfs["/host/rootfs"]
-        hshm -->|"-v /dev/shm:/dev/shm"| cshm["/dev/shm"]
+  PKT_METRICS      0x01   server->client   live metrics snapshot
+  PKT_CONFIG       0x02   server->client   daemon configuration
+  PKT_CMD          0x04   client->server   command request
+  PKT_ACK          0x05   server->client   command acknowledgement
+  PKT_HISTORY_REQ  0x10   client->server   history request
+  PKT_HISTORY_RESP 0x11   server->client   history response
+  PKT_SUBSCRIBE    0x12   client->server   subscribe to ring level
+  PKT_RING_STATS   0x13   server->client   ring buffer statistics
+  PKT_SYS_INFO     0x14   server->client   system information
 
-        cproc --> tinytd2["tinytd\nTT_PROC_ROOT=/host/proc"]
-        crootfs --> tinytd2
-        tinytd2 --> cshm
-        cshm --> tinytrack2["tinytrack\n:25015"]
-    end
+Session flow:
 
-    tinytrack2 -->|"ws://host:25015"| client["Client"]
-```
+  Client connects via WebSocket
+  Server sends PKT_CONFIG (interval_ms)
+  Server sends PKT_METRICS every interval_ms
+  Client sends PKT_CMD (CMD_GET_SYS_INFO = 0x11)
+  Server sends PKT_SYS_INFO (hostname, os_type, uptime, slots, intervals)
+  Client sends PKT_HISTORY_REQ (level, max_count)
+  Server sends PKT_HISTORY_RESP (one or more batches, last batch has flag=1)
+  Client sends PKT_CMD (CMD_SET_INTERVAL, new_ms)
+  Server sends PKT_ACK (OK)
+  Server sends PKT_METRICS at new interval
 
-`tinytd` читает метрики хоста через bind-mounted `/proc`. `os_type` и `uptime` берутся из `/host/proc/sys/kernel/ostype` и `/host/proc/uptime` — отражают хостовую систему.
+Commands (PKT_CMD.cmd_type):
 
-> **Примечание:** `hostname` в Docker отражает UTS namespace контейнера, а не хоста — это ограничение ядра Linux.
+  CMD_SET_INTERVAL  0x01   arg: interval_ms (uint32)
+  CMD_SET_ALERTS    0x02   arg: enabled (uint8)
+  CMD_GET_SNAPSHOT  0x03   no arg; server sends PKT_METRICS immediately
+  CMD_GET_RING_STATS 0x10  no arg; server sends PKT_RING_STATS
+  CMD_GET_SYS_INFO  0x11   no arg; server sends PKT_SYS_INFO
+  CMD_START         0x12   resume metrics streaming for this session
+  CMD_STOP          0x13   pause  metrics streaming for this session
+
+PKT_SYS_INFO payload (168 bytes):
+
+  hostname[64]     null-terminated hostname string
+  os_type[64]      null-terminated "Linux 6.x.y" string
+  uptime_sec (8)   system uptime in seconds, big-endian
+  slots_l1 (4)     L1 ring capacity
+  slots_l2 (4)     L2 ring capacity
+  slots_l3 (4)     L3 ring capacity
+  interval_ms (4)  collection interval
+  agg_l2_ms (4)    L1->L2 aggregation interval
+  agg_l3_ms (4)    L2->L3 aggregation interval
+
+
+DOCKER
+------
+
+TinyTrack monitors the *host* system from inside a container by
+bind-mounting the host's /proc and /:
+
+  docker run \
+    -v /proc:/host/proc:ro \
+    -v /:/host/rootfs:ro   \
+    -v /dev/shm:/dev/shm   \
+    -e TT_PROC_ROOT=/host/proc \
+    -e TT_ROOTFS_PATH=/host/rootfs \
+    tinytrack
+
+tinytd reads /host/proc/stat, /host/proc/meminfo, etc. — host data.
+os_type is read from /host/proc/sys/kernel/ostype + osrelease.
+uptime is read from /host/proc/uptime.
+
+NOTE: hostname reflects the container's UTS namespace, not the host.
+      This is a Linux kernel limitation.
+
+The live file uses a distinct name (tinytd-docker-live.dat) to avoid
+conflict with a host-side tinytd when /dev/shm is shared.

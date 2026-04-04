@@ -1,290 +1,201 @@
-# TinyTrack — Руководство по тестированию
+TESTING
+=======
 
-## Структура тестов
+QUICK START
+-----------
 
-```
-tests/
-├── tinytd/                      # Тесты tinytd и common-библиотек
-│   ├── test_config.c            # unit: парсер INI-конфига
-│   ├── test_metrics.c           # unit: агрегация метрик
-│   ├── test_ringbuf.c           # unit: кольцевой буфер (writer/reader)
-│   ├── test_shm.c               # unit: shared memory
-│   ├── test_seqlock.c           # integration: seqlock под нагрузкой
-│   ├── test_shadow_sync.c       # integration: синхронизация shadow-файла
-│   ├── test_shm_ipc.c           # integration: IPC через shared memory
-│   ├── test_smoke.sh            # system: запуск/остановка демона
-│   ├── test_signals.sh          # system: обработка сигналов
-│   └── test_perf.sh             # system: производительность
-│
-├── cli/                         # Тесты tiny-cli
-│   ├── test_cli_output.c        # unit: форматирование вывода
-│   ├── test_cli_config.c        # unit: загрузка конфига CLI
-│   └── test_cli_binary.sh       # integration: тест бинарника
-│
-├── gateway/                     # Тесты tinytrack (gateway)
-│   ├── conftest.py              # pytest fixtures: запуск tinytd + tinytrack
-│   ├── test_ws.py               # WebSocket протокол
-│   ├── test_http.py             # HTTP API
-│   ├── test_tls.py              # TLS
-│   ├── test_sock.py             # socket/epoll
-│   ├── test_load.py             # нагрузочные тесты
-│   ├── test_sysinfo.py          # sysinfo: хост и Docker
-│   ├── test_gateway.js          # JS integration
-│   ├── test_gateway_extended.js # JS расширенные сценарии
-│   ├── run_gateway_tests.sh     # runner (суиты: ws http tls load sock js sysinfo docker sanitize valgrind all)
-│   ├── run_gateway_test.sh      # runner для JS тестов
-│   ├── package.json             # зависимости Node.js
-│   └── manual-test-client/      # ручной тест через браузер
-│
-├── bench/                       # Бенчмарки (информационные)
-│   └── bench_performance.c
-├── static/                      # Статический анализ
-│   └── run_static.sh
-├── sanitize/                    # ASan/UBSan/Valgrind
-│   └── run_sanitizers.sh
-├── tinytrack.conf-test          # Конфиг для всех тестов (/tmp пути, debug)
-└── run_tests.sh                 # Главный runner
-```
+  ./bootstrap.sh && ./configure && make
 
----
+  sh tests/run_tests.sh                  fast suite: static + tinytd + cli
+  sh tests/run_tests.sh all              all suites including gateway
+  sh tests/run_tests.sh docker           gateway tests inside Docker container
 
-## Быстрый старт
 
-```bash
-# Собрать проект
-./bootstrap.sh && ./configure && make
+TEST LAYOUT
+-----------
 
-# Быстрые тесты (static + tinytd + cli)
-sh tests/run_tests.sh
+  tests/
+    tinytd/
+      test_config.c        unit: INI config parser
+      test_metrics.c       unit: metrics aggregation
+      test_ringbuf.c       unit: ring buffer writer/reader
+      test_shm.c           unit: shared memory
+      test_seqlock.c       integration: seqlock under load
+      test_shadow_sync.c   integration: shadow file sync
+      test_shm_ipc.c       integration: IPC via shared memory
+      test_smoke.sh        system: daemon start/stop
+      test_signals.sh      system: signal handling
+      test_perf.sh         system: performance under load
+    cli/
+      test_cli_output.c    unit: output formatting
+      test_cli_config.c    unit: CLI config loading
+      test_cli_binary.sh   integration: tiny-cli binary
+    gateway/
+      conftest.py          pytest fixtures: start tinytd + tinytrack
+      test_ws.py           WebSocket protocol
+      test_http.py         HTTP API
+      test_tls.py          TLS
+      test_sock.py         socket/epoll
+      test_load.py         load tests
+      test_sysinfo.py      sysinfo: host and Docker
+      test_docker_tls.py   TLS tests against running container
+      test_gateway.js      JS integration
+      run_gateway_tests.sh gateway runner
+      run_gateway_test.sh  JS test runner
+    bench/
+      bench_performance.c  benchmarks (informational, no pass/fail)
+    static/
+      run_static.sh        cppcheck + -Wall -Wextra -Werror
+    sanitize/
+      run_sanitizers.sh    ASan + UBSan + Valgrind
+    tinytrack.conf-test    shared test config (/tmp paths, debug)
+    run_tests.sh           main runner
 
-# Все тесты включая gateway
-sh tests/run_tests.sh all
 
-# Все тесты включая Docker
-sh tests/run_tests.sh all docker
-```
+SUITES (run_tests.sh)
+---------------------
 
----
+  static     cppcheck + compile with -Wall -Wextra -Werror
+  tinytd     C unit/integration + shell system tests
+  cli        C unit + shell integration tests
+  gateway    full gateway suite (ws/http/tls/load/sock/js/sysinfo/sanitize)
+  docker     gateway tests inside Docker container
+  bench      benchmarks (informational)
+  sanitize   ASan+UBSan+Valgrind for C tests
+  all        all suites except docker
 
-## Зависимости
+  Default: static tinytd cli
 
-| Инструмент | Назначение |
-|------------|------------|
-| gcc ≥ 9    | сборка C-тестов |
-| python3 ≥ 3.9 + pytest | gateway тесты |
-| openssl    | TLS-тесты |
-| node ≥ 18 + npm | JS integration тесты |
-| docker     | Docker integration тесты |
-| cppcheck   | статический анализ (опционально) |
-| valgrind   | проверка памяти (опционально) |
 
-**Установка (Ubuntu/Debian):**
-```bash
-sudo apt install gcc make autoconf automake libssl-dev libncurses-dev \
-    python3 python3-pytest nodejs npm cppcheck valgrind
-```
+GATEWAY SUITES (run_gateway_tests.sh)
+--------------------------------------
 
-**Установка (openSUSE):**
-```bash
-sudo zypper install gcc make autoconf automake libopenssl-devel ncurses-devel \
-    python3 python3-pytest nodejs npm cppcheck valgrind
-```
+  ws          WebSocket protocol
+  http        HTTP API
+  tls         TLS (requires openssl)
+  load        load tests
+  sock        socket/epoll
+  js          JS integration (requires node)
+  sysinfo     sysinfo on host + in Docker
+  docker      full gateway suite in container
+  docker-tls  TLS tests in container
+  sanitize    gateway under ASan+UBSan
+  valgrind    gateway under valgrind
+  all         ws+http+tls+load+sock+js+sysinfo+sanitize+valgrind
 
-Автоматическая установка:
-```bash
-sh scripts/setup-test-env.sh
-```
+  Default: ws http tls load sock js
 
----
 
-## Суиты тестов
+DEPENDENCIES
+------------
 
-### `run_tests.sh` — главный runner
+  gcc >= 9                  C tests
+  python3 >= 3.9 + pytest   gateway tests
+  openssl                   TLS tests
+  node >= 18 + npm          JS integration tests
+  docker                    Docker integration tests
+  cppcheck                  static analysis (optional)
+  valgrind                  memory checks (optional)
 
-```
-Суиты:  static  tinytd  cli  gateway  docker  bench  sanitize  all
-По умолчанию: static tinytd cli
-```
+Ubuntu/Debian:
 
-| Суит | Что запускает |
-|------|---------------|
-| `static` | cppcheck + `-Wall -Wextra -Werror` |
-| `tinytd` | C unit/integration + shell system тесты |
-| `cli` | C unit + shell integration тесты |
-| `gateway` | полный набор gateway тестов (ws/http/tls/load/sock/js/sysinfo/sanitize) |
-| `docker` | gateway тесты внутри Docker-контейнера |
-| `bench` | бенчмарки (информационные) |
-| `sanitize` | ASan+UBSan+Valgrind для C-тестов |
-| `all` | все суиты кроме docker |
+  sudo apt install gcc make autoconf automake libssl-dev libncurses-dev \
+      python3 python3-pytest nodejs npm cppcheck valgrind
 
-### `run_gateway_tests.sh` — gateway runner
+openSUSE:
 
-```
-Суиты: ws http tls load sock js sysinfo docker sanitize valgrind all
-По умолчанию: ws http tls load sock js
-```
+  sudo zypper install gcc make autoconf automake libopenssl-devel \
+      ncurses-devel python3 python3-pytest nodejs npm cppcheck valgrind
 
-| Суит | Что запускает |
-|------|---------------|
-| `ws` | WebSocket протокол |
-| `http` | HTTP API |
-| `tls` | TLS (требует openssl) |
-| `load` | нагрузочные тесты |
-| `sock` | socket/epoll |
-| `js` | JS integration (требует node) |
-| `sysinfo` | sysinfo на хосте + в Docker |
-| `docker` | полный цикл gateway тестов в контейнере |
-| `sanitize` | gateway под ASan+UBSan |
-| `valgrind` | gateway под valgrind |
-| `all` | ws+http+tls+load+sock+js+sysinfo+sanitize+valgrind |
+Automatic setup:
 
----
+  sh scripts/setup-test-env.sh
 
-## Примеры запуска
 
-```bash
-# Только unit-тесты
-sh tests/run_tests.sh tinytd cli
+TEST CONFIGURATION
+------------------
 
-# Только gateway
-sh tests/run_tests.sh gateway
+All tests share tests/tinytrack.conf-test.
+Paths are under /tmp/ to avoid permission issues.
 
-# Docker integration
-sh tests/run_tests.sh docker
+  [tinytd]
+  log_level = debug
+  log_backend = stderr
+  pid_file = /tmp/tinytd-test.pid
 
-# Отдельный pytest
-python3 -m pytest tests/gateway/test_ws.py -v
+  [collection]
+  interval_ms = 500
+  proc_root = /proc
+  rootfs_path = /
 
-# Sysinfo (хост + Docker)
-sh tests/gateway/run_gateway_tests.sh sysinfo
+  [storage]
+  live_path   = /tmp/tinytd-test-live.dat
+  shadow_path = /tmp/tinytd-test-shadow.dat
 
-# Полный цикл в Docker
-sh tests/gateway/run_gateway_tests.sh docker
-```
+  [ringbuffer]
+  l1_capacity = 20
+  l2_capacity = 10
+  l3_capacity = 5
+  l2_agg_interval_sec = 10
+  l3_agg_interval_sec = 60
 
----
+  [gateway]
+  listen = ws://0.0.0.0:14029
+  update_interval = 500
 
-## Конфигурация тестов
+Test ports:
 
-Все тесты используют `tests/tinytrack.conf-test`:
+  14028   plain WS (pytest gateway fixture)
+  14029   plain WS (config default)
+  14030   Docker sysinfo test
+  14032   Docker gateway suite
+  14033   Docker TLS suite
+  14443   TLS WS
 
-```ini
-[tinytd]
-log_level = debug; log_backend = stderr
-pid_file  = /tmp/tinytd-test.pid
 
-[collection]
-interval_ms = 500; du_interval_sec = 10
-proc_root = /proc; rootfs_path = /
+ENVIRONMENT VARIABLES
+---------------------
 
-[storage]
-live_path   = /tmp/tinytd-test-live.dat
-shadow_path = /tmp/tinytd-test-shadow.dat
+  TINYTRACK_TEST_PORT     gateway port for pytest        (default: 14028)
+  TINYTRACK_DOCKER_PORT   Docker sysinfo test port       (default: 14030)
+  TT_PROC_ROOT            /proc path for Docker tests    (default: /proc)
+  TT_ROOTFS_PATH          rootfs path for Docker tests   (default: /)
 
-[ringbuffer]
-l1_capacity=20; l2_capacity=10; l3_capacity=5
-l2_agg_interval_sec=10; l3_agg_interval_sec=60
 
-[gateway]
-listen = ws://0.0.0.0:14029; update_interval = 500
-```
+DOCKER TESTS
+------------
 
-Порты:
-- `14028` — plain WS (pytest `gateway` fixture)
-- `14029` — plain WS (конфиг по умолчанию)
-- `14030` — Docker sysinfo тест
-- `14032` — Docker gateway suite
-- `14443` — TLS WS
+Requires Docker daemon access:
 
----
+  sudo usermod -aG docker $USER
+  newgrp docker
 
-## Переменные окружения
+  sh tests/run_tests.sh docker
+  sh tests/gateway/run_gateway_tests.sh docker
+  sh tests/gateway/run_gateway_tests.sh docker-tls
 
-| Переменная | Описание | По умолчанию |
-|------------|----------|--------------|
-| `TINYTRACK_TEST_PORT` | порт gateway для pytest | `14028` |
-| `TINYTRACK_DOCKER_PORT` | порт Docker sysinfo теста | `14030` |
-| `TT_PROC_ROOT` | путь к /proc (для Docker) | `/proc` |
-| `TT_ROOTFS_PATH` | путь к rootfs (для Docker) | `/` |
 
----
+TROUBLESHOOTING
+---------------
 
-## Docker тесты
+"tinytd did not create live file":
 
-Требуют собранный образ и доступ к Docker daemon:
+  ./tinytd/tinytd --no-daemon -c tests/tinytrack.conf-test
 
-```bash
-# Добавить пользователя в группу docker (один раз)
-sudo usermod -aG docker $USER
-newgrp docker
+Port already in use:
 
-# Запустить Docker тесты
-sh tests/run_tests.sh docker
-# или
-sh tests/gateway/run_gateway_tests.sh docker
-```
+  ss -tlnp | grep 14028
+  pkill -f tinytrack
 
-Контейнер монтирует хостовые `/proc` и `/` для мониторинга родительской системы:
-```bash
-docker run -v /proc:/host/proc:ro -v /:/host/rootfs:ro -v /dev/shm:/dev/shm \
-    -p 25015:25015 tinytrack-test:latest
-```
+Stale processes:
 
----
+  pkill -f "tinytd|tinytrack"
+  rm -f /tmp/tinytd-test*.dat /tmp/tinytd-test.pid /tmp/tinytrack-test.pid
 
-## Устранение проблем
+Docker permission denied:
 
-**`tinytd did not create live file`** — демон не запустился:
-```bash
-./tinytd/tinytd --no-daemon -c tests/tinytrack.conf-test
-```
+  sudo usermod -aG docker $USER && newgrp docker
 
-**Порт занят:**
-```bash
-ss -tlnp | grep 14028
-pkill -f tinytrack
-```
+JS tests: "Cannot find module 'ws'":
 
-**Зомби-процессы после тестов:**
-```bash
-pkill -f "tinytd|tinytrack"
-rm -f /tmp/tinytd-test*.dat /tmp/tinytd-test.pid /tmp/tinytrack-test.pid
-```
-
-**Docker: `permission denied`:**
-```bash
-sudo usermod -aG docker $USER && newgrp docker
-```
-
-**JS тесты: `Cannot find module 'ws'`:**
-```bash
-cd tests/gateway && npm install
-```
-
----
-
-## CI/CD
-
-```yaml
-# .github/workflows/test.yml
-name: Tests
-on: [push, pull_request]
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install deps
-        run: |
-          sudo apt-get install -y gcc make autoconf automake \
-            libssl-dev libncurses-dev python3 python3-pip nodejs npm cppcheck
-          pip install pytest
-      - name: Build
-        run: ./bootstrap.sh && ./configure && make
-      - name: JS deps
-        run: cd tests/gateway && npm install
-      - name: Tests
-        run: sh tests/run_tests.sh all
-      - name: Docker tests
-        run: sh tests/run_tests.sh docker
-```
+  cd tests/gateway && npm install
