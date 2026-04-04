@@ -16,6 +16,9 @@ int ttd_writer_init(struct ttd_writer* ctx, struct ttd_config* cfg) {
       .file_mode = cfg->file_mode,
       .enable_crc = cfg->enable_crc,
       .auto_recover = cfg->auto_recover,
+      .interval_ms = cfg->interval_ms,
+      .l2_agg_interval_ms = cfg->l2_agg_interval_sec * 1000,
+      .l3_agg_interval_ms = cfg->l3_agg_interval_sec * 1000,
       .aggregate = tt_metrics_aggregate,
   };
   int ret = ttr_writer_init(&ctx->ring, &ring_cfg);

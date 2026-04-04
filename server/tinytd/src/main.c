@@ -11,6 +11,7 @@
 #include "collector.h"
 #include "common/config.h"
 #include "common/log/log.h"
+#include "common/sysfs.h"
 #include "config.h"
 #include "runtime.h"
 #include "writer.h"
@@ -42,7 +43,8 @@ static void daemonize(void) {
     exit(EXIT_SUCCESS);
 
   umask(0);
-  if (chdir("/") != 0) { /* best-effort, ignore error in daemon */ }
+  if (chdir("/") != 0) { /* best-effort, ignore error in daemon */
+  }
 
   for (int fd = sysconf(_SC_OPEN_MAX); fd >= 3; fd--)
     close(fd);
@@ -111,10 +113,10 @@ int main(int argc, char** argv) {
   const char* config_path = NULL;
 
   static const struct option long_opts[] = {
-      {"config",    required_argument, NULL, 'c'},
-      {"daemon",    no_argument,       NULL, 'd'},
-      {"no-daemon", no_argument,       NULL, 'n'},
-      {"help",      no_argument,       NULL, 'h'},
+      {"config", required_argument, NULL, 'c'},
+      {"daemon", no_argument, NULL, 'd'},
+      {"no-daemon", no_argument, NULL, 'n'},
+      {"help", no_argument, NULL, 'h'},
       {NULL, 0, NULL, 0},
   };
 
@@ -161,6 +163,12 @@ int main(int argc, char** argv) {
   if (do_daemonize)
     daemonize();
 
+  /* Init sysfs paths from config (env vars TT_PROC_ROOT/TT_ROOTFS_PATH
+   * take precedence over config file values if set) */
+  tt_sysfs_set_proc_root(cfg.proc_root);
+  tt_sysfs_set_rootfs_path(cfg.rootfs_path);
+  tt_sysfs_init();
+
   struct tt_log_config log_cfg = {.backend = cfg.log_backend,
                                   .min_level = cfg.log_level,
                                   .ident = "tinytd",
@@ -180,7 +188,6 @@ int main(int argc, char** argv) {
   signal(SIGINT, signal_handler);
 
   ttd_collector_init();
-  cst.du_path = cfg.du_path;
   cst.du_inval = cfg.du_interval_sec;
 
   if (ttd_runtime_init(&rt, &cfg, &cst, &writer) < 0) {

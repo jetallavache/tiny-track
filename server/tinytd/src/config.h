@@ -17,7 +17,8 @@ struct ttd_config {
   /* Collection */
   uint32_t interval_ms;
   uint32_t du_interval_sec;
-  char du_path[256];
+  char proc_root[256];   /* /proc root; override for container: /host/proc */
+  char rootfs_path[256]; /* rootfs root; override for container: /host/rootfs */
 
   /* Storage */
   char live_path[256];

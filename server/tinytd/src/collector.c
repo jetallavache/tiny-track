@@ -16,17 +16,18 @@
     (ptr)++;
 
 /* Persistent file descriptors for /proc files.
- * NOTE: not thread-safe; only one collector instance per process is supported. */
+ * NOTE: not thread-safe; only one collector instance per process is supported.
+ */
 static int g_stat_fd = -1;
 static int g_meminfo_fd = -1;
 static int g_loadavg_fd = -1;
 static int g_net_fd = -1;
 
 void ttd_collector_init(void) {
-  g_stat_fd = open(TTD_STAT_PATH, O_RDONLY | O_CLOEXEC);
-  g_meminfo_fd = open(TTD_MEMINFO_PATH, O_RDONLY | O_CLOEXEC);
-  g_loadavg_fd = open(TTD_LOADAVG_PATH, O_RDONLY | O_CLOEXEC);
-  g_net_fd = open(TTD_NET_PATH, O_RDONLY | O_CLOEXEC);
+  g_stat_fd = open(tt_sysfs_stat(), O_RDONLY | O_CLOEXEC);
+  g_meminfo_fd = open(tt_sysfs_meminfo(), O_RDONLY | O_CLOEXEC);
+  g_loadavg_fd = open(tt_sysfs_loadavg(), O_RDONLY | O_CLOEXEC);
+  g_net_fd = open(tt_sysfs_net_dev(), O_RDONLY | O_CLOEXEC);
 }
 
 void ttd_collector_cleanup(void) {
@@ -229,7 +230,7 @@ struct ttd_collector_du ttd_collect_disk(struct ttd_collector_state* st) {
   }
 
   struct statvfs vfs;
-  if (direct_statvfs(st->du_path, &vfs) != 0) {
+  if (direct_statvfs(tt_sysfs_rootfs(""), &vfs) != 0) {
     return result;
   }
 

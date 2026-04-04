@@ -3,32 +3,16 @@
 
 #include <errno.h>
 #include <stdbool.h>
-#include <sys/syscall.h>
 #include <time.h>
 
-#ifndef SYS_statvfs
-#if defined(__x86_64__)
-#define SYS_statvfs 137
-#elif defined(__i386__)
-#define SYS_statvfs 99
-#elif defined(__arm__)
-#define SYS_statvfs 266
-#elif defined(__aarch64__)
-#define SYS_statvfs 43
-#else
-#define SYS_statvfs 0
-#endif
-#endif
+#include "common/sysfs.h"
 
 #define TTD_STAT_BSIZE 100
 #define TTD_MEMINFO_BSIZE 100
 #define TTD_NET_BSIZE 1000
 #define TTD_LOADAVG_BSIZE 30
 
-#define TTD_STAT_PATH "/proc/stat"
-#define TTD_MEMINFO_PATH "/proc/meminfo"
-#define TTD_NET_PATH "/proc/net/dev"
-#define TTD_LOADAVG_PATH "/proc/loadavg"
+/* Paths are now resolved at runtime via tt_sysfs_*() — see common/sysfs.h */
 
 /* Structure of the /proc/stat data unit */
 struct ttd_collector_stat {
@@ -78,7 +62,6 @@ struct ttd_collector_state {
   struct ttd_collector_du du_cached;
   time_t du_last_update;
   time_t du_inval;
-  char* du_path;
 };
 
 float ttd_collect_cpu(struct ttd_collector_state* st);

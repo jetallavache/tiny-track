@@ -34,8 +34,10 @@ int ttd_config_load(const char* path, struct ttd_config* cfg) {
   cfg->interval_ms = tt_config_read_int(path, "collection.interval_ms", 1000);
   cfg->du_interval_sec =
       tt_config_read_int(path, "collection.du_interval_sec", 30);
-  tt_config_read_str(path, "collection.du_path", cfg->du_path,
-                     sizeof(cfg->du_path), "/home");
+  tt_config_read_str(path, "collection.proc_root", cfg->proc_root,
+                     sizeof(cfg->proc_root), "/proc");
+  tt_config_read_str(path, "collection.rootfs_path", cfg->rootfs_path,
+                     sizeof(cfg->rootfs_path), "/");
 
   /* [storage] */
   tt_config_read_str(path, "storage.live_path", cfg->live_path,
