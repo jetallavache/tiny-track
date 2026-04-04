@@ -11,6 +11,7 @@
 #include <unistd.h>
 
 #include "common/log/log.h"
+#include "common/sysfs.h"
 #include "config.h"
 #include "http.h"
 #include "net.h"
@@ -104,18 +105,19 @@ int main(int argc, char** argv) {
   int do_daemonize = 1;
 
   static const struct option long_opts[] = {
-      {"config",    required_argument, NULL, 'c'},
-      {"port",      required_argument, NULL, 'p'},
-      {"listen",    required_argument, NULL, 'l'},
-      {"shm",       required_argument, NULL, 's'},
-      {"daemon",    no_argument,       NULL, 'd'},
-      {"no-daemon", no_argument,       NULL, 'n'},
-      {"help",      no_argument,       NULL, 'h'},
+      {"config", required_argument, NULL, 'c'},
+      {"port", required_argument, NULL, 'p'},
+      {"listen", required_argument, NULL, 'l'},
+      {"shm", required_argument, NULL, 's'},
+      {"daemon", no_argument, NULL, 'd'},
+      {"no-daemon", no_argument, NULL, 'n'},
+      {"help", no_argument, NULL, 'h'},
       {NULL, 0, NULL, 0},
   };
 
   int opt;
-  while ((opt = getopt_long(argc, argv, "c:p:l:s:dnh", long_opts, NULL)) != -1) {
+  while ((opt = getopt_long(argc, argv, "c:p:l:s:dnh", long_opts, NULL)) !=
+         -1) {
     switch (opt) {
       case 'c':
         config_path = optarg;
@@ -164,6 +166,10 @@ int main(int argc, char** argv) {
   /* Daemonize before tt_log_init (closes all fds) */
   if (do_daemonize)
     daemonize();
+
+  /* Init sysfs paths (env vars TT_PROC_ROOT/TT_ROOTFS_PATH override defaults)
+   */
+  tt_sysfs_init();
 
   struct tt_log_config log_cfg = {
       .backend = cfg.log_backend,

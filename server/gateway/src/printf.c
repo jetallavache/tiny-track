@@ -183,7 +183,7 @@ size_t ttg_print_ip_port(void (*out)(char, void*), void* arg, va_list* ap) {
 
 char* ttg_addr_str(const struct ttg_addr* a, char* buf, size_t len) {
   uint8_t* ip = (uint8_t*)a->ip;
-  snprintf(buf, len, "%d.%d.%d.%d:%hu",
-           ip[0], ip[1], ip[2], ip[3], ntohs(a->port));
+  snprintf(buf, len, "%d.%d.%d.%d:%hu", ip[0], ip[1], ip[2], ip[3],
+           ntohs(a->port));
   return buf;
 }

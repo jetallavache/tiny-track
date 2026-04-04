@@ -195,7 +195,7 @@ void ttg_sock_accept_conn(struct ttg_mgr* mgr, struct ttg_conn* lsn) {
     char loc[24];
     tt_log_debug("%lu %d accepted %s -> %s", c->id, FD(c),
                  ttg_addr_str(&c->remote, rem, sizeof(rem)),
-                 ttg_addr_str(&c->local,  loc, sizeof(loc)));
+                 ttg_addr_str(&c->local, loc, sizeof(loc)));
     ttg_event_call(c, TTG_EVENT_OPEN, NULL);
     ttg_event_call(c, TTG_EVENT_ACCEPT, NULL);
   }
@@ -267,8 +267,7 @@ static void iolog(struct ttg_conn* c, char* buf, long n, bool r) {
     if (c->is_hexdumping) {
       char loc[24], rem[24];
       tt_log_info("\n-- %lu %s %s %s %ld", c->id,
-                  ttg_addr_str(&c->local,  loc, sizeof(loc)),
-                  r ? "<-" : "->",
+                  ttg_addr_str(&c->local, loc, sizeof(loc)), r ? "<-" : "->",
                   ttg_addr_str(&c->remote, rem, sizeof(rem)), n);
     }
     if (r) {
@@ -348,7 +347,8 @@ void ttg_sock_iotest(struct ttg_mgr* mgr, int ms) {
       bool wr = evs[i].events & EPOLLOUT;
       c->is_readable = can_read(c) && rd ? 1U : 0;
       c->is_writable = can_write(c) && wr ? 1U : 0;
-      if (ttg_tls_pending(c) > 0 ) c->is_readable = 1;
+      if (ttg_tls_pending(c) > 0)
+        c->is_readable = 1;
     }
   }
   (void)skip_iotest;
