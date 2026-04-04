@@ -65,31 +65,26 @@ static inline size_t ttr_layout_l1_offset(void) {
   return TTR_HEADER_SIZE + TTR_CONSUMER_TABLE_SIZE + TTR_META_SIZE;
 }
 
-static inline size_t ttr_layout_l2_meta_offset(size_t l1_capacity,
-                                               size_t cell_size) {
+static inline size_t ttr_layout_l2_meta_offset(size_t l1_capacity, size_t cell_size) {
   return ttr_layout_l1_offset() + l1_capacity * cell_size;
 }
 
-static inline size_t ttr_layout_l2_offset(size_t l1_capacity,
-                                          size_t cell_size) {
+static inline size_t ttr_layout_l2_offset(size_t l1_capacity, size_t cell_size) {
   return ttr_layout_l2_meta_offset(l1_capacity, cell_size) + TTR_META_SIZE;
 }
 
-static inline size_t ttr_layout_l3_meta_offset(size_t l1_capacity,
-                                               size_t l2_capacity,
+static inline size_t ttr_layout_l3_meta_offset(size_t l1_capacity, size_t l2_capacity,
                                                size_t cell_size) {
   return ttr_layout_l2_offset(l1_capacity, cell_size) + l2_capacity * cell_size;
 }
 
-static inline size_t ttr_layout_l3_offset(size_t l1_capacity,
-                                          size_t l2_capacity,
+static inline size_t ttr_layout_l3_offset(size_t l1_capacity, size_t l2_capacity,
                                           size_t cell_size) {
-  return ttr_layout_l3_meta_offset(l1_capacity, l2_capacity, cell_size) +
-         TTR_META_SIZE;
+  return ttr_layout_l3_meta_offset(l1_capacity, l2_capacity, cell_size) + TTR_META_SIZE;
 }
 
-static inline size_t tt_layout_total_size(size_t l1_cap, size_t l2_cap,
-                                          size_t l3_cap, size_t cell_size) {
+static inline size_t tt_layout_total_size(size_t l1_cap, size_t l2_cap, size_t l3_cap,
+                                          size_t cell_size) {
   return ttr_layout_l3_offset(l1_cap, l2_cap, cell_size) + l3_cap * cell_size;
 }
 

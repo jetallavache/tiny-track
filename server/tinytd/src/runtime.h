@@ -19,8 +19,7 @@ struct ttd_runtime {
 };
 
 int ttd_runtime_init(struct ttd_runtime* rt, struct ttd_config* cfg,
-                     struct ttd_collector_state* state,
-                     struct ttd_writer* writer);
+                     struct ttd_collector_state* state, struct ttd_writer* writer);
 void ttd_runtime_poll(struct ttd_runtime* rt, int timeout_ms);
 void ttd_runtime_free(struct ttd_runtime* rt);
 

@@ -24,7 +24,7 @@ struct ttc_config {
  * Load relevant keys from config file into cfg.
  * CLI overrides (non-NULL) take priority over config values.
  */
-void ttc_config_load(struct ttc_config* cfg, const char* config_path,
-                     const char* shm_override, const char* pid_override);
+void ttc_config_load(struct ttc_config* cfg, const char* config_path, const char* shm_override,
+                     const char* pid_override);
 
 #endif /* TTC_CONFIG_H */

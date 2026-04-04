@@ -45,9 +45,8 @@ void ttg_net_close_conn(struct ttg_conn* c) {
   free(c);
 }
 
-struct ttg_conn* ttg_net_connect_svc(struct ttg_mgr* mgr, const char* url,
-                                     ttg_event_handler fn, void* fn_data,
-                                     ttg_event_handler pfn, void* pfn_data) {
+struct ttg_conn* ttg_net_connect_svc(struct ttg_mgr* mgr, const char* url, ttg_event_handler fn,
+                                     void* fn_data, ttg_event_handler pfn, void* pfn_data) {
   struct ttg_conn* c = NULL;
   if (url == NULL || url[0] == '\0') {
     tt_log_err("null url");
@@ -69,13 +68,13 @@ struct ttg_conn* ttg_net_connect_svc(struct ttg_mgr* mgr, const char* url,
   return c;
 }
 
-struct ttg_conn* ttg_net_connect(struct ttg_mgr* mgr, const char* url,
-                                 ttg_event_handler fn, void* fn_data) {
+struct ttg_conn* ttg_net_connect(struct ttg_mgr* mgr, const char* url, ttg_event_handler fn,
+                                 void* fn_data) {
   return ttg_net_connect_svc(mgr, url, fn, fn_data, NULL, NULL);
 }
 
-struct ttg_conn* ttg_net_listen(struct ttg_mgr* mgr, const char* url,
-                                ttg_event_handler fn, void* fn_data) {
+struct ttg_conn* ttg_net_listen(struct ttg_mgr* mgr, const char* url, ttg_event_handler fn,
+                                void* fn_data) {
   struct ttg_conn* c = NULL;
 
   if ((c = ttg_net_alloc_conn(mgr)) == NULL) {
@@ -96,9 +95,8 @@ struct ttg_conn* ttg_net_listen(struct ttg_mgr* mgr, const char* url,
   return c;
 }
 
-struct tt_timer* ttg_net_timer_add(struct ttg_mgr* mgr, uint64_t ms,
-                                   unsigned flags, void (*fn)(void*),
-                                   void* arg) {
+struct tt_timer* ttg_net_timer_add(struct ttg_mgr* mgr, uint64_t ms, unsigned flags,
+                                   void (*fn)(void*), void* arg) {
   struct tt_timer* t = (struct tt_timer*)calloc(1, sizeof(*t));
   if (t != NULL) {
     flags |= TIMER_AUTODELETE; /* Automatically delete timer */
@@ -113,24 +111,19 @@ void ttg_net_mgr_init(struct ttg_mgr* mgr, const struct ttg_tls_cfg* tls) {
     tt_log_err("epoll_create1 errno %d", errno);
   signal(SIGPIPE, SIG_IGN);
   mgr->pipe = TTG_INVALID_SOCKET;
-  if (tls)
-    ttg_tls_ctx_init(mgr, tls);
-  tt_log_debug("MG_IO_SIZE: %u, TLS: %s", TTG_IO_SIZE,
-               mgr->tls_ctx ? "OpenSSL" : "disabled");
+  if (tls) ttg_tls_ctx_init(mgr, tls);
+  tt_log_debug("MG_IO_SIZE: %u, TLS: %s", TTG_IO_SIZE, mgr->tls_ctx ? "OpenSSL" : "disabled");
 }
 
 void ttg_net_mgr_free(struct ttg_mgr* mgr) {
   struct ttg_conn* c;
   struct tt_timer *tmp, *t = mgr->timers;
-  while (t != NULL)
-    tmp = t->next, free(t), t = tmp;
+  while (t != NULL) tmp = t->next, free(t), t = tmp;
   mgr->timers = NULL; /* Important. Next poll call will not touch timers */
-  for (c = mgr->conns; c != NULL; c = c->next)
-    c->is_closing = 1;
+  for (c = mgr->conns; c != NULL; c = c->next) c->is_closing = 1;
   ttg_net_mgr_poll(mgr, 0);
   tt_log_debug("All connections closed");
-  if (mgr->epoll_fd >= 0)
-    close(mgr->epoll_fd), mgr->epoll_fd = -1;
+  if (mgr->epoll_fd >= 0) close(mgr->epoll_fd), mgr->epoll_fd = -1;
   ttg_tls_ctx_free(mgr);
 }
 
@@ -163,22 +156,16 @@ void ttg_net_mgr_poll(struct ttg_mgr* mgr, int ms) {
     if (c->is_resolving || c->is_closing) {
       /* Do nothing */
     } else if (c->is_listening /* && c->is_udp == 0 */) {
-      if (c->is_readable)
-        ttg_sock_accept_conn(mgr, c);
+      if (c->is_readable) ttg_sock_accept_conn(mgr, c);
     } else if (c->is_connecting) {
-      if (c->is_readable || c->is_writable)
-        ttg_sock_connect_conn(c);
+      if (c->is_readable || c->is_writable) ttg_sock_connect_conn(c);
     } else {
-      if (c->is_readable)
-        ttg_sock_read_conn(c);
-      if (c->is_writable)
-        ttg_sock_write_conn(c);
+      if (c->is_readable) ttg_sock_read_conn(c);
+      if (c->is_writable) ttg_sock_write_conn(c);
       /* if (c->is_tls && !c->is_tls_hs && c->send.len == 0) mg_tls_flush(c); */
     }
 
-    if (c->is_draining && c->send.len == 0)
-      c->is_closing = 1;
-    if (c->is_closing)
-      ttg_sock_close_conn(c);
+    if (c->is_draining && c->send.len == 0) c->is_closing = 1;
+    if (c->is_closing) ttg_sock_close_conn(c);
   }
 }

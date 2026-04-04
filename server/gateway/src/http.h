@@ -15,11 +15,11 @@ struct ttg_http_header {
 };
 
 struct ttg_http_message {
-  struct ttg_str method, uri, query, proto; /* Request/response line */
+  struct ttg_str method, uri, query, proto;             /* Request/response line */
   struct ttg_http_header headers[TTG_MAX_HTTP_HEADERS]; /* Headers */
   struct ttg_str body;                                  /* Request body */
   struct ttg_str head;                                  /* Request + headers */
-  struct ttg_str message; /* Request + headers + request body */
+  struct ttg_str message;                               /* Request + headers + request body */
 };
 
 struct ttg_http_serve_opts {
@@ -32,12 +32,12 @@ struct ttg_http_serve_opts {
 
 int ttg_http_parse(const char* s, size_t len, struct ttg_http_message*);
 int ttg_http_get_request_len(const unsigned char* buf, size_t buf_len);
-struct ttg_conn* ttg_http_listen(struct ttg_mgr*, const char* url,
-                                 ttg_event_handler fn, void* fn_data);
-struct ttg_conn* ttg_http_connect(struct ttg_mgr*, const char* url,
-                                  ttg_event_handler fn, void* fn_data);
-void ttg_http_reply(struct ttg_conn*, int status_code, const char* headers,
-                    const char* body_fmt, ...);
+struct ttg_conn* ttg_http_listen(struct ttg_mgr*, const char* url, ttg_event_handler fn,
+                                 void* fn_data);
+struct ttg_conn* ttg_http_connect(struct ttg_mgr*, const char* url, ttg_event_handler fn,
+                                  void* fn_data);
+void ttg_http_reply(struct ttg_conn*, int status_code, const char* headers, const char* body_fmt,
+                    ...);
 struct ttg_str* ttg_http_get_header(struct ttg_http_message*, const char* name);
 int ttg_http_status(const struct ttg_http_message* hm);
 

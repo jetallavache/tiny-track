@@ -38,16 +38,14 @@ static void fmt_duration(uint64_t sec, char* buf, size_t len) {
     snprintf(buf, len, "%llu yr", (unsigned long long)(sec / 31536000));
 }
 
-static void make_ring_label(const struct ttc_config* cfg, int level, char* buf,
-                            size_t len) {
+static void make_ring_label(const struct ttc_config* cfg, int level, char* buf, size_t len) {
   uint32_t ivl_sec;
   uint32_t cap;
   switch (level) {
     case 1:
       cap = cfg->l1_capacity;
       ivl_sec = cfg->collection_interval_ms / 1000;
-      if (!ivl_sec)
-        ivl_sec = 1;
+      if (!ivl_sec) ivl_sec = 1;
       break;
     case 2:
       cap = cfg->l2_capacity;
@@ -69,38 +67,31 @@ static void make_ring_label(const struct ttc_config* cfg, int level, char* buf,
 
 static pid_t read_pidfile(const char* path) {
   FILE* f = fopen(path, "r");
-  if (!f)
-    return -1;
+  if (!f) return -1;
   pid_t pid = -1;
-  if (fscanf(f, "%d", &pid) != 1)
-    pid = -1;
+  if (fscanf(f, "%d", &pid) != 1) pid = -1;
   fclose(f);
   return pid;
 }
 
 static int daemon_running(const struct ttc_ctx* ctx) {
   pid_t pid = read_pidfile(ctx->pid_file);
-  if (pid <= 0)
-    return 0;
-  if (kill(pid, 0) == 0)
-    return 1;
+  if (pid <= 0) return 0;
+  if (kill(pid, 0) == 0) return 1;
   return errno == EPERM;
 }
 
 static int gw_running(const struct ttc_ctx* ctx) {
   pid_t pid = read_pidfile(ctx->gw_pid_file);
-  if (pid <= 0)
-    return 0;
-  if (kill(pid, 0) == 0)
-    return 1;
+  if (pid <= 0) return 0;
+  if (kill(pid, 0) == 0) return 1;
   return errno == EPERM;
 }
 
 static int open_reader(const struct ttc_ctx* ctx, struct ttc_reader* r) {
   int err = ttc_reader_open(r, ctx->mmap_path);
   if (err != TTR_READER_OK) {
-    fprintf(stderr, "Error: cannot open %s: %s\n", ctx->mmap_path,
-            ttc_reader_strerror(err));
+    fprintf(stderr, "Error: cannot open %s: %s\n", ctx->mmap_path, ttc_reader_strerror(err));
   }
   return err;
 }
@@ -125,26 +116,21 @@ int ttc_cmd_status(const struct ttc_ctx* ctx) {
   }
 
   ttc_print_sep(ctx, 44);
-  printf(" %sTinyTrack Status%s\n", ttc_color(ctx, COL_BOLD),
-         ttc_color(ctx, COL_RESET));
+  printf(" %sTinyTrack Status%s\n", ttc_color(ctx, COL_BOLD), ttc_color(ctx, COL_RESET));
   ttc_print_sep(ctx, 44);
 
   /* tinytd */
-  printf(" %-20s %s%s%s", "tinytd:",
-         td_running ? ttc_color(ctx, COL_GREEN) : ttc_color(ctx, COL_RED),
+  printf(" %-20s %s%s%s",
+         "tinytd:", td_running ? ttc_color(ctx, COL_GREEN) : ttc_color(ctx, COL_RED),
          td_running ? "running" : "stopped", ttc_color(ctx, COL_RESET));
-  if (td_pid > 0)
-    printf("  pid=%d", (int)td_pid);
+  if (td_pid > 0) printf("  pid=%d", (int)td_pid);
   printf("\n");
 
   /* tinytrack */
-  printf(" %-20s %s%s%s", "tinytrack:",
-         gw_ok ? ttc_color(ctx, COL_GREEN) : ttc_color(ctx, COL_RED),
+  printf(" %-20s %s%s%s", "tinytrack:", gw_ok ? ttc_color(ctx, COL_GREEN) : ttc_color(ctx, COL_RED),
          gw_ok ? "running" : "stopped", ttc_color(ctx, COL_RESET));
-  if (gw_pid > 0)
-    printf("  pid=%d", (int)gw_pid);
-  if (gw_ok)
-    printf("  listen=%s", ctx->gw_listen);
+  if (gw_pid > 0) printf("  pid=%d", (int)gw_pid);
+  if (gw_ok) printf("  listen=%s", ctx->gw_listen);
   printf("\n");
 
   printf(" %-20s %s\n", "mmap path:", ctx->mmap_path);
@@ -170,8 +156,7 @@ int ttc_cmd_status(const struct ttc_ctx* ctx) {
 
 int ttc_cmd_metrics(const struct ttc_ctx* ctx) {
   struct ttc_reader r;
-  if (open_reader(ctx, &r) != TTR_READER_OK)
-    return 1;
+  if (open_reader(ctx, &r) != TTR_READER_OK) return 1;
 
   /* Single shot if not a tty or JSON */
   int loop = (ctx->format != FMT_JSON) && isatty(STDOUT_FILENO);
@@ -180,18 +165,16 @@ int ttc_cmd_metrics(const struct ttc_ctx* ctx) {
     struct tt_metrics m;
     int err = ttc_reader_get_latest(&r, &m);
     if (err == TTR_READER_OK) {
-      if (loop)
-        printf("\033[H\033[J"); /* clear screen */
+      if (loop) printf("\033[H\033[J"); /* clear screen */
       ttc_print_metrics(ctx, &m);
     } else if (err == TTR_READER_ERR_STALE) {
-      fprintf(stderr, "%sWarning: daemon not running%s\n",
-              ttc_color(ctx, COL_YELLOW), ttc_color(ctx, COL_RESET));
+      fprintf(stderr, "%sWarning: daemon not running%s\n", ttc_color(ctx, COL_YELLOW),
+              ttc_color(ctx, COL_RESET));
       break;
     } else if (err == TTR_READER_ERR_NODATA) {
       fprintf(stderr, "Waiting for data...\n");
     }
-    if (loop)
-      usleep(ctx->interval_ms * 1000);
+    if (loop) usleep(ctx->interval_ms * 1000);
   } while (loop);
 
   ttc_reader_close(&r);
@@ -200,11 +183,9 @@ int ttc_cmd_metrics(const struct ttc_ctx* ctx) {
 
 int ttc_cmd_history(const struct ttc_ctx* ctx, int level, int count) {
   struct ttc_reader r;
-  if (open_reader(ctx, &r) != TTR_READER_OK)
-    return 1;
+  if (open_reader(ctx, &r) != TTR_READER_OK) return 1;
 
-  if (count <= 0 || count > 1000)
-    count = 20;
+  if (count <= 0 || count > 1000) count = 20;
 
   struct tt_metrics* buf = calloc(count, sizeof(*buf));
   if (!buf) {
@@ -220,21 +201,18 @@ int ttc_cmd_history(const struct ttc_ctx* ctx, int level, int count) {
     return 1;
   }
 
-  if (ctx->format == FMT_JSON)
-    printf("[\n");
+  if (ctx->format == FMT_JSON) printf("[\n");
 
   for (int i = 0; i < n; i++) {
     if (ctx->format == FMT_JSON) {
       ttc_print_metrics(ctx, &buf[i]);
-      if (i < n - 1)
-        printf(",\n");
+      if (i < n - 1) printf(",\n");
     } else {
       ttc_print_metrics(ctx, &buf[i]);
     }
   }
 
-  if (ctx->format == FMT_JSON)
-    printf("]\n");
+  if (ctx->format == FMT_JSON) printf("]\n");
 
   free(buf);
   ttc_reader_close(&r);
@@ -258,14 +236,12 @@ int ttc_cmd_signal(const struct ttc_ctx* ctx, const char* signame) {
   else if (strcmp(signame, "term") == 0 || strcmp(signame, "SIGTERM") == 0)
     signo = SIGTERM;
   else {
-    fprintf(stderr, "Unknown signal: %s (use: hup, usr1, usr2, term)\n",
-            signame);
+    fprintf(stderr, "Unknown signal: %s (use: hup, usr1, usr2, term)\n", signame);
     return 1;
   }
 
   if (kill(pid, signo) < 0) {
-    fprintf(stderr, "Error sending %s to pid %d: %s\n", signame, (int)pid,
-            strerror(errno));
+    fprintf(stderr, "Error sending %s to pid %d: %s\n", signame, (int)pid, strerror(errno));
     return 1;
   }
 
@@ -281,29 +257,25 @@ static int systemd_available(void) {
 static void systemd_show_status(const struct ttc_ctx* ctx) {
   const char* units[] = {"tinytd", "tinytrack"};
   for (int u = 0; u < 2; u++) {
-    printf("%s--- %s ---%s\n", ttc_color(ctx, COL_BOLD), units[u],
-           ttc_color(ctx, COL_RESET));
+    printf("%s--- %s ---%s\n", ttc_color(ctx, COL_BOLD), units[u], ttc_color(ctx, COL_RESET));
     char cmd[256];
     snprintf(cmd, sizeof(cmd),
              "systemctl show %s --property=ActiveState,SubState,"
              "MainPID,ExecMainStartTimestamp,LoadState 2>/dev/null",
              units[u]);
     FILE* f = popen(cmd, "r");
-    if (!f)
-      continue;
+    if (!f) continue;
     char line[256];
     while (fgets(line, sizeof(line), f)) {
       line[strcspn(line, "\n")] = '\0';
       char* eq = strchr(line, '=');
-      if (!eq)
-        continue;
+      if (!eq) continue;
       *eq = '\0';
       const char* key = line;
       const char* val = eq + 1;
       const char* color = ttc_color(ctx, COL_RESET);
       if (strcmp(key, "ActiveState") == 0)
-        color = strcmp(val, "active") == 0 ? ttc_color(ctx, COL_GREEN)
-                                           : ttc_color(ctx, COL_RED);
+        color = strcmp(val, "active") == 0 ? ttc_color(ctx, COL_GREEN) : ttc_color(ctx, COL_RED);
       printf(" %-32s %s%s%s\n", key, color, val, ttc_color(ctx, COL_RESET));
     }
     pclose(f);
@@ -317,8 +289,7 @@ int ttc_cmd_service(const struct ttc_ctx* ctx, const char* action) {
 
   if (strcmp(action, "status") == 0) {
     ttc_print_sep(ctx, 44);
-    printf(" %sService Status%s\n", ttc_color(ctx, COL_BOLD),
-           ttc_color(ctx, COL_RESET));
+    printf(" %sService Status%s\n", ttc_color(ctx, COL_BOLD), ttc_color(ctx, COL_RESET));
     ttc_print_sep(ctx, 44);
     if (use_systemd)
       systemd_show_status(ctx);
@@ -331,8 +302,8 @@ int ttc_cmd_service(const struct ttc_ctx* ctx, const char* action) {
     if (use_systemd)
       snprintf(cmd, sizeof(cmd), "systemctl start tinytd tinytrack");
     else
-      snprintf(cmd, sizeof(cmd), "tinytd -c '%s' & tinytrack -c '%s' &",
-               ctx->config_path, ctx->config_path);
+      snprintf(cmd, sizeof(cmd), "tinytd -c '%s' & tinytrack -c '%s' &", ctx->config_path,
+               ctx->config_path);
 
   } else if (strcmp(action, "stop") == 0) {
     if (use_systemd)
@@ -351,8 +322,7 @@ int ttc_cmd_service(const struct ttc_ctx* ctx, const char* action) {
                "kill $(cat '%s' 2>/dev/null) 2>/dev/null;"
                "kill $(cat '%s' 2>/dev/null) 2>/dev/null;"
                "sleep 1; tinytd -c '%s' & tinytrack -c '%s' &",
-               ctx->gw_pid_file, ctx->pid_file, ctx->config_path,
-               ctx->config_path);
+               ctx->gw_pid_file, ctx->pid_file, ctx->config_path, ctx->config_path);
 
   } else if (strcmp(action, "enable") == 0 || strcmp(action, "disable") == 0) {
     if (!use_systemd) {
@@ -362,22 +332,17 @@ int ttc_cmd_service(const struct ttc_ctx* ctx, const char* action) {
     snprintf(cmd, sizeof(cmd), "systemctl %s tinytd tinytrack", action);
 
   } else {
-    fprintf(stderr,
-            "Unknown action: %s (start|stop|restart|status|enable|disable)\n",
-            action);
+    fprintf(stderr, "Unknown action: %s (start|stop|restart|status|enable|disable)\n", action);
     return 1;
   }
 
   int ret = system(cmd);
-  if (ret == 0 && ctx->format != FMT_JSON)
-    printf("OK\n");
+  if (ret == 0 && ctx->format != FMT_JSON) printf("OK\n");
   return ret == 0 ? 0 : 1;
 }
 
-int ttc_cmd_logs(const struct ttc_ctx* ctx, int lines, const char* level,
-                 const char* service) {
-  if (lines <= 0)
-    lines = 50;
+int ttc_cmd_logs(const struct ttc_ctx* ctx, int lines, const char* level, const char* service) {
+  if (lines <= 0) lines = 50;
 
   int use_journal = system("journalctl --version >/dev/null 2>&1") == 0;
   char cmd[512];
@@ -394,8 +359,7 @@ int ttc_cmd_logs(const struct ttc_ctx* ctx, int lines, const char* level,
       from = 1;
       to = 2;
     } else {
-      fprintf(stderr, "Error: unknown service '%s'. Use: tinytd, tinytrack\n",
-              service);
+      fprintf(stderr, "Error: unknown service '%s'. Use: tinytd, tinytrack\n", service);
       fprintf(stderr,
               "Usage: tiny-cli logs [--lines N] [--level LEVEL] "
               "[--service tinytd|tinytrack]\n");
@@ -404,18 +368,15 @@ int ttc_cmd_logs(const struct ttc_ctx* ctx, int lines, const char* level,
   }
 
   for (int i = from; i < to; i++) {
-    printf("%s=== %s ===%s\n", ttc_color(ctx, COL_BOLD), units[i],
-           ttc_color(ctx, COL_RESET));
+    printf("%s=== %s ===%s\n", ttc_color(ctx, COL_BOLD), units[i], ttc_color(ctx, COL_RESET));
     fflush(stdout);
     if (use_journal) {
       if (level && strlen(level) > 0)
-        snprintf(cmd, sizeof(cmd),
-                 "journalctl -u %s --identifier=%s -n %d -p %s --no-pager -q",
+        snprintf(cmd, sizeof(cmd), "journalctl -u %s --identifier=%s -n %d -p %s --no-pager -q",
                  units[i], units[i], lines, level);
       else
-        snprintf(cmd, sizeof(cmd),
-                 "journalctl -u %s --identifier=%s -n %d --no-pager -q",
-                 units[i], units[i], lines);
+        snprintf(cmd, sizeof(cmd), "journalctl -u %s --identifier=%s -n %d --no-pager -q", units[i],
+                 units[i], lines);
     } else {
       snprintf(cmd, sizeof(cmd),
                "grep %s /var/log/syslog 2>/dev/null | tail -n %d"
@@ -423,8 +384,7 @@ int ttc_cmd_logs(const struct ttc_ctx* ctx, int lines, const char* level,
                units[i], lines, units[i], lines);
     }
     int rc = system(cmd);
-    if (rc != 0 && use_journal)
-      printf("  (no entries or insufficient permissions)\n");
+    if (rc != 0 && use_journal) printf("  (no entries or insufficient permissions)\n");
     printf("\n");
   }
   return 0;
@@ -444,13 +404,11 @@ int ttc_cmd_script(const struct ttc_ctx* ctx, const char* path) {
     lineno++;
     /* Strip newline and leading whitespace */
     char* p = line;
-    while (*p == ' ' || *p == '\t')
-      p++;
+    while (*p == ' ' || *p == '\t') p++;
     p[strcspn(p, "\n\r")] = '\0';
 
     /* Skip empty lines and comments */
-    if (*p == '\0' || *p == '#')
-      continue;
+    if (*p == '\0' || *p == '#') continue;
 
     /* Expand simple $VAR references */
     char expanded[512];
@@ -461,8 +419,8 @@ int ttc_cmd_script(const struct ttc_ctx* ctx, const char* path) {
         char varname[64];
         int vn = 0;
         while (*s &&
-               ((*s >= 'A' && *s <= 'Z') || (*s >= 'a' && *s <= 'z') ||
-                (*s >= '0' && *s <= '9') || *s == '_') &&
+               ((*s >= 'A' && *s <= 'Z') || (*s >= 'a' && *s <= 'z') || (*s >= '0' && *s <= '9') ||
+                *s == '_') &&
                vn < 63)
           varname[vn++] = *s++;
         varname[vn] = '\0';
@@ -478,8 +436,7 @@ int ttc_cmd_script(const struct ttc_ctx* ctx, const char* path) {
     }
     *dst = '\0';
 
-    if (ctx->verbose)
-      printf("[script:%d] %s\n", lineno, expanded);
+    if (ctx->verbose) printf("[script:%d] %s\n", lineno, expanded);
 
     /* Build argv and dispatch to existing commands */
     /* Simple approach: prepend "tiny-cli" and re-parse via execvp */
@@ -493,8 +450,7 @@ int ttc_cmd_script(const struct ttc_ctx* ctx, const char* path) {
       tok = strtok(NULL, " \t");
     }
     argv[argc] = NULL;
-    if (argc == 0)
-      continue;
+    if (argc == 0) continue;
 
     /* Dispatch the first token as a tiny-cli command */
     char full_cmd[600];
@@ -510,52 +466,44 @@ int ttc_cmd_script(const struct ttc_ctx* ctx, const char* path) {
     }
   }
 
-  if (f != stdin)
-    fclose(f);
+  if (f != stdin) fclose(f);
   return errors > 0 ? 1 : 0;
 }
 
 int ttc_cmd_debug(const struct ttc_ctx* ctx) {
   ttc_print_sep(ctx, 56);
-  printf(" %sTinyTrack Diagnostics%s\n", ttc_color(ctx, COL_BOLD),
-         ttc_color(ctx, COL_RESET));
+  printf(" %sTinyTrack Diagnostics%s\n", ttc_color(ctx, COL_BOLD), ttc_color(ctx, COL_RESET));
   ttc_print_sep(ctx, 56);
 
   struct stat st;
 
   /* --- tinytd --- */
-  printf(" %s[tinytd]%s\n", ttc_color(ctx, COL_BOLD),
-         ttc_color(ctx, COL_RESET));
+  printf(" %s[tinytd]%s\n", ttc_color(ctx, COL_BOLD), ttc_color(ctx, COL_RESET));
 
   int td_ok = daemon_running(ctx);
   pid_t td_pid = read_pidfile(ctx->pid_file);
-  printf(" %-28s %s%s%s",
-         "status:", td_ok ? ttc_color(ctx, COL_GREEN) : ttc_color(ctx, COL_RED),
+  printf(" %-28s %s%s%s", "status:", td_ok ? ttc_color(ctx, COL_GREEN) : ttc_color(ctx, COL_RED),
          td_ok ? "running" : "stopped", ttc_color(ctx, COL_RESET));
-  if (td_pid > 0)
-    printf("  pid=%d", (int)td_pid);
+  if (td_pid > 0) printf("  pid=%d", (int)td_pid);
   printf("\n");
 
   int pid_ok = stat(ctx->pid_file, &st) == 0;
-  printf(" %-28s %s%s%s\n", "pid file:",
-         pid_ok ? ttc_color(ctx, COL_GREEN) : ttc_color(ctx, COL_YELLOW),
+  printf(" %-28s %s%s%s\n",
+         "pid file:", pid_ok ? ttc_color(ctx, COL_GREEN) : ttc_color(ctx, COL_YELLOW),
          pid_ok ? ctx->pid_file : "not found", ttc_color(ctx, COL_RESET));
 
   /* mmap file */
   int live_ok = stat(ctx->mmap_path, &st) == 0;
-  printf(" %-28s %s%s%s (%ld bytes)\n", "live mmap:",
-         live_ok ? ttc_color(ctx, COL_GREEN) : ttc_color(ctx, COL_RED),
-         live_ok ? "OK" : "MISSING", ttc_color(ctx, COL_RESET),
-         live_ok ? (long)st.st_size : 0L);
+  printf(" %-28s %s%s%s (%ld bytes)\n",
+         "live mmap:", live_ok ? ttc_color(ctx, COL_GREEN) : ttc_color(ctx, COL_RED),
+         live_ok ? "OK" : "MISSING", ttc_color(ctx, COL_RESET), live_ok ? (long)st.st_size : 0L);
 
   /* mmap magic + ring stats */
   struct ttc_reader r;
   int err = ttc_reader_open(&r, ctx->mmap_path);
-  printf(" %-28s %s%s%s\n", "mmap magic:",
-         err == TTR_READER_OK ? ttc_color(ctx, COL_GREEN)
-                              : ttc_color(ctx, COL_RED),
-         err == TTR_READER_OK ? "valid" : ttc_reader_strerror(err),
-         ttc_color(ctx, COL_RESET));
+  printf(" %-28s %s%s%s\n",
+         "mmap magic:", err == TTR_READER_OK ? ttc_color(ctx, COL_GREEN) : ttc_color(ctx, COL_RED),
+         err == TTR_READER_OK ? "valid" : ttc_reader_strerror(err), ttc_color(ctx, COL_RESET));
 
   if (err == TTR_READER_OK) {
     const struct ttc_config* cfg = &ctx->cfg;
@@ -564,48 +512,41 @@ int ttc_cmd_debug(const struct ttc_ctx* ctx) {
     make_ring_label(cfg, 2, lbl[1], sizeof(lbl[1]));
     make_ring_label(cfg, 3, lbl[2], sizeof(lbl[2]));
 
-    const struct ttr_meta* metas[3] = {r.ring.l1_meta, r.ring.l2_meta,
-                                       r.ring.l3_meta};
+    const struct ttr_meta* metas[3] = {r.ring.l1_meta, r.ring.l2_meta, r.ring.l3_meta};
     for (int i = 0; i < 3; i++) {
       char ts[16];
       ttc_fmt_ts(metas[i]->last_ts, ts, sizeof(ts));
       printf(" %-28s fill=%u/%u  last=%s\n", lbl[i],
-             metas[i]->head < metas[i]->capacity ? metas[i]->head
-                                                 : metas[i]->capacity,
+             metas[i]->head < metas[i]->capacity ? metas[i]->head : metas[i]->capacity,
              metas[i]->capacity, ts);
     }
     ttc_reader_close(&r);
   }
 
   /* --- tinytrack --- */
-  printf("\n %s[tinytrack]%s\n", ttc_color(ctx, COL_BOLD),
-         ttc_color(ctx, COL_RESET));
+  printf("\n %s[tinytrack]%s\n", ttc_color(ctx, COL_BOLD), ttc_color(ctx, COL_RESET));
 
   int gw_ok = gw_running(ctx);
   pid_t gw_pid = read_pidfile(ctx->gw_pid_file);
-  printf(" %-28s %s%s%s",
-         "status:", gw_ok ? ttc_color(ctx, COL_GREEN) : ttc_color(ctx, COL_RED),
+  printf(" %-28s %s%s%s", "status:", gw_ok ? ttc_color(ctx, COL_GREEN) : ttc_color(ctx, COL_RED),
          gw_ok ? "running" : "stopped", ttc_color(ctx, COL_RESET));
-  if (gw_pid > 0)
-    printf("  pid=%d", (int)gw_pid);
+  if (gw_pid > 0) printf("  pid=%d", (int)gw_pid);
   printf("\n");
 
   int gw_pid_ok = stat(ctx->gw_pid_file, &st) == 0;
-  printf(" %-28s %s%s%s\n", "pid file:",
-         gw_pid_ok ? ttc_color(ctx, COL_GREEN) : ttc_color(ctx, COL_YELLOW),
+  printf(" %-28s %s%s%s\n",
+         "pid file:", gw_pid_ok ? ttc_color(ctx, COL_GREEN) : ttc_color(ctx, COL_YELLOW),
          gw_pid_ok ? ctx->gw_pid_file : "not found", ttc_color(ctx, COL_RESET));
 
   printf(" %-28s %s\n", "listen:", ctx->gw_listen);
 
   /* --- common --- */
-  printf("\n %s[common]%s\n", ttc_color(ctx, COL_BOLD),
-         ttc_color(ctx, COL_RESET));
+  printf("\n %s[common]%s\n", ttc_color(ctx, COL_BOLD), ttc_color(ctx, COL_RESET));
 
   int cfg_ok = stat(ctx->config_path, &st) == 0;
-  printf(" %-28s %s%s%s\n", "config file:",
-         cfg_ok ? ttc_color(ctx, COL_GREEN) : ttc_color(ctx, COL_YELLOW),
-         cfg_ok ? ctx->config_path : "not found (using defaults)",
-         ttc_color(ctx, COL_RESET));
+  printf(" %-28s %s%s%s\n",
+         "config file:", cfg_ok ? ttc_color(ctx, COL_GREEN) : ttc_color(ctx, COL_YELLOW),
+         cfg_ok ? ctx->config_path : "not found (using defaults)", ttc_color(ctx, COL_RESET));
 
   return 0;
 }

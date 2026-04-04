@@ -8,25 +8,50 @@
  */
 
 import {
-  parseHeader, parseMetrics, parseConfig, parseAck, parseStats, parseHistoryResp, parseSysInfo,
-  buildCmd, buildHistoryReq, buildSubscribe,
-  PKT_METRICS, PKT_CONFIG, PKT_ACK, PKT_RING_STATS, PKT_HISTORY_RESP, PKT_SYS_INFO,
-  CMD_GET_SNAPSHOT, CMD_GET_RING_STATS, CMD_GET_SYS_INFO, CMD_SET_INTERVAL, CMD_START, CMD_STOP,
-  RING_L1, RING_L2, RING_L3,
-  TtMetrics, TtConfig, TtAck, TtStats, TtHistoryResp, TtSysInfo,
+  parseHeader,
+  parseMetrics,
+  parseConfig,
+  parseAck,
+  parseStats,
+  parseHistoryResp,
+  parseSysInfo,
+  buildCmd,
+  buildHistoryReq,
+  buildSubscribe,
+  PKT_METRICS,
+  PKT_CONFIG,
+  PKT_ACK,
+  PKT_RING_STATS,
+  PKT_HISTORY_RESP,
+  PKT_SYS_INFO,
+  CMD_GET_SNAPSHOT,
+  CMD_GET_RING_STATS,
+  CMD_GET_SYS_INFO,
+  CMD_SET_INTERVAL,
+  CMD_START,
+  CMD_STOP,
+  RING_L1,
+  RING_L2,
+  RING_L3,
+  TtMetrics,
+  TtConfig,
+  TtAck,
+  TtStats,
+  TtHistoryResp,
+  TtSysInfo,
 } from './proto.js';
 
 export type { TtMetrics, TtConfig, TtAck, TtStats, TtHistoryResp, TtSysInfo };
 export { RING_L1, RING_L2, RING_L3 };
 
 export type ClientEventMap = {
-  open:    [];
-  close:   [code: number, reason: string];
-  error:   [err: Event];
+  open: [];
+  close: [code: number, reason: string];
+  error: [err: Event];
   metrics: [m: TtMetrics];
-  config:  [c: TtConfig];
-  ack:     [a: TtAck];
-  stats:   [s: TtStats];
+  config: [c: TtConfig];
+  ack: [a: TtAck];
+  stats: [s: TtStats];
   history: [r: TtHistoryResp];
   sysinfo: [s: TtSysInfo];
 };
@@ -56,10 +81,10 @@ export class TinyTrackClient {
     // Normalise: strip trailing path, we'll append opts.path
     this.url = url.replace(/\/websocket\/?$/, '');
     this.opts = {
-      reconnect:      opts.reconnect      ?? true,
+      reconnect: opts.reconnect ?? true,
       reconnectDelay: opts.reconnectDelay ?? 2000,
-      maxRetries:     opts.maxRetries     ?? 0,
-      path:           opts.path           ?? '/websocket',
+      maxRetries: opts.maxRetries ?? 0,
+      path: opts.path ?? '/websocket',
     };
   }
 
@@ -166,12 +191,24 @@ export class TinyTrackClient {
       const frame = parseHeader(e.data);
       if (!frame) return;
       switch (frame.type) {
-        case PKT_METRICS:      this._emit('metrics', parseMetrics(frame.payload)); break;
-        case PKT_CONFIG:       this._emit('config',  parseConfig(frame.payload));  break;
-        case PKT_ACK:          this._emit('ack',     parseAck(frame.payload));     break;
-        case PKT_RING_STATS:   this._emit('stats',   parseStats(frame.payload));   break;
-        case PKT_HISTORY_RESP: this._emit('history', parseHistoryResp(frame.payload)); break;
-        case PKT_SYS_INFO:     this._emit('sysinfo', parseSysInfo(frame.payload)); break;
+        case PKT_METRICS:
+          this._emit('metrics', parseMetrics(frame.payload));
+          break;
+        case PKT_CONFIG:
+          this._emit('config', parseConfig(frame.payload));
+          break;
+        case PKT_ACK:
+          this._emit('ack', parseAck(frame.payload));
+          break;
+        case PKT_RING_STATS:
+          this._emit('stats', parseStats(frame.payload));
+          break;
+        case PKT_HISTORY_RESP:
+          this._emit('history', parseHistoryResp(frame.payload));
+          break;
+        case PKT_SYS_INFO:
+          this._emit('sysinfo', parseSysInfo(frame.payload));
+          break;
       }
     };
   }
@@ -183,6 +220,6 @@ export class TinyTrackClient {
   }
 
   private _emit<K extends keyof ClientEventMap>(event: K, ...args: ClientEventMap[K]): void {
-    this.listeners.get(event)?.forEach(fn => fn(...args));
+    this.listeners.get(event)?.forEach((fn) => fn(...args));
   }
 }

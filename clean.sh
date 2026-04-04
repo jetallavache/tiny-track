@@ -8,7 +8,7 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 sh "$ROOT/server/scripts/clean.sh"
 
 # --- sdk (TypeScript / npm) ---
-rm -rf "$ROOT/sdk/node_modules" "$ROOT/sdk/dist" "$ROOT/sdk"/*.tsbuildinfo
+rm -rf "$ROOT/sdk/node_modules" "$ROOT/sdk/dist" "$ROOT/sdk/storybook-static" "$ROOT/sdk"/*.tsbuildinfo
 echo "sdk: clean done"
 
 # --- demo (React / vite) ---

@@ -6,7 +6,7 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/websocket': { target: 'ws://localhost:4026', ws: true },
+      '/websocket': { target: 'ws://localhost:25015', ws: true },
     },
   },
 });

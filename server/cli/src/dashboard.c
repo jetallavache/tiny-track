@@ -64,10 +64,8 @@ static void init_colors(void) {
 }
 
 static int pct_pair(double pct, double warn, double crit) {
-  if (pct >= crit)
-    return CP_CRIT;
-  if (pct >= warn)
-    return CP_WARN;
+  if (pct >= crit) return CP_CRIT;
+  if (pct >= warn) return CP_WARN;
   return CP_OK;
 }
 
@@ -101,8 +99,7 @@ static void fmt_duration(uint64_t sec, char* buf, size_t len) {
     snprintf(buf, len, "%llu yr", (unsigned long long)(sec / 31536000));
 }
 
-static void compute_ring_label(int level, uint32_t capacity,
-                               uint32_t slot_interval_sec, char* buf,
+static void compute_ring_label(int level, uint32_t capacity, uint32_t slot_interval_sec, char* buf,
                                size_t len) {
   uint64_t total_sec = (uint64_t)capacity * slot_interval_sec;
   char ivl[16], total[16];
@@ -111,28 +108,23 @@ static void compute_ring_label(int level, uint32_t capacity,
   snprintf(buf, len, "L%d %s @ %s", level, total, ivl);
 }
 
-static void draw_bar(WINDOW* w, int y, int x, int width, double pct,
-                     double warn, double crit) {
+static void draw_bar(WINDOW* w, int y, int x, int width, double pct, double warn, double crit) {
   int filled = (int)(pct / 100.0 * width);
-  if (filled > width)
-    filled = width;
+  if (filled > width) filled = width;
   wmove(w, y, x);
   waddch(w, '[');
   wattron(w, COLOR_PAIR(pct_pair(pct, warn, crit)) | A_BOLD);
-  for (int i = 0; i < filled; i++)
-    waddch(w, '#');
+  for (int i = 0; i < filled; i++) waddch(w, '#');
   wattroff(w, COLOR_PAIR(pct_pair(pct, warn, crit)) | A_BOLD);
   wattron(w, COLOR_PAIR(CP_DIM));
-  for (int i = filled; i < width; i++)
-    waddch(w, '.');
+  for (int i = filled; i < width; i++) waddch(w, '.');
   wattroff(w, COLOR_PAIR(CP_DIM));
   waddch(w, ']');
 }
 
-static void draw_sparkline(WINDOW* w, int y, int x, int width,
-                           const struct tt_metrics* hist, int count,
-                           double (*getval)(const struct tt_metrics*),
-                           double warn, double crit) {
+static void draw_sparkline(WINDOW* w, int y, int x, int width, const struct tt_metrics* hist,
+                           int count, double (*getval)(const struct tt_metrics*), double warn,
+                           double crit) {
   static const char sparks[] = " .:|#";
   int start = count > width ? count - width : 0;
   int n = count - start;
@@ -140,31 +132,21 @@ static void draw_sparkline(WINDOW* w, int y, int x, int width,
   for (int i = 0; i < n; i++) {
     double v = getval(&hist[start + i]);
     int idx = (int)(v / 100.0 * 4.0);
-    if (idx < 0)
-      idx = 0;
-    if (idx > 4)
-      idx = 4;
+    if (idx < 0) idx = 0;
+    if (idx > 4) idx = 4;
     wattron(w, COLOR_PAIR(pct_pair(v, warn, crit)));
     waddch(w, sparks[idx]);
     wattroff(w, COLOR_PAIR(pct_pair(v, warn, crit)));
   }
-  for (int i = n; i < width; i++)
-    waddch(w, ' ');
+  for (int i = n; i < width; i++) waddch(w, ' ');
 }
 
-static double get_cpu(const struct tt_metrics* m) {
-  return m->cpu_usage / 100.0;
-}
-static double get_mem(const struct tt_metrics* m) {
-  return m->mem_usage / 100.0;
-}
-static double get_disk(const struct tt_metrics* m) {
-  return m->du_usage / 100.0;
-}
+static double get_cpu(const struct tt_metrics* m) { return m->cpu_usage / 100.0; }
+static double get_mem(const struct tt_metrics* m) { return m->mem_usage / 100.0; }
+static double get_disk(const struct tt_metrics* m) { return m->du_usage / 100.0; }
 
-static int draw_metric_row(WINDOW* w, int row, int bar_w, const char* label,
-                           double val, double warn, double crit,
-                           const struct tt_metrics* hist, int hcount,
+static int draw_metric_row(WINDOW* w, int row, int bar_w, const char* label, double val,
+                           double warn, double crit, const struct tt_metrics* hist, int hcount,
                            double (*getval)(const struct tt_metrics*)) {
   mvwprintw(w, row, 1, "%-5s %5.1f%%", label, val);
   draw_bar(w, row, 13, bar_w, val, warn, crit);
@@ -182,21 +164,16 @@ static void draw_header(WINDOW* w, int cols, int daemon_ok) {
   struct tm* tm = localtime(&now);
   strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S", tm);
   wattron(w, COLOR_PAIR(CP_HEADER) | A_BOLD);
-  for (int i = 0; i < cols; i++)
-    mvwaddch(w, 0, i, ' ');
-  mvwprintw(w, 0, 1, " TinyTrack  %s  daemon: %s", ts,
-            daemon_ok ? "running" : "stopped");
+  for (int i = 0; i < cols; i++) mvwaddch(w, 0, i, ' ');
+  mvwprintw(w, 0, 1, " TinyTrack  %s  daemon: %s", ts, daemon_ok ? "running" : "stopped");
   wattroff(w, COLOR_PAIR(CP_HEADER) | A_BOLD);
 }
 
-static void draw_metrics(WINDOW* w, int row, int cols,
-                         const struct tt_metrics* m,
+static void draw_metrics(WINDOW* w, int row, int cols, const struct tt_metrics* m,
                          const struct tt_metrics* hist, int hcount) {
   int bar_w = cols - 24;
-  if (bar_w < 20)
-    bar_w = 20;
-  if (bar_w > 60)
-    bar_w = 60;
+  if (bar_w < 20) bar_w = 20;
+  if (bar_w > 60) bar_w = 60;
 
   char ts[16];
   ttc_fmt_ts(m->timestamp, ts, sizeof(ts));
@@ -205,12 +182,9 @@ static void draw_metrics(WINDOW* w, int row, int cols,
   wattroff(w, COLOR_PAIR(CP_TITLE) | A_BOLD);
   row++;
 
-  row = draw_metric_row(w, row, bar_w, "CPU", m->cpu_usage / 100.0, 70, 90,
-                        hist, hcount, get_cpu);
-  row = draw_metric_row(w, row, bar_w, "MEM", m->mem_usage / 100.0, 80, 95,
-                        hist, hcount, get_mem);
-  row = draw_metric_row(w, row, bar_w, "DISK", m->du_usage / 100.0, 80, 95,
-                        hist, hcount, get_disk);
+  row = draw_metric_row(w, row, bar_w, "CPU", m->cpu_usage / 100.0, 70, 90, hist, hcount, get_cpu);
+  row = draw_metric_row(w, row, bar_w, "MEM", m->mem_usage / 100.0, 80, 95, hist, hcount, get_mem);
+  row = draw_metric_row(w, row, bar_w, "DISK", m->du_usage / 100.0, 80, 95, hist, hcount, get_disk);
 
   char rx[16], tx[16];
   fmt_bytes(m->net_rx, rx, sizeof(rx));
@@ -229,8 +203,8 @@ static void draw_metrics(WINDOW* w, int row, int cols,
   wattron(w, COLOR_PAIR(pct_pair(l1 * 100, 70, 90)));
   mvwprintw(w, row, 7, "%.2f", l1);
   wattroff(w, COLOR_PAIR(pct_pair(l1 * 100, 70, 90)));
-  mvwprintw(w, row, 13, "%.2f  %.2f  PROC %u/%u", m->load_5min / 100.0,
-            m->load_15min / 100.0, m->nr_running, m->nr_total);
+  mvwprintw(w, row, 13, "%.2f  %.2f  PROC %u/%u", m->load_5min / 100.0, m->load_15min / 100.0,
+            m->nr_running, m->nr_total);
 }
 
 static void draw_tsdb(WINDOW* w, int row, int cols, const struct ttr_reader* r,
@@ -242,10 +216,8 @@ static void draw_tsdb(WINDOW* w, int row, int cols, const struct ttr_reader* r,
 
   const struct ttr_meta* metas[3] = {r->l1_meta, r->l2_meta, r->l3_meta};
   int bar_w = cols - 15 - 38;
-  if (bar_w < 10)
-    bar_w = 10;
-  if (bar_w > 40)
-    bar_w = 40;
+  if (bar_w < 10) bar_w = 10;
+  if (bar_w > 40) bar_w = 40;
 
   for (int i = 0; i < 3; i++) {
     const struct ttr_meta* m = metas[i];
@@ -260,15 +232,14 @@ static void draw_tsdb(WINDOW* w, int row, int cols, const struct ttr_reader* r,
     wattroff(w, A_BOLD);
     draw_bar(w, row, 15, bar_w, pct, 70, 90);
     wattron(w, COLOR_PAIR(CP_DIM));
-    mvwprintw(w, row, 15 + bar_w + 2, "%3.0f%% %4u/%-4u  %s->%s", pct, filled,
-              m->capacity, first, last);
+    mvwprintw(w, row, 15 + bar_w + 2, "%3.0f%% %4u/%-4u  %s->%s", pct, filled, m->capacity, first,
+              last);
     wattroff(w, COLOR_PAIR(CP_DIM));
     row++;
 
     if (m->capacity > 0 && bar_w > 2) {
       int caret = (int)((double)m->head / m->capacity * bar_w);
-      if (caret >= bar_w)
-        caret = bar_w - 1;
+      if (caret >= bar_w) caret = bar_w - 1;
       wattron(w, COLOR_PAIR(CP_WARN));
       mvwprintw(w, row, 15 + caret, "^");
       wattroff(w, COLOR_PAIR(CP_WARN));
@@ -283,10 +254,8 @@ static void draw_tsdb(WINDOW* w, int row, int cols, const struct ttr_reader* r,
 static void draw_hints(WINDOW* w, int rows, int mode) {
   wattron(w, COLOR_PAIR(CP_DIM));
   if (mode == 2)
-    mvwprintw(
-        w, rows - 1, 1,
-        " q:quit  Tab:mode[%d/2]  f:filter  Up/Down:scroll  r:refresh  ?:help",
-        mode);
+    mvwprintw(w, rows - 1, 1,
+              " q:quit  Tab:mode[%d/2]  f:filter  Up/Down:scroll  r:refresh  ?:help", mode);
   else
     mvwprintw(w, rows - 1, 1, " q:quit  Tab:mode[%d/2]  ?:help", mode);
   wattroff(w, COLOR_PAIR(CP_DIM));
@@ -315,30 +284,25 @@ static void draw_help(int rows, int cols) {
 
 static pid_t dash_read_pid(const char* path) {
   FILE* f = fopen(path, "r");
-  if (!f)
-    return -1;
+  if (!f) return -1;
   pid_t pid = -1;
-  if (fscanf(f, "%d", &pid) != 1)
-    pid = -1;
+  if (fscanf(f, "%d", &pid) != 1) pid = -1;
   fclose(f);
   return pid;
 }
 
 static int dash_proc_running(pid_t pid) {
-  if (pid <= 0)
-    return 0;
+  if (pid <= 0) return 0;
   return kill(pid, 0) == 0 || errno == EPERM;
 }
 
 /* Fetch last `n` log lines for a unit into dst[n][256] */
 static int dash_fetch_logs(const char* unit, char dst[][256], int n) {
   char cmd[256];
-  snprintf(cmd, sizeof(cmd),
-           "journalctl -u %s -n %d --no-pager --output=short-iso 2>/dev/null",
+  snprintf(cmd, sizeof(cmd), "journalctl -u %s -n %d --no-pager --output=short-iso 2>/dev/null",
            unit, n);
   FILE* f = popen(cmd, "r");
-  if (!f)
-    return 0;
+  if (!f) return 0;
   int count = 0;
   char line[512];
   char tmp[64][512];
@@ -356,8 +320,7 @@ static int dash_fetch_logs(const char* unit, char dst[][256], int n) {
   return count;
 }
 
-static void draw_services(WINDOW* w, int row, int cols, dash_state* st,
-                          const struct ttc_ctx* ctx) {
+static void draw_services(WINDOW* w, int row, int cols, dash_state* st, const struct ttc_ctx* ctx) {
   int max_rows = getmaxy(w);
 
   wattron(w, COLOR_PAIR(CP_TITLE) | A_BOLD);
@@ -372,8 +335,7 @@ static void draw_services(WINDOW* w, int row, int cols, dash_state* st,
   wattron(w, COLOR_PAIR(ok ? CP_OK : CP_CRIT));
   mvwprintw(w, row, 14, "%-8s", ok ? "running" : "stopped");
   wattroff(w, COLOR_PAIR(ok ? CP_OK : CP_CRIT));
-  if (st->tinytd_pid > 0)
-    mvwprintw(w, row, 23, "pid=%-6d", (int)st->tinytd_pid);
+  if (st->tinytd_pid > 0) mvwprintw(w, row, 23, "pid=%-6d", (int)st->tinytd_pid);
   wattron(w, COLOR_PAIR(CP_DIM));
   mvwprintw(w, row, 34, "%s", ctx->pid_file);
   wattroff(w, COLOR_PAIR(CP_DIM));
@@ -387,8 +349,7 @@ static void draw_services(WINDOW* w, int row, int cols, dash_state* st,
   wattron(w, COLOR_PAIR(ok ? CP_OK : CP_CRIT));
   mvwprintw(w, row, 14, "%-8s", ok ? "running" : "stopped");
   wattroff(w, COLOR_PAIR(ok ? CP_OK : CP_CRIT));
-  if (st->tinytrack_pid > 0)
-    mvwprintw(w, row, 23, "pid=%-6d", (int)st->tinytrack_pid);
+  if (st->tinytrack_pid > 0) mvwprintw(w, row, 23, "pid=%-6d", (int)st->tinytrack_pid);
   wattron(w, COLOR_PAIR(CP_DIM));
   mvwprintw(w, row, 34, "%-20s  listen: %s", ctx->gw_pid_file, ctx->gw_listen);
   wattroff(w, COLOR_PAIR(CP_DIM));
@@ -400,15 +361,13 @@ static void draw_services(WINDOW* w, int row, int cols, dash_state* st,
   mvwprintw(w, row, 1, "[ Recent Logs ]");
   wattroff(w, COLOR_PAIR(CP_TITLE) | A_BOLD);
   wattron(w, COLOR_PAIR(CP_DIM));
-  mvwprintw(w, row, 17, " filter:%s  scroll:%d", filter_labels[st->log_filter],
-            st->log_scroll);
+  mvwprintw(w, row, 17, " filter:%s  scroll:%d", filter_labels[st->log_filter], st->log_scroll);
   wattroff(w, COLOR_PAIR(CP_DIM));
   row++;
 
   /* Available lines for log display */
   int log_area = max_rows - row - 1; /* leave 1 for hints */
-  if (log_area < 1)
-    return;
+  if (log_area < 1) return;
 
   /* Build filtered view */
   const char* filter_prefix[] = {NULL, "tinytd", "tinytrack"};
@@ -418,29 +377,24 @@ static void draw_services(WINDOW* w, int row, int cols, dash_state* st,
   int visible[64];
   int vis_count = 0;
   for (int i = 0; i < st->log_count && vis_count < 64; i++) {
-    if (!fp || strstr(st->log_lines[i], fp))
-      visible[vis_count++] = i;
+    if (!fp || strstr(st->log_lines[i], fp)) visible[vis_count++] = i;
   }
 
   /* Clamp scroll */
   int max_scroll = vis_count > log_area ? vis_count - log_area : 0;
-  if (st->log_scroll > max_scroll)
-    st->log_scroll = max_scroll;
+  if (st->log_scroll > max_scroll) st->log_scroll = max_scroll;
 
   /* Display from (vis_count - log_area - scroll) */
   int disp_start = vis_count - log_area - st->log_scroll;
-  if (disp_start < 0)
-    disp_start = 0;
+  if (disp_start < 0) disp_start = 0;
 
   int line_w = cols - 2;
-  if (line_w < 10)
-    line_w = 10;
+  if (line_w < 10) line_w = 10;
 
   for (int i = disp_start; i < vis_count && row < max_rows - 1; i++) {
     const char* line = st->log_lines[visible[i]];
     int pair = CP_DIM;
-    if (strstr(line, "err") || strstr(line, "ERR") || strstr(line, "fail") ||
-        strstr(line, "FAIL"))
+    if (strstr(line, "err") || strstr(line, "ERR") || strstr(line, "fail") || strstr(line, "FAIL"))
       pair = CP_CRIT;
     else if (strstr(line, "warn") || strstr(line, "WARN"))
       pair = CP_WARN;
@@ -469,14 +423,11 @@ int ttc_cmd_dashboard(const struct ttc_ctx* ctx) {
   curs_set(0);
 
   int tenths = ctx->interval_ms / 100;
-  if (tenths < 1)
-    tenths = 1;
-  if (tenths > 255)
-    tenths = 255;
+  if (tenths < 1) tenths = 1;
+  if (tenths > 255) tenths = 255;
   halfdelay(tenths);
 
-  if (has_colors())
-    init_colors();
+  if (has_colors()) init_colors();
   signal(SIGWINCH, on_sigwinch);
 
   int rows, cols;
@@ -490,20 +441,15 @@ int ttc_cmd_dashboard(const struct ttc_ctx* ctx) {
       getmaxyx(stdscr, rows, cols);
     }
 
-    if (!st.reader_ok)
-      st.reader_ok =
-          ttc_reader_open(&st.reader, ctx->mmap_path) == TTR_READER_OK;
+    if (!st.reader_ok) st.reader_ok = ttc_reader_open(&st.reader, ctx->mmap_path) == TTR_READER_OK;
 
     if (st.reader_ok && !st.labels_ready) {
       const struct ttc_config* cfg = &ctx->cfg;
       uint32_t l1_ivl = cfg->collection_interval_ms / 1000;
-      if (l1_ivl == 0)
-        l1_ivl = 1;
+      if (l1_ivl == 0) l1_ivl = 1;
       compute_ring_label(1, cfg->l1_capacity, l1_ivl, st.ring_label[0], 24);
-      compute_ring_label(2, cfg->l2_capacity, cfg->l2_agg_interval_sec,
-                         st.ring_label[1], 24);
-      compute_ring_label(3, cfg->l3_capacity, cfg->l3_agg_interval_sec,
-                         st.ring_label[2], 24);
+      compute_ring_label(2, cfg->l2_capacity, cfg->l2_agg_interval_sec, st.ring_label[1], 24);
+      compute_ring_label(3, cfg->l3_capacity, cfg->l3_agg_interval_sec, st.ring_label[2], 24);
       st.labels_ready = 1;
     }
 
@@ -515,8 +461,7 @@ int ttc_cmd_dashboard(const struct ttc_ctx* ctx) {
         if (st.hist_count < HISTORY_LEN) {
           st.hist[st.hist_count++] = m;
         } else {
-          memmove(st.hist, st.hist + 1,
-                  (HISTORY_LEN - 1) * sizeof(struct tt_metrics));
+          memmove(st.hist, st.hist + 1, (HISTORY_LEN - 1) * sizeof(struct tt_metrics));
           st.hist[HISTORY_LEN - 1] = m;
         }
       } else if (err == TTR_READER_ERR_STALE) {
@@ -539,8 +484,7 @@ int ttc_cmd_dashboard(const struct ttc_ctx* ctx) {
     time_t now = time(NULL);
     if (st.mode == 2 && (now - st.log_fetched >= 5)) {
       st.log_count = dash_fetch_logs("tinytd", st.log_lines, 32);
-      int gw = dash_fetch_logs("tinytrack", st.log_lines + st.log_count,
-                               64 - st.log_count);
+      int gw = dash_fetch_logs("tinytrack", st.log_lines + st.log_count, 64 - st.log_count);
       st.log_count += gw;
       st.log_fetched = now;
     }
@@ -549,27 +493,21 @@ int ttc_cmd_dashboard(const struct ttc_ctx* ctx) {
       draw_metrics(stdscr, 2, cols, &st.latest, st.hist, st.hist_count);
     else if (st.mode == 1) {
       if (st.reader_ok)
-        draw_tsdb(stdscr, 2, cols, &st.reader.ring,
-                  (const char (*)[24])st.ring_label);
+        draw_tsdb(stdscr, 2, cols, &st.reader.ring, (const char (*)[24])st.ring_label);
       else
-        mvprintw(4, 2, "Daemon not running. Waiting for %s ...",
-                 ctx->mmap_path);
+        mvprintw(4, 2, "Daemon not running. Waiting for %s ...", ctx->mmap_path);
     } else {
       draw_services(stdscr, 2, cols, &st, ctx);
     }
 
     draw_hints(stdscr, rows, st.mode);
-    if (st.show_help)
-      draw_help(rows, cols);
+    if (st.show_help) draw_help(rows, cols);
     refresh();
 
     int ch = getch();
-    if (ch == 'q' || ch == 27)
-      break;
-    if (ch == '\t')
-      st.mode = (st.mode + 1) % 3;
-    if (ch == '?')
-      st.show_help = !st.show_help;
+    if (ch == 'q' || ch == 27) break;
+    if (ch == '\t') st.mode = (st.mode + 1) % 3;
+    if (ch == '?') st.show_help = !st.show_help;
     /* Mode 2 (services/logs) controls */
     if (st.mode == 2) {
       if (ch == 'f') {
@@ -578,16 +516,14 @@ int ttc_cmd_dashboard(const struct ttc_ctx* ctx) {
       } else if (ch == KEY_UP) {
         st.log_scroll++;
       } else if (ch == KEY_DOWN) {
-        if (st.log_scroll > 0)
-          st.log_scroll--;
+        if (st.log_scroll > 0) st.log_scroll--;
       } else if (ch == 'r') {
         st.log_fetched = 0; /* force refresh on next iteration */
       }
     }
   }
 
-  if (st.reader_ok)
-    ttc_reader_close(&st.reader);
+  if (st.reader_ok) ttc_reader_close(&st.reader);
   endwin();
   return 0;
 }

@@ -1,17 +1,30 @@
 import { useMemo, useRef, CSSProperties } from 'react';
 import { useMetrics } from './TinyTrackProvider.js';
+import { useTheme, TtTheme, themeStyles } from './theme.js';
 import { fmtPct, fmtBytes, fmtLoad, detectAlerts, Alert } from './dashboard/utils.js';
 
 export interface MetricsBarProps {
   className?: string;
   style?: CSSProperties;
-  /** Show disk metric. Default: true */
   showDisk?: boolean;
-  /** Show net metric. Default: true */
   showNet?: boolean;
+  /** Override theme tokens */
+  theme?: Partial<TtTheme>;
+  /** Force mobile layout (auto-detected if not set) */
+  compact?: boolean;
 }
 
-export function MetricsBar({ className, style, showDisk = true, showNet = true }: MetricsBarProps) {
+export function MetricsBar({
+  className,
+  style,
+  showDisk = true,
+  showNet = true,
+  theme: themeProp,
+  compact,
+}: MetricsBarProps) {
+  const base = useTheme();
+  const t = themeProp ? { ...base, ...themeProp } : base;
+  const s = themeStyles(t);
   const { metrics: m, connected } = useMetrics();
   const prevRef = useRef(m);
   const alerts = useMemo(() => {
@@ -21,48 +34,72 @@ export function MetricsBar({ className, style, showDisk = true, showNet = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [m]);
 
+  // Auto-detect mobile if compact not forced
+  const isMobile = compact ?? (typeof window !== 'undefined' && window.innerWidth < 640);
+
   return (
-    <div className={className} style={{ ...s.root, ...style }}>
-      {/* Status dot */}
-      <span style={s.dot(connected ? '#22c55e' : '#6b7280')} title={connected ? 'live' : 'offline'}>
+    <div
+      className={className}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: isMobile ? 4 : 6,
+        fontFamily: t.font,
+        fontSize: isMobile ? 10 : 11,
+        background: t.bg,
+        color: t.text,
+        border: `1px solid ${t.border}`,
+        borderRadius: t.radius,
+        padding: isMobile ? '2px 8px' : '2px 10px',
+        whiteSpace: 'nowrap',
+        boxSizing: 'border-box',
+        height: isMobile ? 22 : 24,
+        ...style,
+      }}
+    >
+      <span style={{ color: connected ? t.ok : t.muted, fontSize: 8 }} title={connected ? 'live' : 'offline'}>
         ●
       </span>
-
-      <Sep />
-
-      {/* CPU */}
-      <Metric label="CPU" value={m ? fmtPct(m.cpu) : '—'} color="#4ade80" />
-      <Metric label="MEM" value={m ? fmtPct(m.mem) : '—'} color="#60a5fa" />
-
-      {showDisk && <Metric label="DSK" value={m ? fmtPct(m.duUsage) : '—'} color="#f59e0b" />}
-
-      <Sep />
-
-      {/* Load */}
-      <span style={s.label}>Load</span>
-      <span style={s.value}>
-        {m ? `${fmtLoad(m.load1)} / ${fmtLoad(m.load5)} / ${fmtLoad(m.load15)}` : '— / — / —'}
-      </span>
-
-      {showNet && (
+      <Sep t={t} />
+      <Metric label="CPU" value={m ? fmtPct(m.cpu) : '—'} color={t.cpu} t={t} />
+      <Metric label="MEM" value={m ? fmtPct(m.mem) : '—'} color={t.mem} t={t} />
+      {showDisk && !isMobile && <Metric label="DSK" value={m ? fmtPct(m.duUsage) : '—'} color={t.disk} t={t} />}
+      {!isMobile && (
         <>
-          <Sep />
-          <span style={{ ...s.value, color: '#34d399' }}>↑{m ? fmtBytes(m.netTx) : '—'}/s</span>
-          <span style={{ ...s.value, color: '#60a5fa' }}>↓{m ? fmtBytes(m.netRx) : '—'}/s</span>
+          <Sep t={t} />
+          <span style={{ color: t.muted, fontSize: 10 }}>Load</span>
+          <span style={{ color: t.text, minWidth: 120, fontVariantNumeric: 'tabular-nums' }}>
+            {m ? `${fmtLoad(m.load1)} / ${fmtLoad(m.load5)} / ${fmtLoad(m.load15)}` : '— / — / —'}
+          </span>
         </>
       )}
-
-      {/* Proc */}
-      <Sep />
-      <span style={s.label}>Proc</span>
-      <span style={s.value}>{m ? `${m.nrRunning}/${m.nrTotal}` : '—'}</span>
-
-      {/* Alerts (inline badges) */}
+      {showNet && !isMobile && (
+        <>
+          <Sep t={t} />
+          <span style={{ color: t.net, minWidth: 20 }}>↑</span>
+          <span style={{ color: t.net, minWidth: 72, fontVariantNumeric: 'tabular-nums' }}>
+            {m ? fmtBytes(m.netTx) : '—'}/s
+          </span>
+          <span style={{ color: t.mem, minWidth: 20 }}>↓</span>
+          <span style={{ color: t.mem, minWidth: 72, fontVariantNumeric: 'tabular-nums' }}>
+            {m ? fmtBytes(m.netRx) : '—'}/s
+          </span>
+        </>
+      )}
+      {!isMobile && (
+        <>
+          <Sep t={t} />
+          <span style={{ color: t.muted, fontSize: 10 }}>Proc</span>
+          <span style={{ color: t.text, minWidth: 56, fontVariantNumeric: 'tabular-nums' }}>
+            {m ? `${m.nrRunning}/${m.nrTotal}` : '—'}
+          </span>
+        </>
+      )}
       {alerts.length > 0 && (
         <>
-          <Sep />
+          <Sep t={t} />
           {alerts.map((a: Alert) => (
-            <span key={a.id} style={s.badge(a.level)}>
+            <span key={a.id} style={s.alert(a.level)}>
               {a.label}
             </span>
           ))}
@@ -72,43 +109,15 @@ export function MetricsBar({ className, style, showDisk = true, showNet = true }
   );
 }
 
-function Sep() {
-  return <span style={{ color: '#374151', userSelect: 'none' }}>│</span>;
+function Sep({ t }: { t: TtTheme }) {
+  return <span style={{ color: t.faint, userSelect: 'none' }}>│</span>;
 }
 
-function Metric({ label, value, color }: { label: string; value: string; color: string }) {
+function Metric({ label, value, color, t }: { label: string; value: string; color: string; t: TtTheme }) {
   return (
     <>
-      <span style={s.label}>{label}</span>
-      <span style={{ ...s.value, color }}>{value}</span>
+      <span style={{ color: t.muted, fontSize: 10 }}>{label}</span>
+      <span style={{ color, minWidth: 44, fontVariantNumeric: 'tabular-nums' }}>{value}</span>
     </>
   );
 }
-
-const s = {
-  root: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 6,
-    fontFamily: '"JetBrains Mono", "Fira Code", monospace',
-    fontSize: 11,
-    background: '#111827',
-    color: '#e5e7eb',
-    border: '1px solid #1f2937',
-    borderRadius: 4,
-    padding: '2px 10px',
-    whiteSpace: 'nowrap' as const,
-    boxSizing: 'border-box' as const,
-    height: 24,
-  },
-  dot: (color: string) => ({ color, fontSize: 8, lineHeight: 1 }),
-  label: { color: '#6b7280', fontSize: 10 },
-  value: { color: '#f3f4f6' },
-  badge: (level: 'warn' | 'crit' | 'ok') => ({
-    fontSize: 9,
-    padding: '0 5px',
-    borderRadius: 3,
-    background: level === 'crit' ? '#7f1d1d' : level === 'ok' ? '#14532d' : '#78350f',
-    color: level === 'crit' ? '#fca5a5' : level === 'ok' ? '#86efac' : '#fcd34d',
-  }),
-} as const;

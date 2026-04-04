@@ -10,12 +10,11 @@
 int tt_config_read_int(const char* filepath, const char* key, int default_val);
 
 /* Read a boolean value from config */
-bool tt_config_read_bool(const char* filepath, const char* key,
-                         bool default_val);
+bool tt_config_read_bool(const char* filepath, const char* key, bool default_val);
 
 /* Read a string into a buffer */
-int tt_config_read_str(const char* filepath, const char* key, char* buf,
-                       size_t bufsize, const char* default_val);
+int tt_config_read_str(const char* filepath, const char* key, char* buf, size_t bufsize,
+                       const char* default_val);
 
 /* Convert log backend string to enum tt_log_backend */
 enum tt_log_backend tt_config_parse_log_backend(const char* backend_str);

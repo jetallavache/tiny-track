@@ -17,15 +17,20 @@
 
 static int g_run = 0, g_fail = 0;
 
-#define CHECK(label, cond) do {                              \
-    g_run++;                                                 \
-    if (cond) { printf("  [" PASS "] %s\n", label); }       \
-    else      { printf("  [" FAIL "] %s\n", label); g_fail++; } \
-} while (0)
+#define CHECK(label, cond)                \
+  do {                                    \
+    g_run++;                              \
+    if (cond) {                           \
+      printf("  [" PASS "] %s\n", label); \
+    } else {                              \
+      printf("  [" FAIL "] %s\n", label); \
+      g_fail++;                           \
+    }                                     \
+  } while (0)
 
 /* ------------------------------------------------------------------ */
 
-static const char *CONF_CONTENT =
+static const char* CONF_CONTENT =
     "[storage]\n"
     "live_path = /tmp/tt-cli-test-live.dat\n"
     "\n"
@@ -48,80 +53,70 @@ static const char *CONF_CONTENT =
 
 static char g_tmp_conf[256];
 
-static void write_tmp_conf(void)
-{
-    snprintf(g_tmp_conf, sizeof(g_tmp_conf),
-             "/tmp/tt-cli-test-conf-%d.ini", (int)getpid());
-    FILE *f = fopen(g_tmp_conf, "w");
-    if (!f) { perror("fopen"); exit(1); }
-    fputs(CONF_CONTENT, f);
-    fclose(f);
+static void write_tmp_conf(void) {
+  snprintf(g_tmp_conf, sizeof(g_tmp_conf), "/tmp/tt-cli-test-conf-%d.ini", (int)getpid());
+  FILE* f = fopen(g_tmp_conf, "w");
+  if (!f) {
+    perror("fopen");
+    exit(1);
+  }
+  fputs(CONF_CONTENT, f);
+  fclose(f);
 }
 
-static void test_config_load(void)
-{
-    struct ttc_config cfg;
-    memset(&cfg, 0, sizeof(cfg));
+static void test_config_load(void) {
+  struct ttc_config cfg;
+  memset(&cfg, 0, sizeof(cfg));
 
-    ttc_config_load(&cfg, g_tmp_conf, NULL, NULL);
+  ttc_config_load(&cfg, g_tmp_conf, NULL, NULL);
 
-    CHECK("shm_path parsed",
-          strcmp(cfg.shm_path, "/tmp/tt-cli-test-live.dat") == 0);
-    CHECK("pid_file parsed",
-          strcmp(cfg.pid_file, "/tmp/tt-cli-test-tinytd.pid") == 0);
-    CHECK("gw_pid_file parsed",
-          strcmp(cfg.gw_pid_file, "/tmp/tt-cli-test-gw.pid") == 0);
-    CHECK("gw_listen parsed",
-          strcmp(cfg.gw_listen, "ws://127.0.0.1:14028") == 0);
-    CHECK("interval_ms parsed",  cfg.interval_ms == 500);
-    CHECK("l1_capacity parsed",  cfg.l1_capacity == 3600);
-    CHECK("l2_capacity parsed",  cfg.l2_capacity == 1440);
-    CHECK("l3_capacity parsed",  cfg.l3_capacity == 672);
-    CHECK("l2_agg_interval_sec", cfg.l2_agg_interval_sec == 60);
-    CHECK("l3_agg_interval_sec", cfg.l3_agg_interval_sec == 3600);
+  CHECK("shm_path parsed", strcmp(cfg.shm_path, "/tmp/tt-cli-test-live.dat") == 0);
+  CHECK("pid_file parsed", strcmp(cfg.pid_file, "/tmp/tt-cli-test-tinytd.pid") == 0);
+  CHECK("gw_pid_file parsed", strcmp(cfg.gw_pid_file, "/tmp/tt-cli-test-gw.pid") == 0);
+  CHECK("gw_listen parsed", strcmp(cfg.gw_listen, "ws://127.0.0.1:14028") == 0);
+  CHECK("interval_ms parsed", cfg.interval_ms == 500);
+  CHECK("l1_capacity parsed", cfg.l1_capacity == 3600);
+  CHECK("l2_capacity parsed", cfg.l2_capacity == 1440);
+  CHECK("l3_capacity parsed", cfg.l3_capacity == 672);
+  CHECK("l2_agg_interval_sec", cfg.l2_agg_interval_sec == 60);
+  CHECK("l3_agg_interval_sec", cfg.l3_agg_interval_sec == 3600);
 }
 
-static void test_config_override(void)
-{
-    struct ttc_config cfg;
-    memset(&cfg, 0, sizeof(cfg));
+static void test_config_override(void) {
+  struct ttc_config cfg;
+  memset(&cfg, 0, sizeof(cfg));
 
-    ttc_config_load(&cfg, g_tmp_conf,
-                    "/override/live.dat",   /* shm_override */
-                    "/override/tinytd.pid"  /* pid_override */);
+  ttc_config_load(&cfg, g_tmp_conf, "/override/live.dat", /* shm_override */
+                  "/override/tinytd.pid" /* pid_override */);
 
-    CHECK("shm_path overridden",
-          strcmp(cfg.shm_path, "/override/live.dat") == 0);
-    CHECK("pid_file overridden",
-          strcmp(cfg.pid_file, "/override/tinytd.pid") == 0);
-    /* Other keys still from file */
-    CHECK("interval_ms still from file", cfg.interval_ms == 500);
+  CHECK("shm_path overridden", strcmp(cfg.shm_path, "/override/live.dat") == 0);
+  CHECK("pid_file overridden", strcmp(cfg.pid_file, "/override/tinytd.pid") == 0);
+  /* Other keys still from file */
+  CHECK("interval_ms still from file", cfg.interval_ms == 500);
 }
 
-static void test_config_missing_file(void)
-{
-    struct ttc_config cfg;
-    memset(&cfg, 0, sizeof(cfg));
+static void test_config_missing_file(void) {
+  struct ttc_config cfg;
+  memset(&cfg, 0, sizeof(cfg));
 
-    /* Should not crash; fields stay at defaults */
-    ttc_config_load(&cfg, "/nonexistent/path.conf", NULL, NULL);
-    CHECK("missing file: no crash", 1);
-    CHECK("missing file: shm_path empty", cfg.shm_path[0] == '\0');
+  /* Should not crash; fields stay at defaults */
+  ttc_config_load(&cfg, "/nonexistent/path.conf", NULL, NULL);
+  CHECK("missing file: no crash", 1);
+  CHECK("missing file: shm_path empty", cfg.shm_path[0] == '\0');
 }
 
 /* ------------------------------------------------------------------ */
 
-int main(void)
-{
-    printf("=== CLI config unit tests ===\n");
-    write_tmp_conf();
+int main(void) {
+  printf("=== CLI config unit tests ===\n");
+  write_tmp_conf();
 
-    test_config_load();
-    test_config_override();
-    test_config_missing_file();
+  test_config_load();
+  test_config_override();
+  test_config_missing_file();
 
-    unlink(g_tmp_conf);
+  unlink(g_tmp_conf);
 
-    printf("\n  %d/%d passed\n", g_run - g_fail, g_run);
-    return g_fail ? 1 : 0;
+  printf("\n  %d/%d passed\n", g_run - g_fail, g_run);
+  return g_fail ? 1 : 0;
 }

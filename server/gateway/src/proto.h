@@ -21,8 +21,7 @@ int ttg_proto_validate(const struct tt_proto_header* hdr);
  * Write a complete binary frame (header + payload) into buf.
  * Returns total frame size, or 0 if buf is too small.
  */
-size_t ttg_proto_build(void* buf, size_t buf_size, uint8_t version,
-                       uint8_t type, uint32_t timestamp, const void* payload,
-                       uint16_t payload_len);
+size_t ttg_proto_build(void* buf, size_t buf_size, uint8_t version, uint8_t type,
+                       uint32_t timestamp, const void* payload, uint16_t payload_len);
 
 #endif /* TTG_PROTO_H */

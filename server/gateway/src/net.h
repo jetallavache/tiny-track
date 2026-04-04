@@ -21,17 +21,15 @@
 #define LIST_ADD_TAIL(type_, head_, elem_) \
   do {                                     \
     type_** h = head_;                     \
-    while (*h != NULL)                     \
-      h = &(*h)->next;                     \
+    while (*h != NULL) h = &(*h)->next;    \
     *h = (elem_);                          \
   } while (0)
 
-#define LIST_DELETE(type_, head_, elem_) \
-  do {                                   \
-    type_** h = head_;                   \
-    while (*h != (elem_))                \
-      h = &(*h)->next;                   \
-    *h = (elem_)->next;                  \
+#define LIST_DELETE(type_, head_, elem_)   \
+  do {                                     \
+    type_** h = head_;                     \
+    while (*h != (elem_)) h = &(*h)->next; \
+    *h = (elem_)->next;                    \
   } while (0)
 
 /* Address */
@@ -79,7 +77,7 @@ struct ttg_conn {
 
   uint32_t update_interval_ms; /* Per-connection interval (1000, 5000, 10000) */
   time_t last_update_time;     /* Last update time */
-  uint8_t sub_level; /* Ring level subscription: RING_LEVEL_L1/L2/L3 */
+  uint8_t sub_level;           /* Ring level subscription: RING_LEVEL_L1/L2/L3 */
 
   unsigned is_listening : 1;     /* Listening for connections */
   unsigned is_client : 1;        /* Outgoing (client) connection */
@@ -108,16 +106,15 @@ void ttg_net_mgr_free(struct ttg_mgr*);
 struct ttg_conn* ttg_net_alloc_conn(struct ttg_mgr*);
 void ttg_net_close_conn(struct ttg_conn*);
 
-struct ttg_conn* ttg_net_listen(struct ttg_mgr*, const char* ttg_url,
-                                ttg_event_handler fn, void* fn_data);
-struct ttg_conn* ttg_net_connect(struct ttg_mgr* mgr, const char* ttg_url,
-                                 ttg_event_handler fn, void* fn_data);
-struct ttg_conn* ttg_net_connect_svc(struct ttg_mgr* mgr, const char* ttg_url,
-                                     ttg_event_handler fn, void* fn_data,
-                                     ttg_event_handler pfn, void* pfn_data);
+struct ttg_conn* ttg_net_listen(struct ttg_mgr*, const char* ttg_url, ttg_event_handler fn,
+                                void* fn_data);
+struct ttg_conn* ttg_net_connect(struct ttg_mgr* mgr, const char* ttg_url, ttg_event_handler fn,
+                                 void* fn_data);
+struct ttg_conn* ttg_net_connect_svc(struct ttg_mgr* mgr, const char* ttg_url, ttg_event_handler fn,
+                                     void* fn_data, ttg_event_handler pfn, void* pfn_data);
 
-struct tt_timer* ttg_net_timer_add(struct ttg_mgr*, uint64_t ms, unsigned flags,
-                                   void (*fn)(void*), void* arg);
+struct tt_timer* ttg_net_timer_add(struct ttg_mgr*, uint64_t ms, unsigned flags, void (*fn)(void*),
+                                   void* arg);
 
 size_t ttg_net_printf(struct ttg_conn*, const char* fmt, ...);
 size_t ttg_net_vprintf(struct ttg_conn*, const char* fmt, va_list* ap);

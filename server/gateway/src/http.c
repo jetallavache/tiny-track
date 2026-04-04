@@ -9,27 +9,21 @@
 
 static int ncasecmp(const char* s1, const char* s2, size_t len) {
   int diff = 0;
-  if (len > 0)
-    do {
+  if (len > 0) do {
       int c = *s1++, d = *s2++;
-      if (c >= 'A' && c <= 'Z')
-        c += 'a' - 'A';
-      if (d >= 'A' && d <= 'Z')
-        d += 'a' - 'A';
+      if (c >= 'A' && c <= 'Z') c += 'a' - 'A';
+      if (d >= 'A' && d <= 'Z') d += 'a' - 'A';
       diff = c - d;
     } while (diff == 0 && s1[-1] != '\0' && --len > 0);
   return diff;
 }
 
-static bool isok(uint8_t c) {
-  return c == '\n' || c == '\r' || c == '\t' || c >= ' ';
-}
+static bool isok(uint8_t c) { return c == '\n' || c == '\r' || c == '\t' || c >= ' '; }
 
 int ttg_http_get_request_len(const unsigned char* buf, size_t buf_len) {
   size_t i;
   for (i = 0; i < buf_len; i++) {
-    if (!isok(buf[i]))
-      return -1;
+    if (!isok(buf[i])) return -1;
     if ((i > 0 && buf[i] == '\n' && buf[i - 1] == '\n') ||
         (i > 3 && buf[i] == '\n' && buf[i - 1] == '\r' && buf[i - 2] == '\n'))
       return (int)i + 1;
@@ -37,35 +31,27 @@ int ttg_http_get_request_len(const unsigned char* buf, size_t buf_len) {
   return 0;
 }
 
-struct ttg_str* ttg_http_get_header(struct ttg_http_message* h,
-                                    const char* name) {
+struct ttg_str* ttg_http_get_header(struct ttg_http_message* h, const char* name) {
   size_t i, n = strlen(name), max = sizeof(h->headers) / sizeof(h->headers[0]);
   for (i = 0; i < max && h->headers[i].name.len > 0; i++) {
     struct ttg_str *k = &h->headers[i].name, *v = &h->headers[i].value;
-    if (n == k->len && ncasecmp(k->buf, name, n) == 0)
-      return v;
+    if (n == k->len && ncasecmp(k->buf, name, n) == 0) return v;
   }
   return NULL;
 }
 
 /* This is a valid UTF-8 continuation byte. */
-static bool vcb(uint8_t c) {
-  return (c & 0xc0) == 0x80;
-}
+static bool vcb(uint8_t c) { return (c & 0xc0) == 0x80; }
 
 /* Get the length of a character (valid UTF-8). Used to analyze the method, URI,
  * headers */
 static size_t clen(const char* s, const char* end) {
   const unsigned char *u = (unsigned char*)s, c = *u;
   long n = (long)(end - s);
-  if (c > ' ' && c <= '~')
-    return 1; /* Usual ascii printed char */
-  if ((c & 0xe0) == 0xc0 && n > 1 && vcb(u[1]))
-    return 2; /* 2-byte UTF8 */
-  if ((c & 0xf0) == 0xe0 && n > 2 && vcb(u[1]) && vcb(u[2]))
-    return 3;
-  if ((c & 0xf8) == 0xf0 && n > 3 && vcb(u[1]) && vcb(u[2]) && vcb(u[3]))
-    return 4;
+  if (c > ' ' && c <= '~') return 1;                      /* Usual ascii printed char */
+  if ((c & 0xe0) == 0xc0 && n > 1 && vcb(u[1])) return 2; /* 2-byte UTF8 */
+  if ((c & 0xf0) == 0xe0 && n > 2 && vcb(u[1]) && vcb(u[2])) return 3;
+  if ((c & 0xf8) == 0xf0 && n > 3 && vcb(u[1]) && vcb(u[2]) && vcb(u[3])) return 4;
   return 0;
 }
 
@@ -73,40 +59,28 @@ static size_t clen(const char* s, const char* end) {
  * error. */
 static const char* skiptorn(const char* s, const char* end, struct ttg_str* v) {
   v->buf = (char*)s;
-  while (s < end && s[0] != '\n' && s[0] != '\r')
-    s++, v->len++; /* To newline */
-  if (s >= end || (s[0] == '\r' && s[1] != '\n'))
-    return NULL; /* Stray \r */
-  if (s[0] == '\r')
-    s++; /* Skip \r */
-  if (s >= end || *s++ != '\n')
-    return NULL; /* Skip \n */
+  while (s < end && s[0] != '\n' && s[0] != '\r') s++, v->len++; /* To newline */
+  if (s >= end || (s[0] == '\r' && s[1] != '\n')) return NULL;   /* Stray \r */
+  if (s[0] == '\r') s++;                                         /* Skip \r */
+  if (s >= end || *s++ != '\n') return NULL;                     /* Skip \n */
   return s;
 }
 
-static bool ttg_http_parse_headers(const char* s, const char* end,
-                                   struct ttg_http_header* h, size_t max_hdrs) {
+static bool ttg_http_parse_headers(const char* s, const char* end, struct ttg_http_header* h,
+                                   size_t max_hdrs) {
   size_t i, n;
   for (i = 0; i < max_hdrs; i++) {
     struct ttg_str k = {NULL, 0}, v = {NULL, 0};
-    if (s >= end)
-      return false;
-    if (s[0] == '\n' || (s[0] == '\r' && s[1] == '\n'))
-      break;
+    if (s >= end) return false;
+    if (s[0] == '\n' || (s[0] == '\r' && s[1] == '\n')) break;
     k.buf = (char*)s;
-    while (s < end && s[0] != ':' && (n = clen(s, end)) > 0)
-      s += n, k.len += n;
-    if (k.len == 0)
-      return false; /* Empty name */
-    if (s >= end || clen(s, end) == 0)
-      return false; /* Invalid UTF-8 */
-    if (*s++ != ':')
-      return false; /* Invalid, not followed by : */
+    while (s < end && s[0] != ':' && (n = clen(s, end)) > 0) s += n, k.len += n;
+    if (k.len == 0) return false;                    /* Empty name */
+    if (s >= end || clen(s, end) == 0) return false; /* Invalid UTF-8 */
+    if (*s++ != ':') return false;                   /* Invalid, not followed by : */
     /* if (clen(s, end) == 0) return false;  /* Invalid UTF-8 */
-    while (s < end && (s[0] == ' ' || s[0] == '\t'))
-      s++; /* Skip spaces */
-    if ((s = skiptorn(s, end, &v)) == NULL)
-      return false;
+    while (s < end && (s[0] == ' ' || s[0] == '\t')) s++; /* Skip spaces */
+    if ((s = skiptorn(s, end, &v)) == NULL) return false;
     while (v.len > 0 && (v.buf[v.len - 1] == ' ' || v.buf[v.len - 1] == '\t')) {
       v.len--; /* Trim spaces */
     }
@@ -120,26 +94,19 @@ static bool ttg_http_parse_headers(const char* s, const char* end,
 /* bool to_size_t(struct mg_str str, size_t *val); */
 bool to_size_t(struct ttg_str str, size_t* val) {
   size_t i = 0, max = (size_t)-1, max2 = max / 10, result = 0, ndigits = 0;
-  while (i < str.len && (str.buf[i] == ' ' || str.buf[i] == '\t'))
-    i++;
-  if (i < str.len && str.buf[i] == '-')
-    return false;
+  while (i < str.len && (str.buf[i] == ' ' || str.buf[i] == '\t')) i++;
+  if (i < str.len && str.buf[i] == '-') return false;
   while (i < str.len && str.buf[i] >= '0' && str.buf[i] <= '9') {
     size_t digit = (size_t)(str.buf[i] - '0');
-    if (result > max2)
-      return false; /* Overflow */
+    if (result > max2) return false; /* Overflow */
     result *= 10;
-    if (result > max - digit)
-      return false; /* Overflow */
+    if (result > max - digit) return false; /* Overflow */
     result += digit;
     i++, ndigits++;
   }
-  while (i < str.len && (str.buf[i] == ' ' || str.buf[i] == '\t'))
-    i++;
-  if (ndigits == 0)
-    return false; /* #2322: Content-Length = 1 * DIGIT */
-  if (i != str.len)
-    return false; /* Ditto */
+  while (i < str.len && (str.buf[i] == ' ' || str.buf[i] == '\t')) i++;
+  if (ndigits == 0) return false; /* #2322: Content-Length = 1 * DIGIT */
+  if (i != str.len) return false; /* Ditto */
   *val = (size_t)result;
   return true;
 }
@@ -152,8 +119,7 @@ int ttg_http_parse(const char* s, size_t len, struct ttg_http_message* hm) {
   bool version_prefix_valid;
 
   memset(hm, 0, sizeof(*hm));
-  if (req_len <= 0)
-    return req_len;
+  if (req_len <= 0) return req_len;
 
   hm->message.buf = hm->head.buf = (char*)s;
   hm->body.buf = (char*)end;
@@ -161,26 +127,18 @@ int ttg_http_parse(const char* s, size_t len, struct ttg_http_message* hm) {
   hm->message.len = hm->body.len = (size_t)-1;
 
   hm->method.buf = (char*)s;
-  while (s < end && (n = clen(s, end)) > 0)
-    s += n, hm->method.len += n;
-  while (s < end && s[0] == ' ')
-    s++;
+  while (s < end && (n = clen(s, end)) > 0) s += n, hm->method.len += n;
+  while (s < end && s[0] == ' ') s++;
   hm->uri.buf = (char*)s;
-  while (s < end && (n = clen(s, end)) > 0)
-    s += n, hm->uri.len += n;
-  while (s < end && s[0] == ' ')
-    s++;
-  is_response =
-      hm->method.len > 5 && (ncasecmp(hm->method.buf, "HTTP/", 5) == 0);
-  if ((s = skiptorn(s, end, &hm->proto)) == NULL)
-    return false;
+  while (s < end && (n = clen(s, end)) > 0) s += n, hm->uri.len += n;
+  while (s < end && s[0] == ' ') s++;
+  is_response = hm->method.len > 5 && (ncasecmp(hm->method.buf, "HTTP/", 5) == 0);
+  if ((s = skiptorn(s, end, &hm->proto)) == NULL) return false;
   /* If we're given a version, check that it is HTTP/x.x */
-  version_prefix_valid =
-      hm->proto.len > 5 && (ncasecmp(hm->proto.buf, "HTTP/", 5) == 0);
+  version_prefix_valid = hm->proto.len > 5 && (ncasecmp(hm->proto.buf, "HTTP/", 5) == 0);
   if (!is_response && hm->proto.len > 0 &&
       (!version_prefix_valid || hm->proto.len != 8 ||
-       (hm->proto.buf[5] < '0' || hm->proto.buf[5] > '9') ||
-       (hm->proto.buf[6] != '.') ||
+       (hm->proto.buf[5] < '0' || hm->proto.buf[5] > '9') || (hm->proto.buf[6] != '.') ||
        (hm->proto.buf[7] < '0' || hm->proto.buf[7] > '9'))) {
     return -1;
   }
@@ -194,32 +152,26 @@ int ttg_http_parse(const char* s, size_t len, struct ttg_http_message* hm) {
 
   /* Sanity check. Allow protocol/reason to be empty */
   /* Do this check after hm->method.len and hm->uri.len are finalised */
-  if (hm->method.len == 0 || hm->uri.len == 0)
-    return -1;
+  if (hm->method.len == 0 || hm->uri.len == 0) return -1;
 
-  if (!ttg_http_parse_headers(s, end, hm->headers,
-                              sizeof(hm->headers) / sizeof(hm->headers[0])))
+  if (!ttg_http_parse_headers(s, end, hm->headers, sizeof(hm->headers) / sizeof(hm->headers[0])))
     return -1; /* error when parsing */
   if ((cl = ttg_http_get_header(hm, "Content-Length")) != NULL) {
-    if (to_size_t(*cl, &hm->body.len) == false)
-      return -1;
+    if (to_size_t(*cl, &hm->body.len) == false) return -1;
     hm->message.len = (size_t)req_len + hm->body.len;
   }
 
-  if (hm->body.len == (size_t)~0 && !is_response &&
-      ttg_str_casecmp(hm->method, str("PUT")) != 0 &&
+  if (hm->body.len == (size_t)~0 && !is_response && ttg_str_casecmp(hm->method, str("PUT")) != 0 &&
       ttg_str_casecmp(hm->method, str("POST")) != 0) {
     hm->body.len = 0;
     hm->message.len = (size_t)req_len;
   }
 
-  if (hm->body.len == (size_t)~0 && is_response &&
-      ttg_str_casecmp(hm->uri, str("204")) == 0) {
+  if (hm->body.len == (size_t)~0 && is_response && ttg_str_casecmp(hm->uri, str("204")) == 0) {
     hm->body.len = 0;
     hm->message.len = (size_t)req_len;
   }
-  if (hm->message.len < (size_t)req_len)
-    return -1; /* Overflow protection */
+  if (hm->message.len < (size_t)req_len) return -1; /* Overflow protection */
 
   return req_len;
 }
@@ -357,62 +309,48 @@ static const char* ttg_http_status_code_str(int status_code) {
   }
 }
 
-void ttg_http_reply(struct ttg_conn* c, int code, const char* headers,
-                    const char* fmt, ...) {
+void ttg_http_reply(struct ttg_conn* c, int code, const char* headers, const char* fmt, ...) {
   va_list ap;
   size_t len;
-  ttg_net_printf(c, "HTTP/1.1 %d %s\r\n%sContent-Length:            \r\n\r\n",
-                 code, ttg_http_status_code_str(code),
-                 headers == NULL ? "" : headers);
+  ttg_net_printf(c, "HTTP/1.1 %d %s\r\n%sContent-Length:            \r\n\r\n", code,
+                 ttg_http_status_code_str(code), headers == NULL ? "" : headers);
   len = c->send.len;
   va_start(ap, fmt);
   ttg_vxprintf(ttg_pfn_iobuf, &c->send, fmt, &ap);
   va_end(ap);
   if (c->send.len > 16) {
-    size_t n = snprintf((char*)&c->send.buf[len - 15], 11, "%-10lu",
-                        (unsigned long)(c->send.len - len));
+    size_t n =
+        snprintf((char*)&c->send.buf[len - 15], 11, "%-10lu", (unsigned long)(c->send.len - len));
     c->send.buf[len - 15 + n] = ' '; /* Change ending 0 to space */
   }
   c->is_resp = 0;
 }
 
-int ttg_http_status(const struct ttg_http_message* hm) {
-  return atoi(hm->uri.buf);
-}
+int ttg_http_status(const struct ttg_http_message* hm) { return atoi(hm->uri.buf); }
 
 static bool is_hex_digit(int c) {
-  return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') ||
-         (c >= 'A' && c <= 'F');
+  return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
 }
 
 static int skip_chunk(const char* buf, int len, int* pl, int* dl) {
   int i = 0, n = 0;
-  if (len < 3)
-    return 0;
-  while (i < len && is_hex_digit(buf[i]))
-    i++;
-  if (i == 0)
-    return -1; /* Error, no length specified */
-  if (i > (int)sizeof(int) * 2)
-    return -1; /* Chunk length is too big */
-  if (len < i + 1 || buf[i] != '\r' || buf[i + 1] != '\n')
-    return -1; /* Error */
+  if (len < 3) return 0;
+  while (i < len && is_hex_digit(buf[i])) i++;
+  if (i == 0) return -1;                   /* Error, no length specified */
+  if (i > (int)sizeof(int) * 2) return -1; /* Chunk length is too big */
+  if (len < i + 1 || buf[i] != '\r' || buf[i + 1] != '\n') return -1; /* Error */
   if (ttg_str_to_num(strl(buf, (size_t)i), 16, &n, sizeof(int)) == false)
-    return -1; /* Decode chunk length, overflow */
-  if (n < 0)
-    return -1; /* Error. TODO(): some checks now redundant */
-  if (n > len - i - 4)
-    return 0; /* Chunk not yet fully buffered */
-  if (buf[i + n + 2] != '\r' || buf[i + n + 3] != '\n')
-    return -1; /* Error */
+    return -1;                   /* Decode chunk length, overflow */
+  if (n < 0) return -1;          /* Error. TODO(): some checks now redundant */
+  if (n > len - i - 4) return 0; /* Chunk not yet fully buffered */
+  if (buf[i + n + 2] != '\r' || buf[i + n + 3] != '\n') return -1; /* Error */
   *pl = i + 2, *dl = n;
   return i + 2 + n + 2;
 }
 
 static void http_cb(struct ttg_conn* c, int ev, void* ev_data) {
   if (ev == TTG_EVENT_READ || ev == TTG_EVENT_CLOSE ||
-      (ev == TTG_EVENT_POLL && c->is_accepted && !c->is_draining &&
-       c->recv.len > 0)) {
+      (ev == TTG_EVENT_POLL && c->is_accepted && !c->is_draining && c->recv.len > 0)) {
     struct ttg_http_message hm;
     size_t ofs = 0; /* Parsing offset */
 
@@ -433,8 +371,7 @@ static void http_cb(struct ttg_conn* c, int ev, void* ev_data) {
         c->recv.len = 0;
         return;
       }
-      if (n == 0)
-        break; /* Request is not buffered yet */
+      if (n == 0) break;                           /* Request is not buffered yet */
       ttg_event_call(c, TTG_EVENT_HTTP_HDRS, &hm); /* Got all HTTP headers */
       if (c->recv.len != old_len) {
         /* User manipulated received data. Wash our hands */
@@ -442,7 +379,7 @@ static void http_cb(struct ttg_conn* c, int ev, void* ev_data) {
         c->pfn = NULL;
         return;
       }
-      if (ev == TTG_EVENT_CLOSE) { /* If client did not set Content-Length */
+      if (ev == TTG_EVENT_CLOSE) {          /* If client did not set Content-Length */
         hm.message.len = c->recv.len - ofs; /* and closes now, deliver MSG */
         hm.body.len = hm.message.len - (size_t)(hm.body.buf - hm.message.buf);
       }
@@ -475,10 +412,8 @@ static void http_cb(struct ttg_conn* c, int ev, void* ev_data) {
           require_content_len = status >= 200 && status != 204 && status != 304;
         }
         if (require_content_len) {
-          if (!c->is_client)
-            ttg_http_reply(c, 411, "", "");
-          tt_log_err("Content length missing from %s",
-                     is_response ? "response" : "request");
+          if (!c->is_client) ttg_http_reply(c, 411, "", "");
+          tt_log_err("Content length missing from %s", is_response ? "response" : "request");
         }
       }
 
@@ -489,10 +424,8 @@ static void http_cb(struct ttg_conn* c, int ev, void* ev_data) {
         int o = 0, pl, dl, cl, len = (int)(c->recv.len - ofs - (size_t)n);
 
         /* Find zero-length chunk (the end of the body) */
-        while ((cl = skip_chunk(s + o, len - o, &pl, &dl)) > 0 && dl)
-          o += cl;
-        if (cl == 0)
-          break; /* No zero-len chunk, buffer more data */
+        while ((cl = skip_chunk(s + o, len - o, &pl, &dl)) > 0 && dl) o += cl;
+        if (cl == 0) break; /* No zero-len chunk, buffer more data */
         if (cl < 0) {
           ttg_event_error(c, "Invalid chunk");
           break;
@@ -503,21 +436,17 @@ static void http_cb(struct ttg_conn* c, int ev, void* ev_data) {
         while ((cl = skip_chunk(s + o, len - o, &pl, &dl)) > 0) {
           memmove(s + hm.body.len, s + o + pl, (size_t)dl);
           o += cl, hm.body.len += (size_t)dl, hm.message.len += (size_t)dl;
-          if (dl == 0)
-            break;
+          if (dl == 0) break;
         }
         ofs += (size_t)(n + o);
       } else { /* Normal, non-chunked data */
         size_t len = c->recv.len - ofs - (size_t)n;
-        if (hm.body.len > len)
-          break; /* Buffer more data */
+        if (hm.body.len > len) break; /* Buffer more data */
         ofs += (size_t)n + hm.body.len;
       }
 
-      if (c->is_accepted)
-        c->is_resp = 1; /* Start generating response */
-      ttg_event_call(c, TTG_EVENT_HTTP_MSG,
-                     &hm); /* User handler can clear is_resp */
+      if (c->is_accepted) c->is_resp = 1;         /* Start generating response */
+      ttg_event_call(c, TTG_EVENT_HTTP_MSG, &hm); /* User handler can clear is_resp */
       if (c->is_accepted && !c->is_resp) {
         struct ttg_str* cc = ttg_http_get_header(&hm, "Connection");
         if (cc != NULL && ttg_str_casecmp(*cc, str("close")) == 0) {
@@ -526,21 +455,19 @@ static void http_cb(struct ttg_conn* c, int ev, void* ev_data) {
         }
       }
     }
-    if (ofs > 0)
-      ttg_iobuf_del(&c->recv, 0, ofs); /* Delete processed data */
+    if (ofs > 0) ttg_iobuf_del(&c->recv, 0, ofs); /* Delete processed data */
   }
   (void)ev_data;
 }
 
-struct ttg_conn* ttg_http_connect(struct ttg_mgr* mgr, const char* url,
-                                  ttg_event_handler fn, void* fn_data) {
+struct ttg_conn* ttg_http_connect(struct ttg_mgr* mgr, const char* url, ttg_event_handler fn,
+                                  void* fn_data) {
   return ttg_net_connect_svc(mgr, url, fn, fn_data, http_cb, NULL);
 }
 
-struct ttg_conn* ttg_http_listen(struct ttg_mgr* mgr, const char* url,
-                                 ttg_event_handler fn, void* fn_data) {
+struct ttg_conn* ttg_http_listen(struct ttg_mgr* mgr, const char* url, ttg_event_handler fn,
+                                 void* fn_data) {
   struct ttg_conn* c = ttg_net_listen(mgr, url, fn, fn_data);
-  if (c != NULL)
-    c->pfn = http_cb;
+  if (c != NULL) c->pfn = http_cb;
   return c;
 }

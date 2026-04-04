@@ -18,22 +18,20 @@ int ttg_reader_get_latest(struct ttg_reader* ctx, struct tt_metrics* out);
  * Writes into `out` array. Returns number of samples read, or negative on
  * error.
  */
-int ttg_reader_get_history(struct ttg_reader* ctx, uint8_t level,
-                           struct tt_metrics* out, int count);
+int ttg_reader_get_history(struct ttg_reader* ctx, uint8_t level, struct tt_metrics* out,
+                           int count);
 
 /*
  * Fill tt_proto_ring_stat for a given ring level.
  * Returns 0 on success, -1 on invalid level.
  */
-int ttg_reader_get_stats(struct ttg_reader* ctx, uint8_t level,
-                         struct tt_proto_ring_stat* out);
+int ttg_reader_get_stats(struct ttg_reader* ctx, uint8_t level, struct tt_proto_ring_stat* out);
 
 /*
  * Fill tt_proto_sysinfo with hostname, OS string, uptime and ring capacities.
  * Returns 0 on success.
  */
-int ttg_reader_get_sysinfo(struct ttg_reader* ctx,
-                           struct tt_proto_sysinfo* out);
+int ttg_reader_get_sysinfo(struct ttg_reader* ctx, struct tt_proto_sysinfo* out);
 
 void ttg_reader_close(struct ttg_reader* ctx);
 

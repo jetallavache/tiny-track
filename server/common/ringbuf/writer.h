@@ -10,8 +10,7 @@
  * Aggregation callback: given `count` samples of `cell_size` bytes each
  * starting at `samples`, write one aggregated sample into `out`.
  */
-typedef void (*ttr_aggregate_fn)(const void* samples, uint32_t count,
-                                 size_t cell_size, void* out);
+typedef void (*ttr_aggregate_fn)(const void* samples, uint32_t count, size_t cell_size, void* out);
 
 enum {
   TTR_WRITER_OK = 0,
@@ -48,8 +47,7 @@ struct ttr_writer {
   struct ttr_writer_config cfg;
 };
 
-int ttr_writer_init(struct ttr_writer* ctx,
-                    const struct ttr_writer_config* cfg);
+int ttr_writer_init(struct ttr_writer* ctx, const struct ttr_writer_config* cfg);
 int ttr_writer_write_l1(struct ttr_writer* ctx, const void* sample);
 int ttr_writer_aggregate_l2(struct ttr_writer* ctx);
 int ttr_writer_aggregate_l3(struct ttr_writer* ctx);

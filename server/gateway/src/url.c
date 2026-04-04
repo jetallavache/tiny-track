@@ -38,9 +38,7 @@ static struct ttg_url urlparse(const char* url) {
 
 struct ttg_str ttg_url_host(const char* url) {
   struct ttg_url u = urlparse(url);
-  size_t n = u.port  ? u.port - u.host - 1
-             : u.uri ? u.uri - u.host
-                     : u.end - u.host;
+  size_t n = u.port ? u.port - u.host - 1 : u.uri ? u.uri - u.host : u.end - u.host;
   struct ttg_str s = strl(url + u.host, n);
   return s;
 }
@@ -53,13 +51,10 @@ const char* ttg_url_uri(const char* url) {
 unsigned short ttg_url_port(const char* url) {
   struct ttg_url u = urlparse(url);
   unsigned short port = 0;
-  if (strncmp(url, "http:", 5) == 0 || strncmp(url, "ws:", 3) == 0)
-    port = 80;
-  if (strncmp(url, "wss:", 4) == 0 || strncmp(url, "https:", 6) == 0)
-    port = 443;
+  if (strncmp(url, "http:", 5) == 0 || strncmp(url, "ws:", 3) == 0) port = 80;
+  if (strncmp(url, "wss:", 4) == 0 || strncmp(url, "https:", 6) == 0) port = 443;
 
-  if (u.port)
-    port = (unsigned short)atoi(url + u.port);
+  if (u.port) port = (unsigned short)atoi(url + u.port);
   return port;
 }
 

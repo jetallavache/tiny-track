@@ -1,9 +1,13 @@
-export { TinyTrackProvider, useTinyTrack, useMetrics, useHistory } from './TinyTrackProvider.js';
+export { TinyTrackProvider, TinyTrackContext, useTinyTrack, useMetrics, useHistory } from './TinyTrackProvider.js';
 export { MetricsPanel } from './MetricsPanel.js';
 export { MetricsBar } from './MetricsBar.js';
 export { Dashboard } from './dashboard/Dashboard.js';
 export { TimeSeriesChart } from './dashboard/TimeSeriesChart.js';
+export { Timeline } from './dashboard/Timeline.js';
+export { ThemeProvider, useTheme, THEMES } from './theme.js';
 export type { DashboardProps, DashboardMode } from './dashboard/Dashboard.js';
 export type { TimeSeriesChartProps } from './dashboard/TimeSeriesChart.js';
+export type { TimelineProps, TimelineMetric } from './dashboard/Timeline.js';
 export type { MetricsPanelProps } from './MetricsPanel.js';
 export type { MetricsBarProps } from './MetricsBar.js';
+export type { TtTheme, ThemePreset, ThemeProviderProps } from './theme.js';

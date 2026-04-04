@@ -1,5 +1,5 @@
 interface SparklineProps {
-  data: number[];   // raw values (0..10000 for pct, or bytes)
+  data: number[]; // raw values (0..10000 for pct, or bytes)
   max?: number;
   width?: number;
   height?: number;
@@ -7,7 +7,14 @@ interface SparklineProps {
   fill?: string;
 }
 
-export function Sparkline({ data, max, width = 120, height = 32, color = '#4ade80', fill = 'rgba(74,222,128,0.15)' }: SparklineProps) {
+export function Sparkline({
+  data,
+  max,
+  width = 120,
+  height = 32,
+  color = '#4ade80',
+  fill = 'rgba(74,222,128,0.15)',
+}: SparklineProps) {
   if (data.length < 2) return null;
   const m = max ?? Math.max(...data, 1);
   const pts = data.map((v, i) => {

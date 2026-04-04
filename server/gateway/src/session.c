@@ -17,9 +17,7 @@
 
 static struct ttg_reader* g_reader;
 
-void ttg_session_init(struct ttg_reader* reader) {
-  g_reader = reader;
-}
+void ttg_session_init(struct ttg_reader* reader) { g_reader = reader; }
 
 static void send_metrics(struct ttg_conn* c) {
   struct tt_metrics m;
@@ -29,34 +27,27 @@ static void send_metrics(struct ttg_conn* c) {
     ret = ttg_reader_get_latest(g_reader, &m);
   } else {
     ret = ttg_reader_get_history(g_reader, c->sub_level, &m, 1);
-    if (ret == 1)
-      ret = 0;
+    if (ret == 1) ret = 0;
   }
-  if (ret != 0)
-    return;
+  if (ret != 0) return;
 
   uint8_t buf[sizeof(struct tt_proto_header) + sizeof(m)];
   size_t n = ttg_proto_build(buf, sizeof(buf), TT_PROTO_V1, PKT_METRICS,
                              (uint32_t)(m.timestamp / 1000), &m, sizeof(m));
-  if (n > 0)
-    ttg_ws_send(c, buf, n, TTG_WS_OP_BINARY);
+  if (n > 0) ttg_ws_send(c, buf, n, TTG_WS_OP_BINARY);
 }
 
-static void send_history(struct ttg_conn* c,
-                         const struct tt_proto_history_req* req) {
+static void send_history(struct ttg_conn* c, const struct tt_proto_history_req* req) {
   uint16_t max = ntohs(req->max_count);
-  if (max == 0 || max > TT_HISTORY_BATCH_MAX * 10)
-    max = TT_HISTORY_BATCH_MAX * 10;
+  if (max == 0 || max > TT_HISTORY_BATCH_MAX * 10) max = TT_HISTORY_BATCH_MAX * 10;
 
   int remaining = max;
   struct tt_metrics samples[TT_HISTORY_BATCH_MAX];
 
   while (remaining > 0) {
-    int batch =
-        remaining < TT_HISTORY_BATCH_MAX ? remaining : TT_HISTORY_BATCH_MAX;
+    int batch = remaining < TT_HISTORY_BATCH_MAX ? remaining : TT_HISTORY_BATCH_MAX;
     int got = ttg_reader_get_history(g_reader, req->level, samples, batch);
-    if (got <= 0)
-      break;
+    if (got <= 0) break;
 
     remaining -= got;
     int is_last = (remaining <= 0 || got < batch);
@@ -72,11 +63,10 @@ static void send_history(struct ttg_conn* c,
     memcpy(payload + sizeof(resp), samples, (size_t)got * sizeof(*samples));
 
     uint8_t buf[sizeof(struct tt_proto_header) + sizeof(payload)];
-    size_t n = ttg_proto_build(
-        buf, sizeof(buf), TT_PROTO_V2, PKT_HISTORY_RESP, (uint32_t)time(NULL),
-        payload, (uint16_t)(sizeof(resp) + (size_t)got * sizeof(*samples)));
-    if (n > 0)
-      ttg_ws_send(c, buf, n, TTG_WS_OP_BINARY);
+    size_t n =
+        ttg_proto_build(buf, sizeof(buf), TT_PROTO_V2, PKT_HISTORY_RESP, (uint32_t)time(NULL),
+                        payload, (uint16_t)(sizeof(resp) + (size_t)got * sizeof(*samples)));
+    if (n > 0) ttg_ws_send(c, buf, n, TTG_WS_OP_BINARY);
   }
 }
 
@@ -87,14 +77,12 @@ static void send_stats(struct ttg_conn* c) {
   ttg_reader_get_stats(g_reader, RING_LEVEL_L3, &stats.l3);
 
   uint8_t buf[sizeof(struct tt_proto_header) + sizeof(stats)];
-  size_t n = ttg_proto_build(buf, sizeof(buf), TT_PROTO_V2, PKT_RING_STATS,
-                             (uint32_t)time(NULL), &stats, sizeof(stats));
-  if (n > 0)
-    ttg_ws_send(c, buf, n, TTG_WS_OP_BINARY);
+  size_t n = ttg_proto_build(buf, sizeof(buf), TT_PROTO_V2, PKT_RING_STATS, (uint32_t)time(NULL),
+                             &stats, sizeof(stats));
+  if (n > 0) ttg_ws_send(c, buf, n, TTG_WS_OP_BINARY);
 }
 
-static void handle_subscribe(struct ttg_conn* c,
-                             const struct tt_proto_subscribe* sub) {
+static void handle_subscribe(struct ttg_conn* c, const struct tt_proto_subscribe* sub) {
   struct tt_proto_ack ack = {.cmd_type = PKT_SUBSCRIBE, .status = ACK_OK};
 
   if (sub->level < RING_LEVEL_L1 || sub->level > RING_LEVEL_L3) {
@@ -102,17 +90,14 @@ static void handle_subscribe(struct ttg_conn* c,
   } else {
     c->sub_level = sub->level;
     uint32_t ms = ntohl(sub->interval_ms);
-    if (ms >= 1000 && ms <= 60000)
-      c->update_interval_ms = ms;
-    tt_log_info("Client subscribed to level %u @ %u ms", c->sub_level,
-                c->update_interval_ms);
+    if (ms >= 1000 && ms <= 60000) c->update_interval_ms = ms;
+    tt_log_info("Client subscribed to level %u @ %u ms", c->sub_level, c->update_interval_ms);
   }
 
   uint8_t buf[sizeof(struct tt_proto_header) + sizeof(ack)];
-  size_t n = ttg_proto_build(buf, sizeof(buf), TT_PROTO_V2, PKT_ACK,
-                             (uint32_t)time(NULL), &ack, sizeof(ack));
-  if (n > 0)
-    ttg_ws_send(c, buf, n, TTG_WS_OP_BINARY);
+  size_t n = ttg_proto_build(buf, sizeof(buf), TT_PROTO_V2, PKT_ACK, (uint32_t)time(NULL), &ack,
+                             sizeof(ack));
+  if (n > 0) ttg_ws_send(c, buf, n, TTG_WS_OP_BINARY);
 }
 
 static void send_sysinfo(struct ttg_conn* c) {
@@ -120,10 +105,9 @@ static void send_sysinfo(struct ttg_conn* c) {
   ttg_reader_get_sysinfo(g_reader, &info);
 
   uint8_t buf[sizeof(struct tt_proto_header) + sizeof(info)];
-  size_t n = ttg_proto_build(buf, sizeof(buf), TT_PROTO_V2, PKT_SYS_INFO,
-                             (uint32_t)time(NULL), &info, sizeof(info));
-  if (n > 0)
-    ttg_ws_send(c, buf, n, TTG_WS_OP_BINARY);
+  size_t n = ttg_proto_build(buf, sizeof(buf), TT_PROTO_V2, PKT_SYS_INFO, (uint32_t)time(NULL),
+                             &info, sizeof(info));
+  if (n > 0) ttg_ws_send(c, buf, n, TTG_WS_OP_BINARY);
 }
 
 static void handle_cmd(struct ttg_conn* c, const struct tt_proto_cmd* cmd) {
@@ -156,19 +140,16 @@ static void handle_cmd(struct ttg_conn* c, const struct tt_proto_cmd* cmd) {
   }
 
   uint8_t buf[sizeof(struct tt_proto_header) + sizeof(ack)];
-  size_t n = ttg_proto_build(buf, sizeof(buf), TT_PROTO_V1, PKT_ACK,
-                             (uint32_t)time(NULL), &ack, sizeof(ack));
-  if (n > 0)
-    ttg_ws_send(c, buf, n, TTG_WS_OP_BINARY);
+  size_t n = ttg_proto_build(buf, sizeof(buf), TT_PROTO_V1, PKT_ACK, (uint32_t)time(NULL), &ack,
+                             sizeof(ack));
+  if (n > 0) ttg_ws_send(c, buf, n, TTG_WS_OP_BINARY);
 }
 
 static void on_ws_message(struct ttg_conn* c, const void* data, size_t len) {
-  if (len < sizeof(struct tt_proto_header))
-    return;
+  if (len < sizeof(struct tt_proto_header)) return;
 
   const struct tt_proto_header* hdr = (const struct tt_proto_header*)data;
-  if (ttg_proto_validate(hdr) != 0)
-    return;
+  if (ttg_proto_validate(hdr) != 0) return;
 
   const uint8_t* payload = (const uint8_t*)data + sizeof(*hdr);
 
@@ -198,10 +179,9 @@ static void on_ws_open(struct ttg_conn* c) {
       .alerts_enabled = 0,
   };
   uint8_t buf[sizeof(struct tt_proto_header) + sizeof(cfg)];
-  size_t n = ttg_proto_build(buf, sizeof(buf), TT_PROTO_V1, PKT_CONFIG,
-                             (uint32_t)time(NULL), &cfg, sizeof(cfg));
-  if (n > 0)
-    ttg_ws_send(c, buf, n, TTG_WS_OP_BINARY);
+  size_t n = ttg_proto_build(buf, sizeof(buf), TT_PROTO_V1, PKT_CONFIG, (uint32_t)time(NULL), &cfg,
+                             sizeof(cfg));
+  if (n > 0) ttg_ws_send(c, buf, n, TTG_WS_OP_BINARY);
 }
 
 static void on_http(struct ttg_conn* c, struct ttg_http_message* hm) {
@@ -214,8 +194,7 @@ static void on_http(struct ttg_conn* c, struct ttg_http_message* hm) {
     struct tt_metrics m;
     if (ttg_reader_get_latest(g_reader, &m) == 0) {
       char buf[512];
-      snprintf(buf, sizeof(buf),
-               "{\"cpu\":%u,\"mem\":%u,\"load1\":%u,\"rx\":%u,\"tx\":%u}",
+      snprintf(buf, sizeof(buf), "{\"cpu\":%u,\"mem\":%u,\"load1\":%u,\"rx\":%u,\"tx\":%u}",
                m.cpu_usage, m.mem_usage, m.load_1min, m.net_rx, m.net_tx);
       ttg_http_reply(c, 200, "Content-Type: application/json\r\n", "%s", buf);
     } else {
@@ -243,10 +222,8 @@ void ttg_session_timer_fn(void* arg) {
   time_t now = time(NULL);
 
   for (struct ttg_conn* c = mgr->conns; c != NULL; c = c->next) {
-    if (c->data[0] != WS_MARK)
-      continue;
-    if (c->streaming_paused)
-      continue;
+    if (c->data[0] != WS_MARK) continue;
+    if (c->streaming_paused) continue;
     if (now - c->last_update_time >= (time_t)(c->update_interval_ms / 1000)) {
       send_metrics(c);
       c->last_update_time = now;

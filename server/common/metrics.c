@@ -2,10 +2,8 @@
 
 #include <string.h>
 
-void tt_metrics_aggregate_avg(const void* samples, uint32_t count,
-                              size_t cell_size, void* out) {
-  if (!samples || !out || count == 0)
-    return;
+void tt_metrics_aggregate_avg(const void* samples, uint32_t count, size_t cell_size, void* out) {
+  if (!samples || !out || count == 0) return;
 
   uint64_t cpu = 0, mem = 0, net_rx = 0, net_tx = 0;
   uint64_t load1 = 0, load5 = 0, load15 = 0;
@@ -28,8 +26,7 @@ void tt_metrics_aggregate_avg(const void* samples, uint32_t count,
     du_usage += s->du_usage;
     du_total += s->du_total_bytes;
     du_free += s->du_free_bytes;
-    if (s->timestamp > last_ts)
-      last_ts = s->timestamp;
+    if (s->timestamp > last_ts) last_ts = s->timestamp;
   }
 
   struct tt_metrics* agg = (struct tt_metrics*)out;
@@ -49,10 +46,8 @@ void tt_metrics_aggregate_avg(const void* samples, uint32_t count,
   agg->du_free_bytes = du_free / count;
 }
 
-void tt_metrics_aggregate_max(const void* samples, uint32_t count,
-                              size_t cell_size, void* out) {
-  if (!samples || !out || count == 0)
-    return;
+void tt_metrics_aggregate_max(const void* samples, uint32_t count, size_t cell_size, void* out) {
+  if (!samples || !out || count == 0) return;
 
   const struct tt_metrics* first = (const struct tt_metrics*)samples;
   struct tt_metrics* agg = (struct tt_metrics*)out;
@@ -62,8 +57,7 @@ void tt_metrics_aggregate_max(const void* samples, uint32_t count,
     const struct tt_metrics* s =
         (const struct tt_metrics*)((const uint8_t*)samples + i * cell_size);
 #define MAX_FIELD(f) \
-  if (s->f > agg->f) \
-  agg->f = s->f
+  if (s->f > agg->f) agg->f = s->f
     MAX_FIELD(cpu_usage);
     MAX_FIELD(mem_usage);
     MAX_FIELD(net_rx);
@@ -76,16 +70,13 @@ void tt_metrics_aggregate_max(const void* samples, uint32_t count,
     MAX_FIELD(du_usage);
     MAX_FIELD(du_total_bytes);
     MAX_FIELD(du_free_bytes);
-    if (s->timestamp > agg->timestamp)
-      agg->timestamp = s->timestamp;
+    if (s->timestamp > agg->timestamp) agg->timestamp = s->timestamp;
 #undef MAX_FIELD
   }
 }
 
-void tt_metrics_aggregate_min(const void* samples, uint32_t count,
-                              size_t cell_size, void* out) {
-  if (!samples || !out || count == 0)
-    return;
+void tt_metrics_aggregate_min(const void* samples, uint32_t count, size_t cell_size, void* out) {
+  if (!samples || !out || count == 0) return;
 
   const struct tt_metrics* first = (const struct tt_metrics*)samples;
   struct tt_metrics* agg = (struct tt_metrics*)out;
@@ -95,8 +86,7 @@ void tt_metrics_aggregate_min(const void* samples, uint32_t count,
     const struct tt_metrics* s =
         (const struct tt_metrics*)((const uint8_t*)samples + i * cell_size);
 #define MIN_FIELD(f) \
-  if (s->f < agg->f) \
-  agg->f = s->f
+  if (s->f < agg->f) agg->f = s->f
     MIN_FIELD(cpu_usage);
     MIN_FIELD(mem_usage);
     MIN_FIELD(net_rx);
@@ -109,8 +99,7 @@ void tt_metrics_aggregate_min(const void* samples, uint32_t count,
     MIN_FIELD(du_usage);
     MIN_FIELD(du_total_bytes);
     MIN_FIELD(du_free_bytes);
-    if (s->timestamp > agg->timestamp)
-      agg->timestamp = s->timestamp;
+    if (s->timestamp > agg->timestamp) agg->timestamp = s->timestamp;
 #undef MIN_FIELD
   }
 }

@@ -66,8 +66,7 @@ struct ttd_collector_state {
 
 float ttd_collect_cpu(struct ttd_collector_state* st);
 float ttd_collect_memory(void);
-void ttd_collect_net(struct ttd_collector_state* st, unsigned long* rx,
-                     unsigned long* tx);
+void ttd_collect_net(struct ttd_collector_state* st, unsigned long* rx, unsigned long* tx);
 struct ttd_collector_loadavg ttd_collect_loadavg(void);
 struct ttd_collector_du ttd_collect_disk(struct ttd_collector_state* st);
 

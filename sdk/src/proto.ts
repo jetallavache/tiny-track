@@ -163,12 +163,12 @@ export function parseAck(p: DataView): TtAck {
   return { cmdType: p.getUint8(0), status: p.getUint8(1) };
 }
 
-/** Parse PKT_STATS payload (87 bytes = 3 × 29). */
+/** Parse PKT_STATS payload (75 bytes = 3 × 25). */
 export function parseStats(p: DataView): TtStats {
   return {
     l1: parseRingStat(p, 0),
-    l2: parseRingStat(p, 29),
-    l3: parseRingStat(p, 58),
+    l2: parseRingStat(p, 25),
+    l3: parseRingStat(p, 50),
   };
 }
 
@@ -189,17 +189,17 @@ export function parseHistoryResp(p: DataView): TtHistoryResp {
 export function parseSysInfo(p: DataView): TtSysInfo {
   const dec = new TextDecoder();
   const hostname = dec.decode(new Uint8Array(p.buffer, p.byteOffset, 64)).replace(/\0.*/, '');
-  const osType   = dec.decode(new Uint8Array(p.buffer, p.byteOffset + 64, 64)).replace(/\0.*/, '');
+  const osType = dec.decode(new Uint8Array(p.buffer, p.byteOffset + 64, 64)).replace(/\0.*/, '');
   return {
     hostname,
     osType,
-    uptimeSec:  readUint64LE(p, 128),
-    slotsL1:    p.getUint32(136, true),
-    slotsL2:    p.getUint32(140, true),
-    slotsL3:    p.getUint32(144, true),
-    intervalMs: p.getUint32(148, true),
-    aggL2Ms:    p.getUint32(152, true),
-    aggL3Ms:    p.getUint32(156, true),
+    uptimeSec: readUint64BE(p, 128), // server: htobe64
+    slotsL1: p.getUint32(136, false), // server: htonl (BE)
+    slotsL2: p.getUint32(140, false),
+    slotsL3: p.getUint32(144, false),
+    intervalMs: p.getUint32(148, false),
+    aggL2Ms: p.getUint32(152, false),
+    aggL3Ms: p.getUint32(156, false),
   };
 }
 
@@ -270,11 +270,11 @@ function calcChecksum(h: DataView): number {
 function parseRingStat(p: DataView, off: number): TtRingStat {
   return {
     level: p.getUint8(off),
-    capacity: p.getUint32(off + 1, false), // BE (htonl on server)
-    head: p.getUint32(off + 5, false), // BE (htonl on server)
-    filled: p.getUint32(off + 9, false), // BE (htonl on server)
-    firstTs: readUint64LE(p, off + 13), // LE (no hton on server, native x86)
-    lastTs: readUint64LE(p, off + 21), // LE (no hton on server, native x86)
+    capacity: p.getUint32(off + 1, false), // htonl (BE)
+    head: p.getUint32(off + 5, false), // htonl (BE)
+    filled: p.getUint32(off + 9, false), // htonl (BE)
+    firstTs: readUint64LE(p, off + 13), // no hton, native LE
+    lastTs: readUint64LE(p, off + 21), // no hton, native LE
   };
 }
 

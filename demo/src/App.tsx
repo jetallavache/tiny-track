@@ -1,77 +1,78 @@
-import { TinyTrackProvider, Dashboard, TimeSeriesChart, MetricsBar } from 'tinytsdk/react';
-import { RING_L1, RING_L2 } from 'tinytsdk';
+import { useState, useEffect } from 'react';
+import { TinyTrackProvider, ThemeProvider, THEMES } from 'tinytsdk/react';
+import type { ThemePreset } from 'tinytsdk/react';
+import { Nav } from './Nav.js';
+import type { Route } from './Nav.js';
+import { Introduction } from './pages/Introduction.js';
+import { Installation } from './pages/Installation.js';
+import { Themes } from './pages/Themes.js';
+import { PageMetricsBar } from './pages/PageMetricsBar.js';
+import { PageMetricsPanel } from './pages/PageMetricsPanel.js';
+import { PageDashboard } from './pages/PageDashboard.js';
+import { PageTimeSeriesChart } from './pages/PageTimeSeriesChart.js';
+import { PageTimeline } from './pages/PageTimeline.js';
+import './responsive.css';
 
-// const WS_URL = `ws://${window.location.host}`;
-const WS_URL = 'ws://localhost:27017';
+const WS_URL = import.meta.env.VITE_WS_URL ?? `ws://${window.location.host}`;
+const PRESETS: ThemePreset[] = ['terminal', 'dark', 'light', 'material', 'dracula', 'heroui'];
+
+function PageContent({ route }: { route: Route }) {
+  switch (route) {
+    case 'introduction':
+      return <Introduction />;
+    case 'installation':
+      return <Installation />;
+    case 'themes':
+      return <Themes />;
+    case 'MetricsBar':
+      return <PageMetricsBar />;
+    case 'MetricsPanel':
+      return <PageMetricsPanel />;
+    case 'Dashboard':
+      return <PageDashboard />;
+    case 'TimeSeriesChart':
+      return <PageTimeSeriesChart />;
+    case 'Timeline':
+      return <PageTimeline />;
+  }
+}
 
 export default function App() {
+  const [route, setRoute] = useState<Route>('introduction');
+  const [preset, setPreset] = useState<ThemePreset>('terminal');
+  const theme = THEMES[preset];
+
+  useEffect(() => {
+    document.body.style.background = theme.bg;
+    document.body.style.color = theme.text;
+    document.body.style.fontFamily = theme.font;
+    document.body.style.margin = '0';
+  }, [theme]);
+
+  const handleRoute = (r: Route) => {
+    setRoute(r);
+    window.scrollTo(0, 0);
+  };
+
   return (
     <TinyTrackProvider url={WS_URL}>
-      {/* Header bar — MetricsBar example */}
-      <header style={headerStyle}>
-        <span style={{ color: '#9ca3af', fontSize: 11, fontFamily: 'monospace' }}>TinyTrack</span>
-        <MetricsBar />
-      </header>
-
-      {/* Main content */}
-      <div style={{ padding: 24, maxWidth: 800, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
-        <h1 style={{ fontSize: 16, fontWeight: 600, color: '#f3f4f6', margin: 0 }}>System Monitor</h1>
-
-        {/* Dashboard panels */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <div>
-            <p style={labelStyle}>compact</p>
-            <Dashboard mode="compact" />
-          </div>
-          {/* <div>
-            <p style={labelStyle}>expanded</p>
-            <Dashboard mode="expanded" historySize={60} />
-          </div> */}
+      <ThemeProvider preset={preset}>
+        <div style={{ display: 'flex', minHeight: '100vh', background: theme.bg }}>
+          <Nav route={route} onRoute={handleRoute} preset={preset} onPreset={setPreset} presets={PRESETS} />
+          <main
+            className="main-content"
+            style={{
+              flex: 1,
+              padding: 40,
+              overflowY: 'auto',
+              maxWidth: 860,
+              boxSizing: 'border-box',
+            }}
+          >
+            <PageContent route={route} />
+          </main>
         </div>
-
-        {/* Time-series charts */}
-        {/* <p style={labelStyle}>time-series (L1 — last hour)</p>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <TimeSeriesChart metric="cpu"  level={RING_L1} height={120} />
-          <TimeSeriesChart metric="mem"  level={RING_L1} height={120} />
-          <TimeSeriesChart metric="load" level={RING_L1} height={120} />
-          <TimeSeriesChart metric="net"  level={RING_L1} height={120} />
-        </div>
-
-        <p style={labelStyle}>disk (L2 — 24h)</p>
-        <TimeSeriesChart metric="disk" level={RING_L2} height={100} maxSamples={120} /> */}
-
-        {/* Footer bar example */}
-        {/* <footer style={footerStyle}>
-          <MetricsBar showDisk={false} />
-        </footer> */}
-      </div>
+      </ThemeProvider>
     </TinyTrackProvider>
   );
 }
-
-const headerStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  padding: '4px 24px',
-  background: '#0d1117',
-  borderBottom: '1px solid #1f2937',
-  position: 'sticky',
-  top: 0,
-  zIndex: 10,
-};
-
-const footerStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'center',
-  padding: '8px 0',
-  borderTop: '1px solid #1f2937',
-};
-
-const labelStyle: React.CSSProperties = {
-  fontSize: 10,
-  color: '#6b7280',
-  margin: '0 0 4px',
-  fontFamily: 'monospace',
-};

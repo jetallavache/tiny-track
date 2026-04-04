@@ -18,8 +18,7 @@ enum { TTG_IO_ERR = -1, TTG_IO_WAIT = -2, TTG_IO_RESET = -3 };
 /* #define TTG_SOCK_TYPE int */
 #define TTG_INVALID_SOCKET (-1)
 #define TTG_SOCK_LISTEN_BACKLOG_SIZE 128
-#define TTG_MAX_RECV_SIZE \
-  (3UL * 1024UL * 1024UL) /* Maximum recv IO buffer size */
+#define TTG_MAX_RECV_SIZE (3UL * 1024UL * 1024UL) /* Maximum recv IO buffer size */
 
 #ifndef closesocket
 #define closesocket(x) close(x)
@@ -31,12 +30,10 @@ enum { TTG_IO_ERR = -1, TTG_IO_WAIT = -2, TTG_IO_RESET = -3 };
 #define MSG_NONBLOCKING 0
 
 #define TTG_SOCK_ERR(errcode) ((errcode) < 0 ? errno : 0)
-#define TTG_SOCK_INTR(fd) \
-  (fd == TTG_INVALID_SOCKET && TTG_SOCK_ERR(-1) == EINTR)
+#define TTG_SOCK_INTR(fd) (fd == TTG_INVALID_SOCKET && TTG_SOCK_ERR(-1) == EINTR)
 #define TTG_SOCK_PENDING(errcode) \
   (((errcode) < 0) && (errno == EINPROGRESS || errno == EWOULDBLOCK))
-#define TTG_SOCK_RESET(errcode) \
-  (((errcode) < 0) && (errno == EPIPE || errno == ECONNRESET))
+#define TTG_SOCK_RESET(errcode) (((errcode) < 0) && (errno == EPIPE || errno == ECONNRESET))
 
 #define TTG_EPOLL_ADD(c)                                                 \
   do {                                                                   \
@@ -46,8 +43,7 @@ enum { TTG_IO_ERR = -1, TTG_IO_WAIT = -2, TTG_IO_RESET = -3 };
 #define TTG_EPOLL_MOD(c, wr)                                             \
   do {                                                                   \
     struct epoll_event ev = {EPOLLIN | EPOLLERR | EPOLLHUP, {c}};        \
-    if (wr)                                                              \
-      ev.events |= EPOLLOUT;                                             \
+    if (wr) ev.events |= EPOLLOUT;                                       \
     epoll_ctl(c->mgr->epoll_fd, EPOLL_CTL_MOD, (int)(size_t)c->fd, &ev); \
   } while (0)
 

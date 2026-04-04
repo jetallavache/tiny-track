@@ -1,17 +1,23 @@
-import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useRef, useCallback, ReactNode } from 'react';
 import { TinyTrackClient, TtMetrics, TtConfig, TtStats, TtHistoryResp, TtSysInfo } from '../client.js';
 
 interface TinyTrackContextValue {
   client: TinyTrackClient | null;
   connected: boolean;
   sysinfo: TtSysInfo | null;
+  streaming: boolean;
+  setStreaming: (v: boolean) => void;
 }
 
 const TinyTrackContext = createContext<TinyTrackContextValue>({
   client: null,
   connected: false,
   sysinfo: null,
+  streaming: true,
+  setStreaming: () => {},
 });
+
+export { TinyTrackContext };
 
 export interface TinyTrackProviderProps {
   url: string;
@@ -21,14 +27,25 @@ export interface TinyTrackProviderProps {
 }
 
 export function TinyTrackProvider({ url, children, reconnect, reconnectDelay }: TinyTrackProviderProps) {
+  // Client is created once and never recreated
   const [client] = useState(() => new TinyTrackClient(url, { reconnect, reconnectDelay }));
   const [connected, setConnected] = useState(false);
   const [sysinfo, setSysinfo] = useState<TtSysInfo | null>(null);
+  const [streaming, setStreamingState] = useState(true);
+
+  // Use ref so setStreaming closure always has the latest client
+  const clientRef = useRef(client);
+
+  const setStreaming = useCallback((v: boolean) => {
+    setStreamingState(v);
+    if (v) clientRef.current.start();
+    else clientRef.current.stop();
+  }, []);
 
   useEffect(() => {
     const onOpen = () => {
       setConnected(true);
-      // Handshake: request sysinfo first, then snapshot
+      setStreamingState(true); // new session always starts streaming
       client.getSysInfo();
       client.getSnapshot();
     };
@@ -43,16 +60,19 @@ export function TinyTrackProvider({ url, children, reconnect, reconnectDelay }: 
     return () => client.disconnect();
   }, [client]);
 
-  return <TinyTrackContext.Provider value={{ client, connected, sysinfo }}>{children}</TinyTrackContext.Provider>;
+  return (
+    <TinyTrackContext.Provider value={{ client, connected, sysinfo, streaming, setStreaming }}>
+      {children}
+    </TinyTrackContext.Provider>
+  );
 }
 
 export function useTinyTrack() {
   return useContext(TinyTrackContext);
 }
 
-/** Each component gets its own local metrics/config/stats state — no shared state conflicts. */
 export function useMetrics() {
-  const { client, connected, sysinfo } = useTinyTrack();
+  const { client, connected, sysinfo, streaming, setStreaming } = useTinyTrack();
   const [metrics, setMetrics] = useState<TtMetrics | null>(null);
   const [config, setConfig] = useState<TtConfig | null>(null);
   const [stats, setStats] = useState<TtStats | null>(null);
@@ -69,10 +89,9 @@ export function useMetrics() {
     };
   }, [client]);
 
-  return { client, connected, metrics, config, stats, sysinfo };
+  return { client, connected, metrics, config, stats, sysinfo, streaming, setStreaming };
 }
 
-/** Subscribe to history batches — accumulates samples into a local buffer. */
 export function useHistory(maxSamples = 3600) {
   const { client, connected } = useTinyTrack();
   const [samples, setSamples] = useState<TtMetrics[]>([]);
@@ -90,7 +109,6 @@ export function useHistory(maxSamples = 3600) {
     };
   }, [client, maxSamples]);
 
-  // Clear buffer on reconnect
   useEffect(() => {
     if (connected) {
       buf.current = [];
