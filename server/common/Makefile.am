@@ -6,6 +6,7 @@ libcommon_a_SOURCES = \
 	ringbuf/reader.c ringbuf/reader.h \
 	ringbuf/layout.h \
 	metrics.c metrics.h \
+	sysfs.c sysfs.h \
 	log/core.c \
 	log/stderr.c \
 	log/syslog.c \
