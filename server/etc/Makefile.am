@@ -1,6 +1,6 @@
 sysconfdir = @sysconfdir@
 dist_sysconf_DATA = tinytrack.conf
-EXTRA_DIST = systemd/tinytd.service systemd/tinytrack.service
+EXTRA_DIST = tinytrack.conf-docker systemd/tinytd.service systemd/tinytrack.service
 
 if HAVE_SYSTEMD
 install-data-hook:

@@ -1,7 +1,6 @@
 [tinytd]
 log_level   = debug
 log_backend = stderr
-pid_file    = /tmp/tinytd-test.pid
 
 [collection]
 interval_ms     = 500
@@ -10,9 +9,9 @@ proc_root       = /proc
 rootfs_path     = /
 
 [storage]
-live_path                = /tmp/tinytd-test-live.dat
-shadow_path              = /tmp/tinytd-test-shadow.dat
-shadow_sync_interval_sec = 1
+live_path                = /tmp/tinytd-live.dat
+shadow_path              = /tmp/tinytd-shadow.dat
+shadow_sync_interval_sec = 10
 file_mode                = 420
 
 [ringbuffer]
@@ -27,8 +26,7 @@ enable_crc   = false
 auto_recover = true
 
 [gateway]
-pid_file        = /tmp/tinytrack-test.pid
 log_level       = debug
 log_backend     = stderr
 listen          = ws://0.0.0.0:14029
-update_interval = 500
+update_interval = 1000
