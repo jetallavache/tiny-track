@@ -168,6 +168,9 @@ int ttr_writer_init(struct ttr_writer* ctx,
     hdr->version = TTR_VERSION;
     hdr->writer_pid = getpid();
     hdr->num_consumers = 0;
+    hdr->interval_ms = cfg->interval_ms;
+    hdr->l2_agg_interval_ms = cfg->l2_agg_interval_ms;
+    hdr->l3_agg_interval_ms = cfg->l3_agg_interval_ms;
     hdr->last_update_ts = hdr->last_shadow_sync_ts = get_timestamp_ms();
 
     init_meta(level_meta(ctx, 1), cfg->l1_capacity, cfg->cell_size);

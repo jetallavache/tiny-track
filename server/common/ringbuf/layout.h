@@ -24,7 +24,10 @@ struct ttr_header {
   uint64_t last_shadow_sync_ts; /* Timestamp of last shadow sync */
   uint32_t writer_pid;          /* PID of the writer process */
   uint32_t num_consumers;       /* Number of active consumers */
-  uint8_t padding[216];         /* Padding to 256 bytes */
+  uint32_t interval_ms;         /* L1 collection interval (ms) */
+  uint32_t l2_agg_interval_ms;  /* L1→L2 aggregation interval (ms) */
+  uint32_t l3_agg_interval_ms;  /* L2→L3 aggregation interval (ms) */
+  uint8_t padding[204];         /* Padding to 256 bytes */
 };
 
 /* Consumer record - 64 bytes */

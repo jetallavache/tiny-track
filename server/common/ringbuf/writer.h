@@ -31,6 +31,9 @@ struct ttr_writer_config {
   mode_t file_mode;
   bool enable_crc;
   bool auto_recover;
+  uint32_t interval_ms;        /* L1 collection interval (ms) */
+  uint32_t l2_agg_interval_ms; /* L1→L2 aggregation interval (ms) */
+  uint32_t l3_agg_interval_ms; /* L2→L3 aggregation interval (ms) */
   ttr_aggregate_fn aggregate;
 };
 
