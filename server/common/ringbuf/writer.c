@@ -2,6 +2,7 @@
 
 #include <alloca.h>
 #include <errno.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/time.h>
@@ -177,12 +178,15 @@ int ttr_writer_init(struct ttr_writer* ctx,
     ctx->dirty_min = 0;
     ctx->dirty_max = ctx->total_size;
   }
-  /* Hint kernel: L1 is accessed randomly (latest sample), L2/L3 sequentially */
+  /* Hint kernel: L1 is accessed randomly (latest sample), L2/L3 sequentially.
+   * madvise/MADV_* require _GNU_SOURCE; guard with #ifdef for strict C11. */
+#if defined(MADV_RANDOM) && defined(MADV_SEQUENTIAL)
   madvise(level_data(ctx, 1), cfg->l1_capacity * cfg->cell_size, MADV_RANDOM);
   madvise(level_data(ctx, 2), cfg->l2_capacity * cfg->cell_size,
           MADV_SEQUENTIAL);
   madvise(level_data(ctx, 3), cfg->l3_capacity * cfg->cell_size,
           MADV_SEQUENTIAL);
+#endif
 
   {
     const struct ttr_header* hdr2 = (const struct ttr_header*)ctx->live_addr;
@@ -237,14 +241,18 @@ static int ring_aggregate(struct ttr_writer* ctx, int src_level,
 
   uint32_t n = available < src->capacity ? available : src->capacity;
 
-  uint8_t tmp[n * cs];
+  /* Use heap instead of VLA to avoid stack overflow under -O0/valgrind */
+  uint8_t* tmp = malloc(n * cs);
+  if (!tmp)
+    return TTR_WRITER_ERR_NULL;
   for (uint32_t i = 0; i < n; i++) {
     uint32_t idx = (src->head - n + i + src->capacity) % src->capacity;
     memcpy(tmp + i * cs, src_data + idx * cs, cs);
   }
 
-  uint8_t agg[cs];
+  uint8_t agg[256]; /* cs is sizeof(tt_metrics) = 52, 256 is safe upper bound */
   ctx->cfg.aggregate(tmp, n, cs, agg);
+  free(tmp);
 
   ttr_seqlock_write_begin(&dst->seq);
   uint32_t head = dst->head;

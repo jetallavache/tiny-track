@@ -19,17 +19,17 @@ check_tool() {
     command -v "$1" >/dev/null 2>&1
 }
 
-CFLAGS_BASE="-std=c11 -I. -pthread"
+CFLAGS_BASE="-std=c11 -D_POSIX_C_SOURCE=200809L -D_GNU_SOURCE -I. -pthread"
 LIBS="-lrt"
 COMMON_SRCS="common/metrics.c common/timer.c \
              common/config/ini.c common/config/paths.c common/config/read.c \
-             common/log/core.c common/log/stderr.c \
+             common/log/core.c common/log/stderr.c common/log/syslog.c common/log/journal.c \
              common/ringbuf/shm.c common/ringbuf/writer.c common/ringbuf/reader.c"
 
-UNIT_TESTS="tests/unit/test_ringbuf.c tests/unit/test_metrics.c \
-            tests/unit/test_config.c tests/unit/test_shm.c"
-INTEG_TESTS="tests/integration/test_shm_ipc.c \
-             tests/integration/test_shadow_sync.c"
+UNIT_TESTS="tests/tinytd/test_ringbuf.c tests/tinytd/test_metrics.c \
+            tests/tinytd/test_config.c tests/tinytd/test_shm.c"
+INTEG_TESTS="tests/tinytd/test_shm_ipc.c \
+             tests/tinytd/test_shadow_sync.c"
 
 ALL_TESTS="$UNIT_TESTS $INTEG_TESTS"
 
@@ -75,7 +75,7 @@ fi
 if [ "$MODE" = "valgrind" ] || [ "$MODE" = "all" ]; then
     if check_tool valgrind; then
         run_suite "Valgrind memcheck" \
-            "-g -O0" \
+            "-g -O2" \
             "valgrind --error-exitcode=1 --leak-check=full --quiet"
     else
         printf "  [${SKIP}] valgrind not found\n"

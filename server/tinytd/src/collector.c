@@ -6,7 +6,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/statvfs.h>
-#include <sys/syscall.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -16,7 +15,8 @@
   if (*(ptr))                      \
     (ptr)++;
 
-/* Persistent file descriptors for /proc files */
+/* Persistent file descriptors for /proc files.
+ * NOTE: not thread-safe; only one collector instance per process is supported. */
 static int g_stat_fd = -1;
 static int g_meminfo_fd = -1;
 static int g_loadavg_fd = -1;
@@ -41,11 +41,12 @@ void ttd_collector_cleanup(void) {
 }
 
 int direct_statvfs(const char* path, struct statvfs* buf) {
-#if SYS_statvfs != 0
-  return syscall(SYS_statvfs, path, buf);
-#else
+  /* Always use the libc statvfs() wrapper - the raw SYS_statvfs constant
+   * defined in collector.h maps to syscall 137 which is actually statfs()
+   * on x86_64 and writes struct statfs (120 bytes) into a struct statvfs
+   * buffer (112 bytes), overflowing 8 bytes and corrupting the caller's
+   * saved registers on the stack. */
   return statvfs(path, buf);
-#endif
 }
 
 bool readpr_stat(struct ttd_collector_stat* ps) {

@@ -25,7 +25,11 @@ static const char* get_path_from_config(const char* config_key,
   if (access(config_file, R_OK) == 0 &&
       tt_config_ini_read(config_file, config_key, cfg_value,
                          sizeof(cfg_value)) == 0) {
-    *cache = strdup(cfg_value);
+    char* copy = malloc(strlen(cfg_value) + 1);
+    if (copy) {
+      strcpy(copy, cfg_value);
+      *cache = copy;
+    }
   }
 
   return *cache;
