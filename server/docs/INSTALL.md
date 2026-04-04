@@ -1,77 +1,80 @@
-# Установка TinyTrack на хост
+INSTALL
+=======
 
-## Требования
+REQUIREMENTS
+------------
 
-- Linux (kernel ≥ 4.x)
-- gcc ≥ 9, make, autoconf, automake
-- libssl-dev, libncurses-dev
-- systemd (опционально, для автозапуска)
+  Linux kernel >= 4.x
+  gcc >= 9, make, autoconf, automake
+  libssl-dev, libncurses-dev
+  systemd (optional, for service management)
 
-## Сборка и установка
+See BUILD.md for build instructions.
 
-```bash
-# 1. Клонировать и собрать
-git clone <repo> tinytrack && cd tinytrack/server
-./bootstrap.sh && ./configure && make
 
-# 2. Установить (требует root)
-sudo make install
-```
+SYSTEM USERS
+------------
 
-Что устанавливается:
-- `/usr/local/bin/tinytd` — демон сбора метрик
-- `/usr/local/bin/tinytrack` — gateway
-- `/usr/local/bin/tiny-cli` — CLI клиент
-- `/etc/tinytrack/tinytrack.conf` — конфиг
-- `/etc/systemd/system/tinytd.service`
-- `/etc/systemd/system/tinytrack.service`
+The install target creates system users automatically:
 
-## Системные пользователи
+  groupadd --system tinytd
+  useradd --system --no-create-home --shell /usr/sbin/nologin \
+      --gid tinytd tinytd
 
-`make install` автоматически создаёт:
+  groupadd --system tinytrack
+  useradd --system --no-create-home --shell /usr/sbin/nologin \
+      --gid tinytrack tinytrack
 
-```bash
-groupadd --system tinytd
-useradd --system --no-create-home --shell /usr/sbin/nologin --gid tinytd tinytd
+Data directory: /var/lib/tinytrack/  (owned by tinytd:tinytd)
 
-groupadd --system tinytrack
-useradd --system --no-create-home --shell /usr/sbin/nologin --gid tinytrack tinytrack
-```
 
-Директория данных: `/var/lib/tinytrack/` (владелец `tinytd:tinytd`).
+INSTALL
+-------
 
-## Запуск
+  sudo make install
 
-```bash
-sudo systemctl enable tinytd tinytrack
-sudo systemctl start tinytd tinytrack
+Installed files:
 
-# Проверить статус
-systemctl status tinytd tinytrack
-```
+  /usr/local/bin/tinytd
+  /usr/local/bin/tinytrack
+  /usr/local/bin/tiny-cli
+  /etc/tinytrack/tinytrack.conf
+  /etc/systemd/system/tinytd.service
+  /etc/systemd/system/tinytrack.service
+  /usr/local/share/man/man1/tiny-cli.1
+  /usr/local/share/man/man8/tinytd.8
+  /usr/local/share/man/man8/tinytrack.8
 
-## Доступ для пользователя
 
-Чтобы использовать `tiny-cli` без root:
+START
+-----
 
-```bash
-sudo usermod -aG tinytd $USER
-newgrp tinytd  # применить без перелогина
-```
+  sudo systemctl enable tinytd tinytrack
+  sudo systemctl start tinytd tinytrack
+  systemctl status tinytd tinytrack
 
-## Конфигурация
 
-Отредактируйте `/etc/tinytrack/tinytrack.conf` и перезапустите:
+USER ACCESS
+-----------
 
-```bash
-sudo systemctl restart tinytd tinytrack
-```
+To use tiny-cli without root:
 
-Подробнее: [CONFIGURATION.md](CONFIGURATION.md)
+  sudo usermod -aG tinytd $USER
+  newgrp tinytd
 
-## Удаление
 
-```bash
-sudo systemctl stop tinytd tinytrack
-sudo make uninstall
-```
+CONFIGURATION
+-------------
+
+Edit /etc/tinytrack/tinytrack.conf and restart:
+
+  sudo systemctl restart tinytd tinytrack
+
+See CONFIGURATION.md for all parameters.
+
+
+UNINSTALL
+---------
+
+  sudo systemctl stop tinytd tinytrack
+  sudo make uninstall

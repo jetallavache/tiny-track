@@ -1,169 +1,141 @@
-# Конфигурация TinyTrack
+CONFIGURATION
+=============
 
-## Приоритет параметров
+Default config file: /etc/tinytrack/tinytrack.conf
 
-```mermaid
-graph TD
-    A["Значение по умолчанию\n(hardcoded в config.c)"]
-    B["Файл конфигурации\n/etc/tinytrack/tinytrack.conf"]
-    C["Переменные окружения\nTT_PROC_ROOT, TT_ROOTFS_PATH\n(читаются в tt_sysfs_init)"]
-    D["Аргументы командной строки\n--config, -p PORT"]
+Parameter priority (highest to lowest):
 
-    A -->|"перекрывается"| B
-    B -->|"перекрывается"| C
-    C -->|"перекрывается"| D
+  1. Command-line arguments  (--config, -p PORT)
+  2. Environment variables   (TT_PROC_ROOT, TT_ROOTFS_PATH, ...)
+  3. Config file             (/etc/tinytrack/tinytrack.conf)
+  4. Built-in defaults
 
-    style D fill:#2ecc71,color:#fff
-    style C fill:#3498db,color:#fff
-    style B fill:#e67e22,color:#fff
-    style A fill:#95a5a6,color:#fff
-```
 
-**Наивысший приоритет** — аргументы CLI. Затем ENV, затем конфиг-файл, затем дефолты.
+CONFIG FILES
+------------
 
-> В Docker: entrypoint генерирует конфиг из дефолтов, затем патчит его значениями из ENV. Если смонтирован пользовательский конфиг — ENV всё равно его патчит.
+  etc/tinytrack.conf         production (host)
+  etc/tinytrack.conf-docker  Docker / container
+  etc/tinytrack.conf-debug   local debug / foreground
+  tests/tinytrack.conf-test  automated tests
 
+
+SECTION [tinytd]
+----------------
+
+  user            daemon user after privilege drop     (default: tinytd)
+  group           daemon group                         (default: tinytd)
+  pid_file        path to PID file                     (default: /var/run/tinytd.pid)
+  log_backend     logging backend (see below)          (default: auto)
+  log_level       minimum log level                    (default: info)
+
+  log_backend values:
+    auto      select automatically: journal -> syslog -> stderr
+    stderr    standard error with timestamp
+    stdout    standard output with timestamp
+    docker    stdout without timestamp (Docker adds it)
+    syslog    traditional UNIX syslog
+    journal   systemd journal
+
+  log_level values (ascending severity):
+    debug  info  notice  warning  error
+
+
+SECTION [collection]
+--------------------
+
+  interval_ms       collection interval, ms            (default: 1000)
+                    ENV: TT_INTERVAL_MS
+  du_interval_sec   disk usage refresh interval, s     (default: 30)
+                    ENV: TT_DU_INTERVAL_SEC
+  proc_root         path to /proc                      (default: /proc)
+                    ENV: TT_PROC_ROOT
+  rootfs_path       path to root filesystem            (default: /)
+                    ENV: TT_ROOTFS_PATH
+
+  In Docker with bind-mounted host /proc and /:
+    proc_root   = /host/proc
+    rootfs_path = /host/rootfs
+
+
+SECTION [storage]
+-----------------
+
+  live_path                 live ring buffer file (tmpfs)
+                            (default: /dev/shm/tinytd-live.dat)
+                            ENV: TT_LIVE_PATH
+  shadow_path               persistent shadow copy
+                            (default: /var/lib/tinytrack/tinytd-shadow.dat)
+                            ENV: TT_SHADOW_PATH
+  shadow_sync_interval_sec  shadow sync interval, s    (default: 60)
+  file_mode                 file permissions, decimal  (default: 416 = 0640)
+
+  NOTE: live_path must be on tmpfs (/dev/shm).
+  In Docker use a distinct name to avoid conflict with host daemon
+  when /dev/shm is shared (e.g. tinytd-docker-live.dat).
+
+
+SECTION [ringbuffer]
+--------------------
+
+  l1_capacity         L1 ring capacity, samples        (default: 3600)
+                      ENV: TT_L1_CAPACITY
+  l2_capacity         L2 ring capacity, samples        (default: 1440)
+                      ENV: TT_L2_CAPACITY
+  l3_capacity         L3 ring capacity, samples        (default: 720)
+                      ENV: TT_L3_CAPACITY
+  l2_agg_interval_sec L1->L2 aggregation interval, s  (default: 60)
+                      ENV: TT_L2_AGG_INTERVAL
+  l3_agg_interval_sec L2->L3 aggregation interval, s  (default: 3600)
+                      ENV: TT_L3_AGG_INTERVAL
+
+  Coverage calculation:
+    L1: l1_capacity * interval_ms / 1000  seconds
+    L2: l2_capacity * l2_agg_interval_sec seconds
+    L3: l3_capacity * l3_agg_interval_sec seconds
+
+
+SECTION [recovery]
+------------------
+
+  enable_crc    verify Adler-32 checksum on recovery   (default: true)
+  auto_recover  restore buffer from shadow on start    (default: true)
+
+
+SECTION [gateway]
+-----------------
+
+  user              gateway user after privilege drop  (default: tinytrack)
+  group             gateway group                      (default: tinytrack)
+  pid_file          path to PID file                   (default: /var/run/tinytrack.pid)
+  log_backend       logging backend                    (default: auto)
+                    ENV: TT_LOG_BACKEND
+  log_level         minimum log level                  (default: info)
+                    ENV: TT_LOG_LEVEL
+  listen            listen address                     (default: ws://0.0.0.0:25015)
+                    ENV: TT_LISTEN
+                    Use wss:// to enable TLS.
+  update_interval   push interval to clients, ms       (default: 1000)
+                    ENV: TT_UPDATE_INTERVAL
+  tls_cert          PEM certificate file               (default: none)
+                    ENV: TT_TLS_CERT
+  tls_key           PEM private key file               (default: none)
+                    ENV: TT_TLS_KEY
+  tls_ca            PEM CA bundle (client cert auth)   (default: none)
+                    ENV: TT_TLS_CA
+
+
+TLS
 ---
 
-## Файлы конфигурации
+Change listen to wss:// and set cert/key:
 
-| Файл | Назначение |
-|------|-----------|
-| `/etc/tinytrack/tinytrack.conf` | Продакшн (хост) |
-| `etc/tinytrack.conf-docker` | Docker / контейнер |
-| `etc/tinytrack.conf-debug` | Локальная отладка |
-| `tests/tinytrack.conf-test` | Автотесты |
+  [gateway]
+  listen   = wss://0.0.0.0:25015
+  tls_cert = /etc/tinytrack/server.crt
+  tls_key  = /etc/tinytrack/server.key
 
----
+Generate a self-signed certificate for testing:
 
-## Секция `[tinytd]`
-
-| Параметр | Тип | По умолчанию | Описание |
-|----------|-----|--------------|----------|
-| `user` | string | `tinytd` | Пользователь после сброса привилегий |
-| `group` | string | `tinytd` | Группа после сброса привилегий |
-| `pid_file` | path | `/var/run/tinytd.pid` | Путь к PID-файлу |
-| `log_backend` | enum | `auto` | Backend логирования (см. ниже) |
-| `log_level` | enum | `info` | Минимальный уровень логов |
-
-### log_backend
-
-| Значение | Описание |
-|----------|----------|
-| `auto` | Автовыбор: journal → syslog → stderr |
-| `stderr` | Стандартный поток ошибок (с timestamp) |
-| `stdout` | Стандартный вывод (с timestamp) |
-| `docker` | stdout без timestamp — Docker добавляет его сам |
-| `syslog` | Традиционный syslog |
-| `journal` | systemd journal |
-
-### log_level
-
-`debug` < `info` < `notice` < `warning` < `error`
-
----
-
-## Секция `[collection]`
-
-| Параметр | ENV | По умолчанию | Описание |
-|----------|-----|--------------|----------|
-| `interval_ms` | `TT_INTERVAL_MS` | `1000` | Интервал сбора метрик, мс |
-| `du_interval_sec` | `TT_DU_INTERVAL_SEC` | `30` | Интервал обновления disk usage, с |
-| `proc_root` | `TT_PROC_ROOT` | `/proc` | Путь к `/proc` (для Docker: `/host/proc`) |
-| `rootfs_path` | `TT_ROOTFS_PATH` | `/` | Путь к корневой ФС для disk usage (для Docker: `/host/rootfs`) |
-
----
-
-## Секция `[storage]`
-
-| Параметр | ENV | По умолчанию | Описание |
-|----------|-----|--------------|----------|
-| `live_path` | `TT_LIVE_PATH` | `/dev/shm/tinytd-live.dat` | Live ring buffer (tmpfs) |
-| `shadow_path` | `TT_SHADOW_PATH` | `/var/lib/tinytrack/tinytd-shadow.dat` | Персистентная копия |
-| `shadow_sync_interval_sec` | — | `60` | Интервал синхронизации shadow, с |
-| `file_mode` | — | `416` (0640) | Права доступа к файлам (decimal) |
-
-> **Важно:** `live_path` должен быть на tmpfs (`/dev/shm`). В Docker используйте отдельное имя файла чтобы не конфликтовать с хостовым демоном при shared `/dev/shm`.
-
----
-
-## Секция `[ringbuffer]`
-
-| Параметр | ENV | По умолчанию | Описание |
-|----------|-----|--------------|----------|
-| `l1_capacity` | `TT_L1_CAPACITY` | `3600` | Ёмкость L1 (записей) |
-| `l2_capacity` | `TT_L2_CAPACITY` | `1440` | Ёмкость L2 (записей) |
-| `l3_capacity` | `TT_L3_CAPACITY` | `720` | Ёмкость L3 (записей) |
-| `l2_agg_interval_sec` | `TT_L2_AGG_INTERVAL` | `60` | Интервал агрегации L1→L2, с |
-| `l3_agg_interval_sec` | `TT_L3_AGG_INTERVAL` | `3600` | Интервал агрегации L2→L3, с |
-
-**Расчёт покрытия:**
-- L1: `l1_capacity × interval_ms / 1000` секунд
-- L2: `l2_capacity × l2_agg_interval_sec` секунд
-- L3: `l3_capacity × l3_agg_interval_sec` секунд
-
----
-
-## Секция `[recovery]`
-
-| Параметр | По умолчанию | Описание |
-|----------|--------------|----------|
-| `enable_crc` | `true` | Проверка Adler-32 при восстановлении |
-| `auto_recover` | `true` | Восстанавливать буфер из shadow при старте |
-
----
-
-## Секция `[gateway]`
-
-| Параметр | ENV | По умолчанию | Описание |
-|----------|-----|--------------|----------|
-| `user` | — | `tinytrack` | Пользователь после сброса привилегий |
-| `group` | — | `tinytrack` | Группа |
-| `pid_file` | — | `/var/run/tinytrack.pid` | PID-файл |
-| `log_backend` | `TT_LOG_BACKEND` | `auto` | Backend логирования |
-| `log_level` | `TT_LOG_LEVEL` | `info` | Уровень логов |
-| `listen` | `TT_LISTEN` | `ws://0.0.0.0:25015` | Адрес и порт |
-| `update_interval` | `TT_UPDATE_INTERVAL` | `1000` | Интервал пуша клиентам, мс |
-| `tls_cert` | `TT_TLS_CERT` | — | Путь к PEM-сертификату |
-| `tls_key` | `TT_TLS_KEY` | — | Путь к PEM-ключу |
-| `tls_ca` | `TT_TLS_CA` | — | Путь к CA-бандлу (опционально) |
-
----
-
-## ENV переменные (Docker)
-
-Все переменные применяются поверх конфига при старте контейнера:
-
-```bash
-docker run \
-  -e TT_PROC_ROOT=/host/proc \
-  -e TT_ROOTFS_PATH=/host/rootfs \
-  -e TT_INTERVAL_MS=500 \
-  -e TT_L1_CAPACITY=7200 \
-  -e TT_LISTEN=wss://0.0.0.0:25015 \
-  -e TT_TLS_CERT=/certs/server.crt \
-  -e TT_TLS_KEY=/certs/server.key \
-  -e TT_LOG_LEVEL=debug \
-  tinytrack
-```
-
----
-
-## TLS
-
-Для включения TLS измените `listen` на `wss://` и укажите сертификат:
-
-```ini
-[gateway]
-listen   = wss://0.0.0.0:25015
-tls_cert = /etc/tinytrack/server.crt
-tls_key  = /etc/tinytrack/server.key
-# tls_ca = /etc/tinytrack/ca.crt  # для client cert auth
-```
-
-Генерация self-signed сертификата для тестирования:
-
-```bash
-openssl req -x509 -newkey rsa:4096 -keyout server.key -out server.crt \
-    -days 365 -nodes -subj '/CN=localhost'
-```
+  openssl req -x509 -newkey rsa:4096 -keyout server.key -out server.crt \
+      -days 365 -nodes -subj '/CN=localhost'

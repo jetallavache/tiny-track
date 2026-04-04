@@ -1,109 +1,60 @@
-<div align="center">
+TinyTrack Server
+================
 
-```
-████████╗██╗███╗   ██╗██╗   ██╗████████╗██████╗  █████╗  ██████╗██╗  ██╗
-╚══██╔══╝██║████╗  ██║╚██╗ ██╔╝╚══██╔══╝██╔══██╗██╔══██╗██╔════╝██║ ██╔╝
-   ██║   ██║██╔██╗ ██║ ╚████╔╝    ██║   ██████╔╝███████║██║     █████╔╝
-   ██║   ██║██║╚██╗██║  ╚██╔╝     ██║   ██╔══██╗██╔══██║██║     ██╔═██╗
-   ██║   ██║██║ ╚████║   ██║      ██║   ██║  ██║██║  ██║╚██████╗██║  ██╗
-   ╚═╝   ╚═╝╚═╝  ╚═══╝   ╚═╝      ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝
-```
+Lightweight Linux system metrics daemon with WebSocket streaming.
 
-**Lightweight Linux system metrics daemon with WebSocket streaming**
+Version 0.1.6.  MIT License.
 
-![Version](https://img.shields.io/badge/version-0.1.6-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
-![Platform](https://img.shields.io/badge/platform-Linux-lightgrey)
-![Language](https://img.shields.io/badge/language-C11-orange)
-![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)
-![WebSocket](https://img.shields.io/badge/protocol-WebSocket%20%2B%20TLS-blueviolet)
 
-</div>
+COMPONENTS
+----------
 
----
+  tinytd      metrics collector daemon (CPU, RAM, network, disk, load)
+  tinytrack   WebSocket/HTTP gateway
+  tiny-cli    CLI client with ncurses dashboard
 
-TinyTrack — минималистичный демон сбора системных метрик для Linux с real-time стримингом через WebSocket. Не требует зависимостей в рантайме кроме libc и libssl.
 
-## Содержание
+QUICK START
+-----------
 
-- [Быстрый старт](#быстрый-старт)
-- [Документация](#документация)
-- [Архитектура](#архитектура)
-- [Компоненты](#компоненты)
+On host:
 
----
+  ./bootstrap.sh && ./configure && make
+  sudo make install
+  sudo systemctl start tinytd tinytrack
 
-## Быстрый старт
+In Docker:
 
-### На хосте
+  docker compose up -d
 
-```bash
-./bootstrap.sh && ./configure && make
-sudo make install
-sudo systemctl start tinytd tinytrack
-```
+Gateway is available at ws://localhost:25015/websocket.
 
-### В Docker
+tiny-cli:
 
-```bash
-docker compose up -d
-```
+  tiny-cli status
+  tiny-cli metrics
+  tiny-cli history l1
+  tiny-cli dashboard
 
-Gateway доступен на `ws://localhost:25015/websocket`.
+  docker compose exec tinytrack tiny-cli status
+  docker compose exec tinytrack tiny-cli dashboard
 
-### tiny-cli
 
-```bash
-# Статус и информация о буфере
-docker compose exec tinytrack tiny-cli status
+DOCUMENTATION
+-------------
 
-# Live метрики
-docker compose exec tinytrack tiny-cli metrics
+  docs/OVERVIEW.md        what TinyTrack is and how to use it
+  docs/INSTALL.md         installation on host (systemd, users, permissions)
+  docs/BUILD.md           building from source
+  docs/CONFIGURATION.md   all parameters, priorities, ENV variables
+  docs/ARCHITECTURE.md    architecture, shared memory layout, protocol
+  docs/DOCKER.md          running in Docker: config, ENV, TLS, examples
+  docs/TROUBLESHOOTING.md errors, debugging, diagnostics
+  docs/TESTING.md         test suites and how to run them
+  docs/HACKING.md         development and contributing
 
-# История: l1=1ч, l2=24ч, l3=7д
-docker compose exec tinytrack tiny-cli history l1
 
-# Интерактивный дашборд
-docker compose exec tinytrack tiny-cli dashboard
-```
+LICENSE
+-------
 
----
-
-## Документация
-
-| Документ | Описание |
-|----------|----------|
-| [docs/OVERVIEW.md](docs/OVERVIEW.md) | Что такое TinyTrack, зачем и как использовать |
-| [docs/INSTALL.md](docs/INSTALL.md) | Установка на хост (systemd, пользователи, права) |
-| [docs/DOCKER.md](docs/DOCKER.md) | Запуск в Docker: конфиг, ENV, TLS, примеры |
-| [docs/CONFIGURATION.md](docs/CONFIGURATION.md) | Все параметры, приоритеты, ENV переменные |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Архитектура, диаграммы, протокол |
-| [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Ошибки, отладка, диагностика |
-| [docs/BUILD.md](docs/BUILD.md) | Сборка из исходников |
-| [docs/TESTING.md](docs/TESTING.md) | Тестирование |
-| [docs/HACKING.md](docs/HACKING.md) | Разработка и контрибьютинг |
-
----
-
-## Архитектура
-
-```mermaid
-graph LR
-    subgraph Host["Linux Host / Container"]
-        proc["/proc\n/sys"] --> tinytd
-        tinytd["tinytd\ncollector daemon"] -->|mmap write| shm["/dev/shm\ntinytd-live.dat"]
-        shm -->|mmap read| tinytrack["tinytrack\ngateway"]
-        shm -->|mmap read| cli["tiny-cli"]
-    end
-    tinytrack -->|WebSocket :25015| clients["WebSocket\nClients"]
-```
-
----
-
-## Компоненты
-
-| Компонент | Бинарник | Назначение |
-|-----------|----------|------------|
-| **tinytd** | `tinytd` | Демон сбора метрик (CPU, RAM, сеть, диск) |
-| **tinytrack** | `tinytrack` | WebSocket/HTTP gateway |
-| **tiny-cli** | `tiny-cli` | CLI клиент с ncurses дашбордом |
+MIT License.  See LICENSE file in the project root.

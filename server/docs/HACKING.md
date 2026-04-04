@@ -1,82 +1,91 @@
-# Разработка TinyTrack
+HACKING
+=======
 
-## Структура проекта
+SOURCE LAYOUT
+-------------
 
-```
-server/
-├── common/              # Общие библиотеки
-│   ├── ringbuf/         # Кольцевой буфер (writer, reader, shm, seqlock)
-│   ├── log/             # Система логирования (stderr, syslog, journal)
-│   ├── config/          # Парсер INI-конфига
-│   ├── metrics.h/c      # Структура tt_metrics
-│   ├── sysfs.h/c        # Конфигурируемые пути к /proc и /
-│   ├── timer.h/c        # timerfd обёртка
-│   └── proto/           # Бинарный протокол v1/v2
-├── tinytd/src/          # Демон сбора метрик
-├── gateway/src/         # WebSocket gateway
-├── cli/src/             # CLI клиент
-├── tests/               # Тесты
-├── docs/                # Документация
-├── etc/                 # Конфиги и systemd unit-файлы
-├── docker-entrypoint.sh
-├── docker-compose.yml
-└── Dockerfile
-```
+  common/              shared libraries
+    ringbuf/           ring buffer (writer, reader, shm, seqlock)
+    log/               logging (stderr, syslog, journal)
+    config/            INI config parser
+    metrics.h/c        tt_metrics structure
+    sysfs.h/c          configurable /proc and rootfs paths
+    timer.h/c          timerfd wrapper
+    proto/             binary protocol v1/v2
+  tinytd/src/          metrics collector daemon
+  gateway/src/         WebSocket gateway
+  cli/src/             CLI client
+  tests/               test suites
+  docs/                documentation
+  etc/                 configs and systemd unit files
 
-## Autotools
 
-```bash
-# После изменения Makefile.am или configure.ac
-autoreconf -fi
-./configure && make
-```
+AUTOTOOLS
+---------
 
-## Добавление нового файла
+After modifying Makefile.am or configure.ac:
 
-1. Добавить в `*/Makefile.am` в соответствующий `_SOURCES`
-2. `autoreconf -fi && ./configure && make`
+  autoreconf -fi
+  ./configure && make
 
-## Форматирование кода
+Adding a new source file:
 
-```bash
-make format          # применить clang-format
-make format-check    # проверить без изменений
-```
+  1. Add to the appropriate _SOURCES in */Makefile.am
+  2. autoreconf -fi && ./configure && make
 
-Конфигурация: `.clang-format` в корне.
 
-## Тестирование
+CODE FORMATTING
+---------------
 
-```bash
-sh tests/run_tests.sh              # быстрые тесты
-sh tests/run_tests.sh all          # все тесты
-sh tests/run_tests.sh docker       # тесты в Docker
-```
+  make format          apply clang-format
+  make format-check    check without changes
 
-Подробнее: [TESTING.md](TESTING.md)
+Configuration: .clang-format in project root.
 
-## Добавление нового теста
 
-- **C unit-тест для tinytd:** `tests/tinytd/test_*.c` — подхватывается автоматически
-- **C unit-тест для CLI:** `tests/cli/test_*.c`
-- **Python-тест gateway:** `tests/gateway/test_*.py` с фикстурой `gateway`
-- **Shell-тест:** `tests/tinytd/test_*.sh` или `tests/cli/test_*.sh`
+TESTING
+-------
 
-## Протокол
+  sh tests/run_tests.sh              fast suite (static + unit + cli)
+  sh tests/run_tests.sh all          all suites
+  sh tests/run_tests.sh docker       gateway tests in Docker container
 
-Бинарный протокол описан в `common/proto/v1.h` и `common/proto/v2.h`.
+See TESTING.md for details.
 
-При добавлении нового типа пакета:
-1. Добавить константу `PKT_*` в `v2.h`
-2. Добавить структуру payload
-3. Обработать в `gateway/src/session.c`
-4. Добавить тест в `tests/gateway/test_ws.py`
 
-## Релиз
+ADDING TESTS
+------------
 
-Версия задаётся в `configure.ac`:
-```
-AC_INIT([tinytrack], [0.1.5], ...)
-```
+  C unit test for tinytd:  tests/tinytd/test_*.c  (auto-discovered)
+  C unit test for CLI:     tests/cli/test_*.c
+  Python gateway test:     tests/gateway/test_*.py  (use gateway fixture)
+  Shell test:              tests/tinytd/test_*.sh or tests/cli/test_*.sh
 
-Обновить также бейдж в `README.md`.
+
+PROTOCOL
+--------
+
+Binary protocol is defined in common/proto/v1.h and common/proto/v2.h.
+
+To add a new packet type:
+
+  1. Add PKT_* constant to v2.h
+  2. Add payload struct
+  3. Handle in gateway/src/session.c
+  4. Add test in tests/gateway/test_ws.py
+
+
+RELEASE
+-------
+
+Version is set in configure.ac:
+
+  AC_INIT([tinytrack], [X.Y.Z], ...)
+
+Update the version badge in server/README.md as well.
+
+
+CLEANING
+--------
+
+  sh scripts/clean.sh
