@@ -21,9 +21,9 @@ check_tool() {
 
 CFLAGS_BASE="-std=c11 -D_POSIX_C_SOURCE=200809L -D_GNU_SOURCE -I. -pthread"
 LIBS="-lrt"
-COMMON_SRCS="common/metrics.c common/timer.c \
+COMMON_SRCS="common/metrics.c common/timer.c common/sysfs.c \
              common/config/ini.c common/config/paths.c common/config/read.c \
-             common/log/core.c common/log/stderr.c common/log/syslog.c common/log/journal.c \
+             common/log/core.c common/log/stderr.c common/log/syslog.c \
              common/ringbuf/shm.c common/ringbuf/writer.c common/ringbuf/reader.c"
 
 UNIT_TESTS="tests/tinytd/test_ringbuf.c tests/tinytd/test_metrics.c \

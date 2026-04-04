@@ -4,7 +4,7 @@
 # Usage (from project root):
 #   sh tests/gateway/run_gateway_tests.sh [suite...]
 #
-# Suites: ws http tls load sock js all
+# Suites: ws http tls load sock js sysinfo docker sanitize valgrind all
 # Default: ws http sock js
 
 set -u
@@ -56,6 +56,172 @@ suite_load() {
 suite_sock() {
     printf '\n=== Socket / epoll tests ===\n'
     run_pytest "sock" tests/gateway/test_sock.py
+}
+
+suite_docker() {
+    printf '\n=== Docker integration tests (full gateway suite in container) ===\n'
+    if ! check_tool python3; then
+        printf "  [${SKIP}] docker (python3 not found)\n"; skip=$((skip+1)); return
+    fi
+    if ! command -v docker >/dev/null 2>&1; then
+        printf "  [${SKIP}] docker (docker not found)\n"; skip=$((skip+1)); return
+    fi
+    if ! docker info >/dev/null 2>&1; then
+        printf "  [${SKIP}] docker (daemon not accessible)\n"; skip=$((skip+1)); return
+    fi
+
+    printf "  Building Docker image...\n"
+    if ! docker build -t tinytrack-test:latest . --quiet 2>&1; then
+        printf "  [${FAIL}] docker image build failed\n"; fail=$((fail+1)); return
+    fi
+
+    # Run sysinfo test (host data via bind-mounted /proc)
+    if python3 -m pytest tests/gateway/test_sysinfo.py::test_sysinfo_docker \
+               -v --tb=short 2>&1; then
+        printf "  [${PASS}] docker sysinfo\n"; pass=$((pass+1))
+    else
+        printf "  [${FAIL}] docker sysinfo\n"; fail=$((fail+1))
+    fi
+
+    # Run full gateway test suite against the container
+    DOCKER_PORT=14032
+    CONTAINER=tinytrack-docker-suite-$$
+    docker rm -f "$CONTAINER" 2>/dev/null || true
+
+    docker run -d --name "$CONTAINER" \
+        -v /proc:/host/proc:ro \
+        -v /:/host/rootfs:ro \
+        -v /dev/shm:/dev/shm \
+        -p "${DOCKER_PORT}:25015" \
+        -e TT_PROC_ROOT=/host/proc \
+        -e TT_ROOTFS_PATH=/host/rootfs \
+        tinytrack-test:latest >/dev/null
+
+    # Wait for gateway to be ready
+    i=0
+    while [ $i -lt 40 ]; do
+        python3 -c "import socket; socket.create_connection(('127.0.0.1', $DOCKER_PORT), 0.3)" \
+            2>/dev/null && break
+        sleep 0.3; i=$((i+1))
+    done
+
+    if ! python3 -c "import socket; socket.create_connection(('127.0.0.1', $DOCKER_PORT), 0.3)" 2>/dev/null; then
+        printf "  [${FAIL}] docker container did not start\n"
+        docker logs "$CONTAINER" 2>&1 | tail -10 | sed 's/^/    /'
+        docker rm -f "$CONTAINER" 2>/dev/null
+        fail=$((fail+1)); return
+    fi
+
+    if TINYTRACK_TEST_PORT=$DOCKER_PORT \
+       python3 -m pytest \
+           tests/gateway/test_ws.py \
+           tests/gateway/test_http.py \
+           tests/gateway/test_sock.py \
+           -v --tb=short 2>&1; then
+        printf "  [${PASS}] docker gateway suite\n"; pass=$((pass+1))
+    else
+        printf "  [${FAIL}] docker gateway suite\n"; fail=$((fail+1))
+    fi
+
+    docker rm -f "$CONTAINER" 2>/dev/null
+}
+
+suite_docker_tls() {
+    printf '\n=== Docker TLS tests (wss:// in container) ===\n'
+    if ! command -v docker >/dev/null 2>&1 || ! docker info >/dev/null 2>&1; then
+        printf "  [${SKIP}] docker not available\n"; skip=$((skip+1)); return
+    fi
+    if ! check_tool openssl; then
+        printf "  [${SKIP}] openssl not found\n"; skip=$((skip+1)); return
+    fi
+    if ! check_tool python3; then
+        printf "  [${SKIP}] python3 not found\n"; skip=$((skip+1)); return
+    fi
+
+    CERT_DIR="/tmp/tt-docker-tls-$$"
+    mkdir -p "$CERT_DIR"
+    openssl req -x509 -newkey rsa:2048 -keyout "$CERT_DIR/server.key" \
+        -out "$CERT_DIR/server.crt" -days 1 -nodes \
+        -subj "/CN=localhost" >/dev/null 2>&1
+
+    TLS_PORT=14033
+    CONTAINER=tinytrack-docker-tls-$$
+    docker rm -f "$CONTAINER" 2>/dev/null || true
+
+    docker run -d --name "$CONTAINER" \
+        -v /proc:/host/proc:ro \
+        -v /:/host/rootfs:ro \
+        -v /dev/shm:/dev/shm \
+        -v "$CERT_DIR:/certs:ro" \
+        -p "${TLS_PORT}:25015" \
+        -e TT_PROC_ROOT=/host/proc \
+        -e TT_ROOTFS_PATH=/host/rootfs \
+        -e TT_LISTEN="wss://0.0.0.0:25015" \
+        -e TT_TLS_CERT=/certs/server.crt \
+        -e TT_TLS_KEY=/certs/server.key \
+        tinytrack-test:latest >/dev/null
+
+    i=0
+    while [ $i -lt 40 ]; do
+        python3 -c "import socket; socket.create_connection(('127.0.0.1', $TLS_PORT), 0.3)" \
+            2>/dev/null && break
+        sleep 0.3; i=$((i+1))
+    done
+
+    if ! python3 -c "import socket; socket.create_connection(('127.0.0.1', $TLS_PORT), 0.3)" 2>/dev/null; then
+        printf "  [${FAIL}] docker TLS container did not start\n"
+        docker logs "$CONTAINER" 2>&1 | tail -10 | sed 's/^/    /'
+        docker rm -f "$CONTAINER" 2>/dev/null
+        rm -rf "$CERT_DIR"
+        fail=$((fail+1)); return
+    fi
+
+    if TINYTRACK_TEST_PORT=$TLS_PORT \
+       python3 -m pytest tests/gateway/test_docker_tls.py \
+               -v --tb=short 2>&1; then
+        printf "  [${PASS}] docker TLS suite\n"; pass=$((pass+1))
+    else
+        printf "  [${FAIL}] docker TLS suite\n"; fail=$((fail+1))
+    fi
+
+    docker rm -f "$CONTAINER" 2>/dev/null
+    rm -rf "$CERT_DIR"
+}
+
+suite_sysinfo() {
+    printf '\n=== sysinfo tests (host + docker) ===\n'
+    if ! check_tool python3; then
+        printf "  [${SKIP}] sysinfo (python3 not found)\n"; skip=$((skip+1)); return
+    fi
+
+    # --- host mode ---
+    if python3 -m pytest tests/gateway/test_sysinfo.py::test_sysinfo_host \
+                         tests/gateway/test_sysinfo.py::test_sysinfo_intervals_match_config \
+               -v --tb=short 2>&1; then
+        printf "  [${PASS}] sysinfo host\n"; pass=$((pass+1))
+    else
+        printf "  [${FAIL}] sysinfo host\n"; fail=$((fail+1))
+    fi
+
+    # --- docker mode ---
+    if ! command -v docker >/dev/null 2>&1; then
+        printf "  [${SKIP}] sysinfo docker (docker not found)\n"; skip=$((skip+1)); return
+    fi
+    if ! docker info >/dev/null 2>&1; then
+        printf "  [${SKIP}] sysinfo docker (docker daemon not accessible)\n"; skip=$((skip+1)); return
+    fi
+
+    printf "  Building Docker image...\n"
+    if ! docker build -t tinytrack-test:latest . --quiet 2>&1; then
+        printf "  [${FAIL}] sysinfo docker (image build failed)\n"; fail=$((fail+1)); return
+    fi
+
+    if python3 -m pytest tests/gateway/test_sysinfo.py::test_sysinfo_docker \
+               -v --tb=short 2>&1; then
+        printf "  [${PASS}] sysinfo docker\n"; pass=$((pass+1))
+    else
+        printf "  [${FAIL}] sysinfo docker\n"; fail=$((fail+1))
+    fi
 }
 
 suite_js() {
@@ -325,9 +491,12 @@ for suite in $SUITES; do
         load)     suite_load ;;
         sock)     suite_sock ;;
         js)       suite_js ;;
+        sysinfo)     suite_sysinfo ;;
+        docker)      suite_docker ;;
+        docker-tls)  suite_docker_tls ;;
         sanitize) suite_sanitize ;;
         valgrind) suite_valgrind ;;
-        all)      suite_sock; suite_http; suite_ws; suite_tls; suite_load; suite_js; suite_sanitize; suite_valgrind ;;
+        all)      suite_sock; suite_http; suite_ws; suite_tls; suite_load; suite_js; suite_sysinfo; suite_sanitize; suite_valgrind ;;
         *)        printf "Unknown suite: %s\n" "$suite"; exit 1 ;;
     esac
 done

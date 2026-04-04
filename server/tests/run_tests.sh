@@ -36,7 +36,7 @@ LIVE_PATH="/tmp/tinytd-test-live.dat"
 SHADOW_PATH="/tmp/tinytd-test-shadow.dat"
 
 CFLAGS_BASE="-std=c11 -I. -pthread -D_POSIX_C_SOURCE=200809L -D_GNU_SOURCE"
-COMMON_SRCS="common/metrics.c common/timer.c \
+COMMON_SRCS="common/metrics.c common/timer.c common/sysfs.c \
              common/config/ini.c common/config/paths.c common/config/read.c \
              common/log/core.c common/log/stderr.c common/log/syslog.c \
              common/ringbuf/shm.c common/ringbuf/writer.c common/ringbuf/reader.c"
@@ -243,8 +243,35 @@ suite_gateway() {
     else
         f=$((f+1))
     fi
+    if sh tests/gateway/run_gateway_tests.sh sysinfo; then
+        p=$((p+1))
+    else
+        f=$((f+1))
+    fi
     suite_result "gateway" $p $f 0
     total_pass=$((total_pass+p)); total_fail=$((total_fail+f))
+}
+
+suite_docker() {
+    printf "\n=== docker integration tests ===\n"
+    p=0; f=0; s=0
+    if ! check_tool docker; then
+        printf "  [${SKIP}] docker not found\n"; s=$((s+1))
+        suite_result "docker" 0 0 $s
+        total_skip=$((total_skip+s)); return
+    fi
+    if ! docker info >/dev/null 2>&1; then
+        printf "  [${SKIP}] docker daemon not accessible\n"; s=$((s+1))
+        suite_result "docker" 0 0 $s
+        total_skip=$((total_skip+s)); return
+    fi
+    if sh tests/gateway/run_gateway_tests.sh docker; then
+        p=$((p+1))
+    else
+        f=$((f+1))
+    fi
+    suite_result "docker" $p $f $s
+    total_pass=$((total_pass+p)); total_fail=$((total_fail+f)); total_skip=$((total_skip+s))
 }
 
 suite_bench() {
@@ -324,10 +351,11 @@ for suite in $SUITES; do
         tinytd)   suite_tinytd ;;
         cli)      suite_cli ;;
         gateway)  suite_gateway ;;
+        docker)   suite_docker ;;
         bench)    suite_bench ;;
         sanitize) suite_sanitize ;;
         all)      suite_static; suite_tinytd; suite_cli
-                  suite_gateway; suite_sanitize ;;
+                  suite_gateway; suite_docker; suite_sanitize ;;
         *)        printf "Unknown suite: %s\n" "$suite"; exit 1 ;;
     esac
 done
