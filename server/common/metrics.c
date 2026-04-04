@@ -2,8 +2,8 @@
 
 #include <string.h>
 
-void tt_metrics_aggregate(const void* samples, uint32_t count, size_t cell_size,
-                          void* out) {
+void tt_metrics_aggregate_avg(const void* samples, uint32_t count,
+                              size_t cell_size, void* out) {
   if (!samples || !out || count == 0)
     return;
 
@@ -47,4 +47,70 @@ void tt_metrics_aggregate(const void* samples, uint32_t count, size_t cell_size,
   agg->du_usage = (uint16_t)(du_usage / count);
   agg->du_total_bytes = du_total / count;
   agg->du_free_bytes = du_free / count;
+}
+
+void tt_metrics_aggregate_max(const void* samples, uint32_t count,
+                              size_t cell_size, void* out) {
+  if (!samples || !out || count == 0)
+    return;
+
+  const struct tt_metrics* first = (const struct tt_metrics*)samples;
+  struct tt_metrics* agg = (struct tt_metrics*)out;
+  *agg = *first;
+
+  for (uint32_t i = 1; i < count; i++) {
+    const struct tt_metrics* s =
+        (const struct tt_metrics*)((const uint8_t*)samples + i * cell_size);
+#define MAX_FIELD(f) \
+  if (s->f > agg->f) \
+  agg->f = s->f
+    MAX_FIELD(cpu_usage);
+    MAX_FIELD(mem_usage);
+    MAX_FIELD(net_rx);
+    MAX_FIELD(net_tx);
+    MAX_FIELD(load_1min);
+    MAX_FIELD(load_5min);
+    MAX_FIELD(load_15min);
+    MAX_FIELD(nr_running);
+    MAX_FIELD(nr_total);
+    MAX_FIELD(du_usage);
+    MAX_FIELD(du_total_bytes);
+    MAX_FIELD(du_free_bytes);
+    if (s->timestamp > agg->timestamp)
+      agg->timestamp = s->timestamp;
+#undef MAX_FIELD
+  }
+}
+
+void tt_metrics_aggregate_min(const void* samples, uint32_t count,
+                              size_t cell_size, void* out) {
+  if (!samples || !out || count == 0)
+    return;
+
+  const struct tt_metrics* first = (const struct tt_metrics*)samples;
+  struct tt_metrics* agg = (struct tt_metrics*)out;
+  *agg = *first;
+
+  for (uint32_t i = 1; i < count; i++) {
+    const struct tt_metrics* s =
+        (const struct tt_metrics*)((const uint8_t*)samples + i * cell_size);
+#define MIN_FIELD(f) \
+  if (s->f < agg->f) \
+  agg->f = s->f
+    MIN_FIELD(cpu_usage);
+    MIN_FIELD(mem_usage);
+    MIN_FIELD(net_rx);
+    MIN_FIELD(net_tx);
+    MIN_FIELD(load_1min);
+    MIN_FIELD(load_5min);
+    MIN_FIELD(load_15min);
+    MIN_FIELD(nr_running);
+    MIN_FIELD(nr_total);
+    MIN_FIELD(du_usage);
+    MIN_FIELD(du_total_bytes);
+    MIN_FIELD(du_free_bytes);
+    if (s->timestamp > agg->timestamp)
+      agg->timestamp = s->timestamp;
+#undef MIN_FIELD
+  }
 }
