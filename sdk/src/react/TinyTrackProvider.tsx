@@ -1,14 +1,16 @@
 import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
-import { TinyTrackClient, TtMetrics, TtConfig, TtStats, TtHistoryResp } from '../client.js';
+import { TinyTrackClient, TtMetrics, TtConfig, TtStats, TtHistoryResp, TtSysInfo } from '../client.js';
 
 interface TinyTrackContextValue {
   client: TinyTrackClient | null;
   connected: boolean;
+  sysinfo: TtSysInfo | null;
 }
 
 const TinyTrackContext = createContext<TinyTrackContextValue>({
   client: null,
   connected: false,
+  sysinfo: null,
 });
 
 export interface TinyTrackProviderProps {
@@ -21,15 +23,27 @@ export interface TinyTrackProviderProps {
 export function TinyTrackProvider({ url, children, reconnect, reconnectDelay }: TinyTrackProviderProps) {
   const [client] = useState(() => new TinyTrackClient(url, { reconnect, reconnectDelay }));
   const [connected, setConnected] = useState(false);
+  const [sysinfo, setSysinfo] = useState<TtSysInfo | null>(null);
 
   useEffect(() => {
-    client.on('open', () => setConnected(true));
-    client.on('close', () => setConnected(false));
+    const onOpen = () => {
+      setConnected(true);
+      // Handshake: request sysinfo first, then snapshot
+      client.getSysInfo();
+      client.getSnapshot();
+    };
+    const onClose = () => {
+      setConnected(false);
+      setSysinfo(null);
+    };
+    client.on('open', onOpen);
+    client.on('close', onClose);
+    client.on('sysinfo', setSysinfo);
     client.connect();
     return () => client.disconnect();
   }, [client]);
 
-  return <TinyTrackContext.Provider value={{ client, connected }}>{children}</TinyTrackContext.Provider>;
+  return <TinyTrackContext.Provider value={{ client, connected, sysinfo }}>{children}</TinyTrackContext.Provider>;
 }
 
 export function useTinyTrack() {
@@ -38,7 +52,7 @@ export function useTinyTrack() {
 
 /** Each component gets its own local metrics/config/stats state — no shared state conflicts. */
 export function useMetrics() {
-  const { client, connected } = useTinyTrack();
+  const { client, connected, sysinfo } = useTinyTrack();
   const [metrics, setMetrics] = useState<TtMetrics | null>(null);
   const [config, setConfig] = useState<TtConfig | null>(null);
   const [stats, setStats] = useState<TtStats | null>(null);
@@ -55,7 +69,7 @@ export function useMetrics() {
     };
   }, [client]);
 
-  return { client, connected, metrics, config, stats };
+  return { client, connected, metrics, config, stats, sysinfo };
 }
 
 /** Subscribe to history batches — accumulates samples into a local buffer. */

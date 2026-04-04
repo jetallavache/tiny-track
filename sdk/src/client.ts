@@ -8,15 +8,15 @@
  */
 
 import {
-  parseHeader, parseMetrics, parseConfig, parseAck, parseStats, parseHistoryResp,
+  parseHeader, parseMetrics, parseConfig, parseAck, parseStats, parseHistoryResp, parseSysInfo,
   buildCmd, buildHistoryReq, buildSubscribe,
-  PKT_METRICS, PKT_CONFIG, PKT_ACK, PKT_STATS, PKT_HISTORY_RESP,
-  CMD_GET_SNAPSHOT, CMD_GET_STATS, CMD_SET_INTERVAL,
+  PKT_METRICS, PKT_CONFIG, PKT_ACK, PKT_RING_STATS, PKT_HISTORY_RESP, PKT_SYS_INFO,
+  CMD_GET_SNAPSHOT, CMD_GET_RING_STATS, CMD_GET_SYS_INFO, CMD_SET_INTERVAL, CMD_START, CMD_STOP,
   RING_L1, RING_L2, RING_L3,
-  TtMetrics, TtConfig, TtAck, TtStats, TtHistoryResp,
+  TtMetrics, TtConfig, TtAck, TtStats, TtHistoryResp, TtSysInfo,
 } from './proto.js';
 
-export type { TtMetrics, TtConfig, TtAck, TtStats, TtHistoryResp };
+export type { TtMetrics, TtConfig, TtAck, TtStats, TtHistoryResp, TtSysInfo };
 export { RING_L1, RING_L2, RING_L3 };
 
 export type ClientEventMap = {
@@ -28,6 +28,7 @@ export type ClientEventMap = {
   ack:     [a: TtAck];
   stats:   [s: TtStats];
   history: [r: TtHistoryResp];
+  sysinfo: [s: TtSysInfo];
 };
 
 type Listener<K extends keyof ClientEventMap> = (...args: ClientEventMap[K]) => void;
@@ -91,11 +92,23 @@ export class TinyTrackClient {
   }
 
   getStats(): void {
-    this._send(buildCmd(CMD_GET_STATS));
+    this._send(buildCmd(CMD_GET_RING_STATS));
+  }
+
+  getSysInfo(): void {
+    this._send(buildCmd(CMD_GET_SYS_INFO));
   }
 
   setInterval(ms: number): void {
     this._send(buildCmd(CMD_SET_INTERVAL, ms));
+  }
+
+  start(): void {
+    this._send(buildCmd(CMD_START));
+  }
+
+  stop(): void {
+    this._send(buildCmd(CMD_STOP));
   }
 
   getHistory(level: number, maxCount = 60, fromTs = 0, toTs = 0): void {
@@ -156,8 +169,9 @@ export class TinyTrackClient {
         case PKT_METRICS:      this._emit('metrics', parseMetrics(frame.payload)); break;
         case PKT_CONFIG:       this._emit('config',  parseConfig(frame.payload));  break;
         case PKT_ACK:          this._emit('ack',     parseAck(frame.payload));     break;
-        case PKT_STATS:        this._emit('stats',   parseStats(frame.payload));   break;
+        case PKT_RING_STATS:   this._emit('stats',   parseStats(frame.payload));   break;
         case PKT_HISTORY_RESP: this._emit('history', parseHistoryResp(frame.payload)); break;
+        case PKT_SYS_INFO:     this._emit('sysinfo', parseSysInfo(frame.payload)); break;
       }
     };
   }

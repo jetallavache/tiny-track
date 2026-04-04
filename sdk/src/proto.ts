@@ -22,7 +22,8 @@ export const PKT_ACK = 0x05;
 export const PKT_HISTORY_REQ = 0x10;
 export const PKT_HISTORY_RESP = 0x11;
 export const PKT_SUBSCRIBE = 0x12;
-export const PKT_STATS = 0x13;
+export const PKT_RING_STATS = 0x13;
+export const PKT_SYS_INFO = 0x14;
 
 // Ring levels
 export const RING_L1 = 0x01;
@@ -33,7 +34,10 @@ export const RING_L3 = 0x03;
 export const CMD_SET_INTERVAL = 0x01;
 export const CMD_SET_ALERTS = 0x02;
 export const CMD_GET_SNAPSHOT = 0x03;
-export const CMD_GET_STATS = 0x10;
+export const CMD_GET_RING_STATS = 0x10;
+export const CMD_GET_SYS_INFO = 0x11;
+export const CMD_START = 0x12;
+export const CMD_STOP = 0x13;
 
 export const ACK_OK = 0x00;
 export const ACK_ERROR = 0x01;
@@ -77,6 +81,18 @@ export interface TtStats {
   l1: TtRingStat;
   l2: TtRingStat;
   l3: TtRingStat;
+}
+
+export interface TtSysInfo {
+  hostname: string;
+  osType: string;
+  uptimeSec: number;
+  slotsL1: number;
+  slotsL2: number;
+  slotsL3: number;
+  intervalMs: number;
+  aggL2Ms: number;
+  aggL3Ms: number;
 }
 
 export interface TtHistoryResp {
@@ -167,6 +183,24 @@ export function parseHistoryResp(p: DataView): TtHistoryResp {
     samples.push(parseMetrics(new DataView(p.buffer, p.byteOffset + off, 52)));
   }
   return { level, count, last: (flags & 0x01) !== 0, samples };
+}
+
+/** Parse PKT_SYS_INFO payload (168 bytes). */
+export function parseSysInfo(p: DataView): TtSysInfo {
+  const dec = new TextDecoder();
+  const hostname = dec.decode(new Uint8Array(p.buffer, p.byteOffset, 64)).replace(/\0.*/, '');
+  const osType   = dec.decode(new Uint8Array(p.buffer, p.byteOffset + 64, 64)).replace(/\0.*/, '');
+  return {
+    hostname,
+    osType,
+    uptimeSec:  readUint64LE(p, 128),
+    slotsL1:    p.getUint32(136, true),
+    slotsL2:    p.getUint32(140, true),
+    slotsL3:    p.getUint32(144, true),
+    intervalMs: p.getUint32(148, true),
+    aggL2Ms:    p.getUint32(152, true),
+    aggL3Ms:    p.getUint32(156, true),
+  };
 }
 
 // ---------------------------------------------------------------------------
