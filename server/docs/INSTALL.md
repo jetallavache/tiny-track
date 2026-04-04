@@ -1,112 +1,77 @@
-Installation Instructions
-=========================
+# Установка TinyTrack на хост
 
-Prerequisites
--------------
+## Требования
 
-* Linux kernel 2.6.27 or later
-* GCC with C11 support
-* GNU Make
-* autoconf, automake, libtool (for building from git)
-* librt (usually part of glibc)
-* OpenSSL (libssl-dev / openssl-devel) - required for gateway TLS support
+- Linux (kernel ≥ 4.x)
+- gcc ≥ 9, make, autoconf, automake
+- libssl-dev, libncurses-dev
+- systemd (опционально, для автозапуска)
 
-Building from Source
---------------------
+## Сборка и установка
 
-From release tarball:
+```bash
+# 1. Клонировать и собрать
+git clone <repo> tinytrack && cd tinytrack/server
+./bootstrap.sh && ./configure && make
 
-    tar xzf tinytrack-0.1.0.tar.gz
-    cd tinytrack-0.1.0
-    ./configure
-    make
-    sudo make install
+# 2. Установить (требует root)
+sudo make install
+```
 
-From git repository:
+Что устанавливается:
+- `/usr/local/bin/tinytd` — демон сбора метрик
+- `/usr/local/bin/tinytrack` — gateway
+- `/usr/local/bin/tiny-cli` — CLI клиент
+- `/etc/tinytrack/tinytrack.conf` — конфиг
+- `/etc/systemd/system/tinytd.service`
+- `/etc/systemd/system/tinytrack.service`
 
-    git clone https://github.com/jetallavache/tiny-track.git
-    cd tiny-track
-    ./bootstrap.sh
-    ./configure
-    make
-    sudo make install
+## Системные пользователи
 
-Configuration Options
----------------------
+`make install` автоматически создаёт:
 
-    ./configure --help
+```bash
+groupadd --system tinytd
+useradd --system --no-create-home --shell /usr/sbin/nologin --gid tinytd tinytd
 
-Common options:
+groupadd --system tinytrack
+useradd --system --no-create-home --shell /usr/sbin/nologin --gid tinytrack tinytrack
+```
 
-* --prefix=PREFIX         Install to PREFIX (default: /usr/local)
-* --enable-debug          Enable debug mode (disables optimization)
+Директория данных: `/var/lib/tinytrack/` (владелец `tinytd:tinytd`).
 
-Installation Paths
-------------------
+## Запуск
 
-Default installation (prefix=/usr/local):
+```bash
+sudo systemctl enable tinytd tinytrack
+sudo systemctl start tinytd tinytrack
 
-* Binaries:       /usr/local/bin/
-* Configuration:  /etc/tinytrack/
-* Data:           /var/lib/tinytrack/
+# Проверить статус
+systemctl status tinytd tinytrack
+```
 
-Post-Installation
------------------
+## Доступ для пользователя
 
-`sudo make install` handles all of the following automatically.
-The commands below are provided for reference or manual setup.
+Чтобы использовать `tiny-cli` без root:
 
-Create system users and groups (required for privilege dropping):
+```bash
+sudo usermod -aG tinytd $USER
+newgrp tinytd  # применить без перелогина
+```
 
-    sudo groupadd --system tinytd
-    sudo useradd --system --no-create-home --shell /usr/sbin/nologin --gid tinytd tinytd
+## Конфигурация
 
-    sudo groupadd --system tinytrack
-    sudo useradd --system --no-create-home --shell /usr/sbin/nologin --gid tinytrack tinytrack
+Отредактируйте `/etc/tinytrack/tinytrack.conf` и перезапустите:
 
-Create data directory and set ownership:
+```bash
+sudo systemctl restart tinytd tinytrack
+```
 
-    sudo mkdir -p /var/lib/tinytrack
-    sudo chown tinytd:tinytd /var/lib/tinytrack
-    sudo chmod 750 /var/lib/tinytrack
+Подробнее: [CONFIGURATION.md](CONFIGURATION.md)
 
-Install systemd services (optional):
+## Удаление
 
-    sudo cp etc/systemd/tinytd.service    /etc/systemd/system/
-    sudo cp etc/systemd/tinytrack.service /etc/systemd/system/
-    sudo systemctl daemon-reload
-    sudo systemctl enable tinytd tinytrack
-    sudo systemctl start  tinytd tinytrack
-
-Verification
-------------
-
-Check installation:
-
-    tiny-cli --version
-
-Test daemon (foreground):
-
-    tinytd --no-daemon --config /etc/tinytrack/tinytrack.conf &
-    sleep 2
-    tiny-cli status
-    pkill tinytd
-
-Uninstallation
---------------
-
-`sudo make uninstall` removes everything automatically:
-stops the daemons, deletes runtime files, data directory,
-and the system users and groups.
-
-To uninstall manually:
-
-    pkill -x tinytd tinytrack
-    sudo userdel tinytd
-    sudo groupdel tinytd
-    sudo userdel tinytrack
-    sudo groupdel tinytrack
-    sudo rm -f /var/run/tinytd.pid /var/run/tinytrack.pid
-    sudo rm -f /dev/shm/tinytd-live.dat
-    sudo rm -rf /var/lib/tinytrack
-    sudo make uninstall
+```bash
+sudo systemctl stop tinytd tinytrack
+sudo make uninstall
+```

@@ -1,134 +1,90 @@
-Building TinyTrack from Source
-==============================
+# Сборка TinyTrack из исходников
 
-Prerequisites
--------------
+## Требования
 
-Required:
-- GCC with C11 support
-- GNU Make
-- Autotools (autoconf, automake, libtool)
-- librt (usually part of glibc)
-- OpenSSL (libssl-dev / openssl-devel) - for gateway TLS support
+| Инструмент | Версия | Назначение |
+|------------|--------|------------|
+| gcc | ≥ 9 | компилятор C11 |
+| make | любая | сборка |
+| autoconf | ≥ 2.69 | генерация configure |
+| automake | ≥ 1.15 | генерация Makefile.in |
+| libtool | любая | поддержка autotools |
+| libssl-dev | любая | TLS (OpenSSL) |
+| libncurses-dev | любая | ncurses dashboard |
 
-Optional:
-- systemd - for service unit installation
-- cppcheck - for static analysis
-- valgrind - for memory checks
-- python3 + pytest - for gateway tests
-- node + npm - for JS integration tests
+**Ubuntu/Debian:**
+```bash
+sudo apt install gcc make autoconf automake libtool libssl-dev libncurses-dev
+```
 
-Quick Build
------------
+**openSUSE:**
+```bash
+sudo zypper install gcc make autoconf automake libtool libopenssl-devel ncurses-devel
+```
 
-From release tarball:
+**Fedora/RHEL:**
+```bash
+sudo dnf install gcc make autoconf automake libtool openssl-devel ncurses-devel
+```
 
-    ./configure
-    make
-    sudo make install
+---
 
-From git repository:
+## Сборка
 
-    ./bootstrap.sh
-    ./configure
-    make
-    sudo make install
+```bash
+# После git clone (генерирует configure и Makefile.in)
+./bootstrap.sh
 
-Configuration Options
----------------------
+# Конфигурация
+./configure
 
---prefix=PREFIX         Install to PREFIX [/usr/local]
---enable-debug          Enable debug mode (no optimization)
---with-systemdsystemunitdir=DIR
-                        Install systemd service to DIR
+# Сборка (параллельная)
+make -j$(nproc)
+```
 
-Examples:
+Бинарники появятся в:
+- `tinytd/tinytd`
+- `gateway/tinytrack`
+- `cli/tiny-cli`
 
-    ./configure --prefix=/usr
-    ./configure --enable-debug
-    ./configure --with-systemdsystemunitdir=/lib/systemd/system
+---
 
-Build Targets
--------------
+## Опции configure
 
-make                    Build all binaries
-make clean              Remove build artifacts
-make install            Install to system
-make uninstall          Remove from system
-make dist               Create release tarball
-make distcheck          Verify release tarball
+```bash
+# Отладочная сборка
+./configure CFLAGS="-g -O0 -DDEBUG"
 
-Developer Targets
------------------
+# Без systemd journal
+./configure --without-systemd
 
-Code formatting (requires clang-format):
+# Кастомный prefix
+./configure --prefix=/opt/tinytrack
+```
 
-    make format             Format all C sources in-place
-    make format-check       Check formatting without modifying files
+---
 
-Gateway integration tests (requires node + built binaries):
+## Установка
 
-    make check-gateway              Run basic WebSocket protocol tests
-    make check-gateway-extended     Run extended integration tests
+```bash
+sudo make install        # установить
+sudo make uninstall      # удалить
+```
 
-    # Custom port:
-    make check-gateway-extended GATEWAY_TEST_PORT=4099
+---
 
-Valgrind memory checks (requires valgrind + built binaries):
+## Очистка
 
-    make valgrind-tinytd    Run tinytd for 5s, report leaks and errors
-    make valgrind-cli       Run tiny-cli status under valgrind
-    make valgrind-gateway   Run tinytrack under valgrind with a live WS client
+```bash
+make clean               # удалить объектные файлы
+make distclean           # удалить всё включая configure
+sh scripts/clean.sh      # полная очистка включая тестовые артефакты
+```
 
-    Reports are written to valgrind-tinytd.log, valgrind-tiny-cli.log,
-    valgrind-tinytrack.log in the project root.
+---
 
-Coverage (requires ./configure --enable-coverage):
+## Проверка дистрибутива
 
-    ./configure --enable-coverage
-    make
-    make coverage           Collect and display coverage data
-    make coverage-clean     Remove .gcda/.gcno files and coverage-report/
-
-Cleaning:
-
-    sh scripts/clean.sh     Full clean: distclean + autotools files +
-                            coverage artifacts + valgrind logs +
-                            test runtime files + Python/Node caches
-
-Installation Layout
--------------------
-
-Default installation (prefix=/usr/local):
-
-    /usr/local/bin/tinytd           - Monitoring daemon
-    /usr/local/bin/tiny-cli         - CLI client
-    /usr/local/bin/tinytrack        - HTTP/WebSocket gateway
-    /usr/local/etc/tinytrack/tinytrack.conf  - Configuration file
-    /usr/local/share/doc/tinytrack/ - Documentation
-
-With systemd:
-
-    /lib/systemd/system/tinytd.service    - tinytd service unit
-    /lib/systemd/system/tinytrack.service - tinytrack service unit
-
-Development
------------
-
-Bootstrap from git:
-
-    ./bootstrap.sh
-
-This runs autoreconf to generate configure script and Makefiles.
-
-Troubleshooting
----------------
-
-If configure fails with "librt not found":
-    Install glibc development package (glibc-devel or libc6-dev)
-
-If gateway build fails with OpenSSL errors:
-    Install OpenSSL development package (openssl-devel or libssl-dev)
-
-If systemd unit is not installed:
-    Use --with-systemdsystemunitdir=/lib/systemd/system
+```bash
+make distcheck           # собрать, установить, протестировать в изолированном окружении
+```

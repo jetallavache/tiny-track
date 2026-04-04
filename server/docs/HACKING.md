@@ -1,94 +1,82 @@
-Developer Guide
-===============
+# Разработка TinyTrack
 
-Autotools Structure
--------------------
+## Структура проекта
 
-configure.ac        - Main autoconf configuration
-Makefile.am         - Top-level automake file
-*/Makefile.am       - Per-directory build rules
+```
+server/
+├── common/              # Общие библиотеки
+│   ├── ringbuf/         # Кольцевой буфер (writer, reader, shm, seqlock)
+│   ├── log/             # Система логирования (stderr, syslog, journal)
+│   ├── config/          # Парсер INI-конфига
+│   ├── metrics.h/c      # Структура tt_metrics
+│   ├── sysfs.h/c        # Конфигурируемые пути к /proc и /
+│   ├── timer.h/c        # timerfd обёртка
+│   └── proto/           # Бинарный протокол v1/v2
+├── tinytd/src/          # Демон сбора метрик
+├── gateway/src/         # WebSocket gateway
+├── cli/src/             # CLI клиент
+├── tests/               # Тесты
+├── docs/                # Документация
+├── etc/                 # Конфиги и systemd unit-файлы
+├── docker-entrypoint.sh
+├── docker-compose.yml
+└── Dockerfile
+```
 
-Bootstrap Process
------------------
+## Autotools
 
-After cloning from git:
+```bash
+# После изменения Makefile.am или configure.ac
+autoreconf -fi
+./configure && make
+```
 
-    ./bootstrap.sh
+## Добавление нового файла
 
-This generates:
-- configure script
-- Makefile.in templates
-- config.h.in
+1. Добавить в `*/Makefile.am` в соответствующий `_SOURCES`
+2. `autoreconf -fi && ./configure && make`
 
-Then run normal build:
+## Форматирование кода
 
-    ./configure
-    make
+```bash
+make format          # применить clang-format
+make format-check    # проверить без изменений
+```
 
-Code Formatting
----------------
+Конфигурация: `.clang-format` в корне.
 
-Format all code:
+## Тестирование
 
-    make format
+```bash
+sh tests/run_tests.sh              # быстрые тесты
+sh tests/run_tests.sh all          # все тесты
+sh tests/run_tests.sh docker       # тесты в Docker
+```
 
-Check formatting without changes:
+Подробнее: [TESTING.md](TESTING.md)
 
-    make format-check
+## Добавление нового теста
 
-Configuration is in .clang-format file.
+- **C unit-тест для tinytd:** `tests/tinytd/test_*.c` — подхватывается автоматически
+- **C unit-тест для CLI:** `tests/cli/test_*.c`
+- **Python-тест gateway:** `tests/gateway/test_*.py` с фикстурой `gateway`
+- **Shell-тест:** `tests/tinytd/test_*.sh` или `tests/cli/test_*.sh`
 
-Adding New Files
-----------------
+## Протокол
 
-1. Add source to appropriate Makefile.am:
-   - common/Makefile.am for shared code
-   - tinytd/Makefile.am for daemon
-   - cli/Makefile.am for CLI
-   - gateway/Makefile.am for gateway
+Бинарный протокол описан в `common/proto/v1.h` и `common/proto/v2.h`.
 
-2. Regenerate:
+При добавлении нового типа пакета:
+1. Добавить константу `PKT_*` в `v2.h`
+2. Добавить структуру payload
+3. Обработать в `gateway/src/session.c`
+4. Добавить тест в `tests/gateway/test_ws.py`
 
-    autoreconf -fi
+## Релиз
 
-Adding Dependencies
--------------------
+Версия задаётся в `configure.ac`:
+```
+AC_INIT([tinytrack], [0.1.5], ...)
+```
 
-Edit configure.ac:
-
-    AC_CHECK_LIB([name], [function])
-    AC_CHECK_HEADERS([header.h])
-
-Then regenerate and reconfigure.
-
-Testing Changes
----------------
-
-Fast suite (static analysis + unit + integration):
-
-    sh tests/run_tests.sh
-
-Full suite including gateway:
-
-    sh tests/run_tests.sh all
-
-See docs/TESTING.md for details on individual test suites.
-
-Test Configuration
-------------------
-
-All tests use a single shared config: tests/tinytrack.conf-test
-
-It contains sections for all components (tinytd, gateway) with
-paths under /tmp/ and debug settings suitable for test environments.
-
-Cleaning
---------
-
-Remove all build and test artifacts:
-
-    sh scripts/clean.sh
-
-Verify distribution:
-
-    make distcheck
+Обновить также бейдж в `README.md`.
