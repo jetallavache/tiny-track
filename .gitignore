@@ -60,7 +60,6 @@ valgrind-*.core.*
 
 # Node.js
 node_modules/
-package-lock.json
 
 # Python
 __pycache__/
