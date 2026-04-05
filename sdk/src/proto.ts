@@ -167,8 +167,8 @@ export function parseAck(p: DataView): TtAck {
 export function parseStats(p: DataView): TtStats {
   return {
     l1: parseRingStat(p, 0),
-    l2: parseRingStat(p, 25),
-    l3: parseRingStat(p, 50),
+    l2: parseRingStat(p, 29),
+    l3: parseRingStat(p, 58),
   };
 }
 
