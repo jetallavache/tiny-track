@@ -23,6 +23,10 @@ jobs:
           cache: npm
           cache-dependency-path: sdk/package-lock.json
 
+      - name: Fix lockfile
+        run: npm install --package-lock-only
+        working-directory: sdk
+  
       - name: Install
         run: npm ci
         working-directory: sdk
