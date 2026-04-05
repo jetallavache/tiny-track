@@ -1,0 +1,89 @@
+# =============================================================================
+# TinyTrack — Docker / container configuration
+# =============================================================================
+#
+# Use this file when running TinyTrack inside a container that monitors the
+# *host* system by bind-mounting the host's /proc and /:
+#
+#   docker run \
+#     -v /proc:/host/proc:ro \
+#     -v /:/host/rootfs:ro   \
+#     -v /dev/shm:/dev/shm   \
+#     -p 25015:25015         \
+#     tinytrack
+#
+# The environment variables TT_PROC_ROOT and TT_ROOTFS_PATH override the
+# values set in this file and are pre-set in the Docker image to:
+#   TT_PROC_ROOT=/host/proc
+#   TT_ROOTFS_PATH=/host/rootfs
+# =============================================================================
+
+[tinytd]
+
+# In a container we run as root (no privilege drop needed).
+# Set to a real user/group if you add them to the image.
+user  = root
+group = root
+
+pid_file = /var/run/tinytd.pid
+
+# stdout is the natural log destination in containers (visible via docker logs).
+# Use "docker" for a cleaner format without timestamps (Docker adds them).
+# Use "stdout" if you need timestamps in the log output.
+log_backend = docker
+log_level   = info
+
+
+[collection]
+
+interval_ms     = 1000
+
+# How often disk usage (statvfs on rootfs_path) is recalculated, in seconds.
+du_interval_sec = 30
+
+# Paths to the host's /proc and / bind-mounted into the container.
+# Override with TT_PROC_ROOT / TT_ROOTFS_PATH environment variables.
+proc_root   = /host/proc
+rootfs_path = /host/rootfs
+
+
+[storage]
+
+# Separate live file name to avoid conflicting with a host-side tinytd
+# when /dev/shm is shared between host and container.
+live_path   = /dev/shm/tinytd-docker-live.dat
+shadow_path = /var/lib/tinytrack/tinytd-shadow.dat
+
+shadow_sync_interval_sec = 60
+
+# 384 = 0600 = rw------- (root only inside container)
+file_mode = 384
+
+
+[ringbuffer]
+
+l1_capacity         = 3600
+l2_capacity         = 1440
+l2_agg_interval_sec = 60
+l3_capacity         = 720
+l3_agg_interval_sec = 3600
+
+
+[recovery]
+
+enable_crc   = true
+auto_recover = true
+
+
+[gateway]
+
+user  = root
+group = root
+
+pid_file = /var/run/tinytrack.pid
+
+log_backend = docker
+log_level   = info
+
+listen          = ws://0.0.0.0:25015
+update_interval = 1000

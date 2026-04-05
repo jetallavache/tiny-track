@@ -1,88 +1,67 @@
-TinyTrack - Lightweight System Monitoring Daemon
-================================================
+<div align="center">
 
-TinyTrack is a minimal system monitoring solution designed for resource-
-constrained VDS environments (1GB RAM, 1 CPU core). It provides real-time
-system metrics collection with minimal overhead.
+<img src="docs/assets/logo.svg" alt="TinyTrack" width="480" />
 
-FEATURES
---------
+<br/>
 
-* Low resource usage: <1% CPU, <10MB RAM
-* Real-time metrics: CPU, memory, network, disk, load average
-* Three-tier ring buffer: 1h/24h/7d retention
-* Multiple interfaces: CLI, HTTP/WebSocket gateway
-* Zero-copy shared memory architecture
-* Event-driven design with epoll
+![Version](https://img.shields.io/badge/version-0.2.0-4A90D9?style=flat-square)
+![License](https://img.shields.io/badge/license-MIT-27AE60?style=flat-square)
+![Platform](https://img.shields.io/badge/platform-Linux-E67E22?style=flat-square)
+![Language](https://img.shields.io/badge/language-C11-8E44AD?style=flat-square)
+![Docker](https://img.shields.io/badge/docker-ready-2496ED?style=flat-square&logo=docker&logoColor=white)
+![WebSocket](https://img.shields.io/badge/protocol-WebSocket%20%2B%20TLS-16A085?style=flat-square)
 
-REQUIREMENTS
-------------
+**Lightweight Linux system metrics daemon with WebSocket streaming**
 
-* Linux kernel 2.6.27 or later
-* GCC with C11 support
-* POSIX-compliant system
-* /dev/shm support (tmpfs)
+[Документация (RU)](docs/ru/) · [Documentation (EN)](docs/en/) · [Quick Start](#quick-start)
 
-INSTALLATION
-------------
+</div>
 
-From source:
+---
 
-    ./configure
-    make
-    make install
+## Quick Start
 
-See INSTALL for detailed instructions.
+```bash
+# One-line install (Linux)
+curl -fsSL https://raw.githubusercontent.com/jetallavache/tiny-track/main/install.sh | bash
 
-USAGE
------
+# Or via Docker
+curl -fsSL https://raw.githubusercontent.com/jetallavache/tiny-track/main/install.sh | TINYTRACK_DOCKER=1 bash
 
-Start daemon:
+# Manual build
+./bootstrap.sh && ./configure && make
+sudo make install
+sudo systemctl start tinytd tinytrack
+```
 
-    tinytd
+Connect to `ws://localhost:25015/websocket`
 
-Query status:
+```bash
+# CLI
+tiny-cli status
+tiny-cli metrics
+tiny-cli history l1
+tiny-cli dashboard
 
-    tiny-cli status
-    tiny-cli live
+# Inside Docker container
+docker compose exec tinytrack tiny-cli dashboard
+```
 
-Start gateway:
+---
 
-    tinytrack --port 4026
+## Documentation
 
-ARCHITECTURE
-------------
+| | Русский | English |
+|---|---|---|
+| Обзор / Overview | [docs/ru/overview.md](docs/ru/overview.md) | [docs/en/overview.md](docs/en/overview.md) |
+| Установка / Install | [docs/ru/install.md](docs/ru/install.md) | [docs/en/install.md](docs/en/install.md) |
+| Docker | [docs/ru/docker.md](docs/ru/docker.md) | [docs/en/docker.md](docs/en/docker.md) |
+| Конфигурация / Configuration | [docs/ru/configuration.md](docs/ru/configuration.md) | [docs/en/configuration.md](docs/en/configuration.md) |
+| Архитектура / Architecture | [docs/ru/architecture.md](docs/ru/architecture.md) | [docs/en/architecture.md](docs/en/architecture.md) |
+| Устранение неполадок / Troubleshooting | [docs/ru/troubleshooting.md](docs/ru/troubleshooting.md) | [docs/en/troubleshooting.md](docs/en/troubleshooting.md) |
 
-    tinytd (daemon)
-        |
-        v
-    /dev/shm/tinytd-live.dat (shared memory)
-        |
-        +---> tiny-cli (CLI consumer)
-        +---> tinytrack (HTTP/WS gateway)
+---
 
-DOCUMENTATION
--------------
+## License
 
-* docs/INSTALL.md   - Installation instructions
-* docs/BUILD.md     - Building from source
-* docs/HACKING.md   - Developer guide
-
-See man pages: tinytd(8), tiny-cli(1), tinytrack(8)
-
-LICENSE
--------
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the MIT License. See LICENSE file for details.
-
-REPORTING BUGS
---------------
-
-Report bugs to: <bugs@example.com>
-Project homepage: <https://github.com/jetallavache/tiny-track>
-
-COPYRIGHT
----------
-
-Copyright (C) 2026 TinyTrack Project
+MIT License — see [LICENSE](LICENSE)

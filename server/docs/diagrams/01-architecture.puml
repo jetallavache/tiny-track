@@ -1,0 +1,53 @@
+@startuml
+title TinyTrack — Overall Architecture
+
+skinparam componentStyle rectangle
+skinparam backgroundColor #FAFAFA
+skinparam component {
+  BackgroundColor #E8F4FD
+  BorderColor #2980B9
+}
+skinparam database {
+  BackgroundColor #FEF9E7
+  BorderColor #F39C12
+}
+skinparam node {
+  BackgroundColor #EAF7EA
+  BorderColor #27AE60
+}
+
+node "Linux Host" {
+  component "tinytd (daemon)" as daemon {
+    component "Collector\n(CPU/mem/net/disk/load)" as col
+    component "epoll Runtime" as rt
+    component "Ring Buffer Writer\n(L1/L2/L3)" as writer
+  }
+
+  database "/dev/shm/tinytd-live.dat\n(shared memory + shadow file)" as shm
+
+  component "tiny-cli" as cli {
+    component "Ring Buffer Reader" as clireader
+    component "ncurses Dashboard" as dash
+  }
+
+  component "tinytrack (gateway)" as gw {
+    component "Ring Buffer Reader" as gwreader
+    component "HTTP/WS Server (epoll)" as wsserver
+  }
+}
+
+node "WebSocket Clients" as clients
+
+col --> rt
+rt --> writer : tt_metrics
+writer -right-> shm : mmap write\n(zero-copy)
+writer ..> shm : shadow sync\n(Adler32 CRC)
+
+shm --> clireader : mmap read
+clireader --> dash
+
+shm --> gwreader : mmap read
+gwreader --> wsserver
+wsserver <--> clients : WebSocket :4026\nbinary proto v1/v2
+
+@enduml

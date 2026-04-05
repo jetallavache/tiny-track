@@ -6,19 +6,19 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/tinytd/tinytd",
-            "args": [],
+            "args": ["-c", "etc/tinytrack.conf-debug"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
-            "environment": [
-                {
-                    "name": "TINYTRACK_LIVE_PATH",
-                    "value": "/dev/shm/tinytd-live.dat"
-                },
-                {
-                    "name": "TINYTRACK_SHADOW_PATH",
-                    "value": "/dev/shm/tinytd-shadow.dat"
-                }
-            ],
+            // "environment": [
+            //     {
+            //         "name": "TINYTRACK_LIVE_PATH",
+            //         "value": "/tmp/tinytd-live.dat"
+            //     },
+            //     {
+            //         "name": "TINYTRACK_SHADOW_PATH",
+            //         "value": "/tmp/tinytd-shadow.dat"
+            //     }
+            // ],
             "externalConsole": false,
             "MIMode": "gdb",
             "setupCommands": [
@@ -40,11 +40,40 @@
             "environment": [
                 {
                     "name": "TINYTRACK_LIVE_PATH",
-                    "value": "/dev/shm/tinytd-live.dat"
+                    "value": "/tmp/tinytd-live.dat"
                 },
                 {
                     "name": "TINYTRACK_SHADOW_PATH",
-                    "value": "/dev/shm/tinytd-shadow.dat"
+                    "value": "/tmp/tinytd-shadow.dat"
+                }
+            ],
+            "preLaunchTask": "start-tinytd-daemon",
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "debug-tinytrack",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/gateway/tinytrack",
+            "args": ["-c", "etc/tinytrack.conf-debug"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                {
+                    "name": "TINYTRACK_LIVE_PATH",
+                    "value": "/tmp/tinytd-live.dat"
+                },
+                {
+                    "name": "TINYTRACK_SHADOW_PATH",
+                    "value": "/tmp/tinytd-shadow.dat"
                 }
             ],
             "preLaunchTask": "start-tinytd-daemon",

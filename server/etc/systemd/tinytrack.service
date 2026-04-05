@@ -1,0 +1,30 @@
+[Unit]
+Description=TinyTrack HTTP/WebSocket Gateway
+Documentation=man:tinytrack(8)
+After=network.target tinytd.service
+Requires=tinytd.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/tinytrack --no-daemon --config /etc/tinytrack/tinytrack.conf
+Restart=on-failure
+RestartSec=5s
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tinytrack
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/dev/shm /var/run
+
+# Resource limits
+LimitNOFILE=1024
+LimitNPROC=64
+
+[Install]
+WantedBy=multi-user.target

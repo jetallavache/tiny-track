@@ -1,0 +1,61 @@
+@startuml
+title TinyTrack — WebSocket Session Flow (Proto v1/v2)
+
+skinparam backgroundColor #FAFAFA
+skinparam sequence {
+  ArrowColor #2980B9
+  LifeLineBorderColor #888888
+  ParticipantBackgroundColor #E8F4FD
+  ParticipantBorderColor #2980B9
+  NoteBackgroundColor #FEF9E7
+  NoteBorderColor #F39C12
+}
+
+participant "WS Client" as client
+participant "tinytrack\n(gateway)" as gw
+participant "Shared Memory\n(ring buffer)" as shm
+participant "tinytd\n(daemon)" as daemon
+
+daemon -> shm : write L1/L2/L3\nevery interval_ms
+
+== Connection ==
+client -> gw : WebSocket Upgrade (HTTP)
+gw -> client : 101 Switching Protocols
+gw -> shm : read config
+gw -> client : PKT_CONFIG\n(interval_ms, alerts_enabled)
+
+== Live Stream ==
+loop every interval_ms
+  gw -> shm : ttr_reader_get_latest()
+  gw -> client : PKT_METRICS (52 bytes)
+end
+
+== Client Commands ==
+client -> gw : PKT_CMD (CMD_SET_INTERVAL)
+gw -> client : PKT_ACK (ACK_OK)
+
+client -> gw : PKT_CMD (CMD_GET_SNAPSHOT)
+gw -> shm : ttr_reader_get_latest()
+gw -> client : PKT_METRICS
+
+== History Request (v2) ==
+client -> gw : PKT_HISTORY_REQ\n(level=L2, from_ts, to_ts)
+loop batches of ≤60 samples
+  gw -> shm : ttr_reader_get_history()
+  gw -> client : PKT_HISTORY_RESP\n(count, flags)
+end
+note right of client : last frame:\nHISTORY_FLAG_LAST = 1
+
+== Subscription (v2) ==
+client -> gw : PKT_SUBSCRIBE\n(level=L3, interval_ms=900000)
+gw -> client : PKT_ACK (ACK_OK)
+loop every 15m
+  gw -> shm : ttr_reader_get_history(L3)
+  gw -> client : PKT_METRICS (L3 sample)
+end
+
+== Alerts ==
+daemon -> shm : threshold crossed
+gw -> client : PKT_ALERT\n(level=WARNING, message)
+
+@enduml

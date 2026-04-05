@@ -1,21 +1,29 @@
 .kiro
 
-# Autotools
-/autom4te.cache/
-/aclocal.m4
-/ar-lib
-/compile
-/config.guess
-/config.h
-/config.h.in
-/config.log
-/config.status
-/config.sub
-/configure
-/depcomp
-/install-sh
-/missing
-/stamp-h1
+# Private OpenSSL gen
+server/etc/certs/*.crt
+server/etc/certs/*.key
+server/etc/certs/*.ca
+server/etc/certs/*.csr
+
+# Autotools (generated in server/)
+server/autom4te.cache/
+server/aclocal.m4
+server/ar-lib
+server/compile
+server/config.guess
+server/config.h
+server/config.h.in
+server/config.log
+server/config.status
+server/config.sub
+server/configure
+server/depcomp
+server/install-sh
+server/missing
+server/stamp-h1
+server/**/Makefile
+server/**/Makefile.in
 Makefile
 Makefile.in
 .deps/
@@ -24,13 +32,47 @@ Makefile.in
 vgcore.*
 *~
 .dirstamp
+test-driver
 
 # Build artifacts
 *.bin
-tinytd/tinytd
-cli/tiny-cli
-gateway/tinytrack
+server/tinytd/tinytd
+server/cli/tiny-cli
+server/gateway/tinytrack
 
 # Distribution
 tinytrack-*.tar.gz
 tinytrack-*/
+
+# Coverage
+coverage-report/
+*.gcda
+*.gcno
+*.gcov
+
+# Valgrind reports
+valgrind-*.log
+valgrind-*.core.*
+
+# Test runtime files
+/tmp/tinytd-test-live.dat
+/tmp/tinytd-test-shadow.dat
+
+# Node.js
+node_modules/
+package-lock.json
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# SDK build output
+sdk/dist/
+sdk/*.tsbuildinfo
+
+# Demo build output
+demo/dist/
+demo/*.tsbuildinfo
+docs/roadmap.md
+docs/dev-history.md

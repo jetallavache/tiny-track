@@ -1,0 +1,9 @@
+/* Responsive layout */
+@media (max-width: 768px) {
+  .sidebar-desktop { display: none !important; }
+  .topbar-mobile   { display: flex !important; }
+  .main-content    { padding: 16px !important; padding-top: 60px !important; }
+}
+@media (min-width: 769px) {
+  .topbar-mobile { display: none !important; }
+}
