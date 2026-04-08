@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { MetricsBar } from '../react/MetricsBar.js';
+import { MetricsBar } from '../react/components/MetricsBar/index.js';
 import { MockTinyTrackProvider } from './MockProvider.js';
 
 const meta: Meta<typeof MetricsBar> = {
@@ -14,9 +14,12 @@ const meta: Meta<typeof MetricsBar> = {
   ],
   parameters: { layout: 'padded' },
   argTypes: {
-    showDisk: { control: 'boolean' },
-    showNet: { control: 'boolean' },
-    compact: { control: 'boolean' },
+    showAlerts: { control: 'boolean' },
+    size: { control: 'radio', options: ['s', 'm', 'l'] },
+    metrics: {
+      control: 'check',
+      options: ['cpu', 'mem', 'net', 'disk', 'load', 'proc'],
+    },
   },
 };
 export default meta;
@@ -24,15 +27,14 @@ type Story = StoryObj<typeof MetricsBar>;
 
 export const Default: Story = {};
 
-export const Compact: Story = { args: { compact: true } };
+export const Small: Story = { args: { size: 's' } };
+export const Large: Story = { args: { size: 'l' } };
 
-export const NoDisk: Story = { args: { showDisk: false } };
+export const Compact: Story = { args: { size: 'm' }, name: 'Compact (wrapping)' };
 
-export const NoNet: Story = { args: { showNet: false } };
-
-export const MinimalMobile: Story = {
-  args: { compact: true, showDisk: false, showNet: false },
-  name: 'Minimal (mobile)',
+export const CpuMemOnly: Story = {
+  args: { metrics: ['cpu', 'mem'] },
+  name: 'CPU + Mem only',
 };
 
 export const HighLoad: Story = {
@@ -53,4 +55,10 @@ export const Static: Story = {
       </MockTinyTrackProvider>
     ),
   ],
+};
+
+export const Mobile: Story = {
+  name: 'Mobile (compact auto)',
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+  args: { style: { width: '100%' } },
 };

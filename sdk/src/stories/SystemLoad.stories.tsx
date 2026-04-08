@@ -1,14 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { MetricsPanel } from '../react/components/MetricsPanel/index.js';
+import { SystemLoad } from '../react/components/SystemLoad/index.js';
 import { MockTinyTrackProvider } from './MockProvider.js';
 
-const meta: Meta<typeof MetricsPanel> = {
-  title: 'Components/MetricsPanel',
-  component: MetricsPanel,
+const meta: Meta<typeof SystemLoad> = {
+  title: 'Components/SystemLoad',
+  component: SystemLoad,
   decorators: [
     (Story) => (
       <MockTinyTrackProvider>
-        <div style={{ padding: 16 }}>
+        <div style={{ padding: 24 }}>
           <Story />
         </div>
       </MockTinyTrackProvider>
@@ -17,22 +17,20 @@ const meta: Meta<typeof MetricsPanel> = {
   parameters: { layout: 'centered' },
   argTypes: {
     size: { control: 'radio', options: ['s', 'm', 'l'] },
-    metrics: { control: 'check', options: ['cpu', 'mem', 'net', 'disk', 'load', 'proc'] },
   },
 };
 export default meta;
-type Story = StoryObj<typeof MetricsPanel>;
+type Story = StoryObj<typeof SystemLoad>;
 
 export const Default: Story = {};
 export const Small: Story = { args: { size: 's' } };
 export const Large: Story = { args: { size: 'l' } };
-export const CpuMemOnly: Story = { args: { metrics: ['cpu', 'mem'] }, name: 'CPU + Mem only' };
 
 export const HighLoad: Story = {
   decorators: [
     (Story) => (
-      <MockTinyTrackProvider overrides={{ cpu: 9200, mem: 8800, load1: 1200 }}>
-        <div style={{ padding: 16 }}>
+      <MockTinyTrackProvider overrides={{ load1: 1800, load5: 1500, load15: 1200, nrRunning: 24, nrTotal: 512 }}>
+        <div style={{ padding: 24 }}>
           <Story />
         </div>
       </MockTinyTrackProvider>
@@ -40,11 +38,11 @@ export const HighLoad: Story = {
   ],
 };
 
-export const Static: Story = {
+export const Idle: Story = {
   decorators: [
     (Story) => (
-      <MockTinyTrackProvider animate={false} overrides={{ cpu: 2500, mem: 4000 }}>
-        <div style={{ padding: 16 }}>
+      <MockTinyTrackProvider animate={false} overrides={{ load1: 10, load5: 12, load15: 15, nrRunning: 1, nrTotal: 200 }}>
+        <div style={{ padding: 24 }}>
           <Story />
         </div>
       </MockTinyTrackProvider>

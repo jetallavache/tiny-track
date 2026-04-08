@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { Dashboard } from '../react/dashboard/Dashboard.js';
+import { Dashboard } from '../react/components/Dashboard/index.js';
 import { MockTinyTrackProvider } from './MockProvider.js';
 
 const meta: Meta<typeof Dashboard> = {
@@ -46,6 +46,21 @@ export const Static: Story = {
     (Story) => (
       <MockTinyTrackProvider animate={false}>
         <div style={{ width: 480, padding: 16 }}>
+          <Story />
+        </div>
+      </MockTinyTrackProvider>
+    ),
+  ],
+};
+
+export const Mobile: Story = {
+  name: 'Mobile (375px)',
+  args: { mode: 'compact', style: { width: '100%' } },
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+  decorators: [
+    (Story) => (
+      <MockTinyTrackProvider historySize={60}>
+        <div style={{ padding: 12 }}>
           <Story />
         </div>
       </MockTinyTrackProvider>
