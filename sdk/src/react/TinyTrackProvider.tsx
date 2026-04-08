@@ -92,6 +92,21 @@ export function useMetrics() {
   return { client, connected, metrics, config, stats, sysinfo, streaming, setStreaming };
 }
 
+/**
+ * useRawPackets — subscribe to raw incoming binary packets.
+ * Useful when you want to handle protocol data without React component wrappers.
+ *
+ * @param handler Called with (pktType, payload) for every incoming packet.
+ */
+export function useRawPackets(handler: (pktType: number, payload: DataView) => void) {
+  const { client } = useTinyTrack();
+  useEffect(() => {
+    if (!client) return;
+    client.on('packet', handler);
+    return () => { client.off('packet', handler); };
+  }, [client, handler]);
+}
+
 export function useHistory(maxSamples = 3600) {
   const { client, connected } = useTinyTrack();
   const [samples, setSamples] = useState<TtMetrics[]>([]);

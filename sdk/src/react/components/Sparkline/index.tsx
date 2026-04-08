@@ -1,5 +1,11 @@
-interface SparklineProps {
-  data: number[]; // raw values (0..10000 for pct, or bytes)
+/**
+ * Sparkline — minimal SVG area chart for inline metric history.
+ */
+
+export interface SparklineProps {
+  /** Raw values (0–10000 for percentages, or bytes/s for network). */
+  data: number[];
+  /** Maximum value for Y-axis scaling. Defaults to max of data. */
   max?: number;
   width?: number;
   height?: number;
@@ -7,6 +13,10 @@ interface SparklineProps {
   fill?: string;
 }
 
+/**
+ * Renders a small SVG area sparkline.
+ * Returns null when fewer than 2 data points are available.
+ */
 export function Sparkline({
   data,
   max,

@@ -60,7 +60,7 @@ export const THEMES: Record<ThemePreset, TtTheme> = {
     faint: '#4b5563',
     cpu: '#4ade80',
     mem: '#60a5fa',
-    net: '#f59e0b',
+    net: '#f50be9ff',
     disk: '#fb923c',
     load: '#a78bfa',
     ok: '#22c55e',
