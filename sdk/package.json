@@ -32,15 +32,13 @@
   },
   "peerDependencies": {
     "react": ">=18.0.0",
-    "react-dom": ">=18.0.0"
+    "react-dom": ">=18.0.0",
+    "three": ">=0.150.0"
   },
   "peerDependenciesMeta": {
-    "react": {
-      "optional": true
-    },
-    "react-dom": {
-      "optional": true
-    }
+    "react": { "optional": true },
+    "react-dom": { "optional": true },
+    "three": { "optional": true }
   },
   "devDependencies": {
     "@rollup/plugin-node-resolve": "^15.3.1",
@@ -72,5 +70,8 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/jetallavache/tiny-track"
+  },
+  "dependencies": {
+    "@types/three": "^0.183.1"
   }
 }

@@ -2,24 +2,40 @@ export { TinyTrackClient } from './client.js';
 export type { TinyTrackClientOptions, ClientEventMap } from './client.js';
 export type { TtMetrics, TtConfig, TtAck, TtStats, TtHistoryResp, TtSysInfo } from './client.js';
 export {
+  /* Protocol constants */
+  PROTO_MAGIC,
+  HEADER_SIZE,
+  /* Packet types */
+  PKT_METRICS,
+  PKT_CONFIG,
+  PKT_ALERT,
+  PKT_CMD,
+  PKT_ACK,
+  PKT_HISTORY_REQ,
+  PKT_HISTORY_RESP,
+  PKT_SUBSCRIBE,
+  PKT_RING_STATS,
+  PKT_SYS_INFO,
+  /* Ring levels */
   RING_L1,
   RING_L2,
   RING_L3,
-  PKT_METRICS,
-  PKT_CONFIG,
-  PKT_ACK,
-  PKT_RING_STATS,
-  PKT_HISTORY_RESP,
-  PKT_SYS_INFO,
+  /* Commands */
+  CMD_SET_INTERVAL,
+  CMD_SET_ALERTS,
   CMD_GET_SNAPSHOT,
   CMD_GET_RING_STATS,
   CMD_GET_SYS_INFO,
-  CMD_SET_INTERVAL,
   CMD_START,
   CMD_STOP,
+  /* ACK status codes */
+  ACK_OK,
+  ACK_ERROR,
+  /* Builders */
   buildCmd,
   buildHistoryReq,
   buildSubscribe,
+  /* Parsers */
   parseHeader,
   parseMetrics,
   parseConfig,
@@ -28,3 +44,4 @@ export {
   parseHistoryResp,
   parseSysInfo,
 } from './proto.js';
+export type { TtFrame, TtRingStat } from './proto.js';
