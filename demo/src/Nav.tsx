@@ -10,7 +10,10 @@ export type Route =
   | 'MetricsPanel'
   | 'Dashboard'
   | 'TimeSeriesChart'
-  | 'Timeline';
+  | 'Timeline'
+  | 'SystemLoad'
+  | 'Metrics3D'
+  | 'RawPackets';
 
 const NAV: { label: string; route: Route; group?: string }[] = [
   { label: 'Introduction', route: 'introduction' },
@@ -21,6 +24,9 @@ const NAV: { label: string; route: Route; group?: string }[] = [
   { label: 'Dashboard', route: 'Dashboard', group: 'Components' },
   { label: 'TimeSeriesChart', route: 'TimeSeriesChart', group: 'Components' },
   { label: 'Timeline', route: 'Timeline', group: 'Components' },
+  { label: 'SystemLoad', route: 'SystemLoad', group: 'Components' },
+  { label: 'Metrics3D', route: 'Metrics3D', group: 'Components' },
+  { label: 'Raw Packets & Types', route: 'RawPackets', group: 'Advanced' },
 ];
 
 interface NavProps {

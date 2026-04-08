@@ -1,20 +1,36 @@
-import { useTheme, MetricsPanel } from 'tinytsdk/react';
+import { MetricsPanel } from 'tinytsdk/react';
 import { PageTitle, PageSection, CodeBlock, PropsTable, Preview, Divider } from '../components.js';
 
 export function PageMetricsPanel() {
-  const t = useTheme();
   return (
     <div>
       <PageTitle
         title="MetricsPanel"
         badge="component"
-        desc="Compact vertical panel displaying all key metrics: CPU, memory, disk, load average, process count, network I/O and disk usage. Shows hostname and system uptime from sysinfo."
+        desc="Vertical metrics card with three size variants: minimal, default and full-detail."
       />
 
-      <PageSection title="Preview">
-        <Preview>
-          <MetricsPanel />
-        </Preview>
+      <PageSection title="Size variants">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div>
+            <Preview><MetricsPanel size="s" /></Preview>
+            <p style={{ fontSize: 11, color: '#6b7280', margin: '4px 0 0', fontFamily: 'monospace' }}>
+              size="s" — CPU / Mem / Disk % only
+            </p>
+          </div>
+          <div>
+            <Preview><MetricsPanel size="m" /></Preview>
+            <p style={{ fontSize: 11, color: '#6b7280', margin: '4px 0 0', fontFamily: 'monospace' }}>
+              size="m" — default: bars + load + net
+            </p>
+          </div>
+          <div>
+            <Preview><MetricsPanel size="l" /></Preview>
+            <p style={{ fontSize: 11, color: '#6b7280', margin: '4px 0 0', fontFamily: 'monospace' }}>
+              size="l" — full labels, tooltips, OS info
+            </p>
+          </div>
+        </div>
       </PageSection>
 
       <Divider />
@@ -22,16 +38,21 @@ export function PageMetricsPanel() {
       <PageSection title="Usage">
         <CodeBlock
           code={`import { TinyTrackProvider, MetricsPanel } from 'tinytsdk/react';
+import type { MetricType, SizeType } from 'tinytsdk/react';
 
 <TinyTrackProvider url="ws://localhost:25015">
+  {/* Minimal */}
+  <MetricsPanel size="s" />
+
+  {/* Default */}
   <MetricsPanel />
-</TinyTrackProvider>
 
-// With custom width
-<MetricsPanel style={{ width: 240 }} />
+  {/* Full detail */}
+  <MetricsPanel size="l" />
 
-// With theme override
-<MetricsPanel theme={{ bg: 'transparent', border: 'none' }} />`}
+  {/* Custom metric subset */}
+  <MetricsPanel metrics={['cpu', 'mem', 'load'] satisfies MetricType[]} />
+</TinyTrackProvider>`}
         />
       </PageSection>
 
@@ -40,47 +61,13 @@ export function PageMetricsPanel() {
       <PageSection title="Props">
         <PropsTable
           rows={[
+            { name: 'size', type: '"s" | "m" | "l"', default: '"m"', description: 's: CPU/Mem/Disk % only; m: default with bars; l: full labels, tooltips, OS info' },
+            { name: 'metrics', type: 'MetricType[]', default: 'all', description: 'Subset of metrics to display' },
             { name: 'className', type: 'string', default: '—', description: 'CSS class name' },
             { name: 'style', type: 'CSSProperties', default: '—', description: 'Inline style override' },
-            {
-              name: 'theme',
-              type: 'Partial<TtTheme>',
-              default: '—',
-              description: 'Override theme tokens for this component only',
-            },
+            { name: 'theme', type: 'Partial<TtTheme>', default: '—', description: 'Override theme tokens for this component only' },
           ]}
         />
-      </PageSection>
-
-      <Divider />
-
-      <PageSection title="Data displayed">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {[
-            ['Hostname', 'From PKT_SYS_INFO on connect'],
-            ['Uptime', 'System uptime from /proc/uptime via PKT_SYS_INFO'],
-            ['CPU / Mem / Disk', 'Percentage with ASCII bar (0–100%)'],
-            ['Load avg', '1m / 5m / 15m (×100 fixed-point)'],
-            ['Process count', 'Running / total'],
-            ['Network', 'TX ↑ and RX ↓ in bytes/sec'],
-            ['Disk usage', 'Used / total in human-readable bytes'],
-          ].map(([name, desc]) => (
-            <div
-              key={name}
-              style={{
-                display: 'flex',
-                gap: 12,
-                padding: '6px 12px',
-                background: t.surface,
-                borderRadius: t.radius,
-                border: `1px solid ${t.divider}`,
-              }}
-            >
-              <span style={{ fontSize: 12, color: t.text, fontFamily: t.font, minWidth: 140 }}>{name}</span>
-              <span style={{ fontSize: 12, color: t.muted, fontFamily: t.font }}>{desc}</span>
-            </div>
-          ))}
-        </div>
       </PageSection>
     </div>
   );

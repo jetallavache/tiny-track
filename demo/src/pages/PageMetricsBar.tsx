@@ -1,30 +1,53 @@
-import { useTheme, MetricsBar } from 'tinytsdk/react';
+import { MetricsBar } from 'tinytsdk/react';
 import { PageTitle, PageSection, CodeBlock, PropsTable, Preview, Divider } from '../components.js';
 
 export function PageMetricsBar() {
-  const t = useTheme();
   return (
     <div>
       <PageTitle
         title="MetricsBar"
         badge="component"
-        desc="Compact single-line status bar showing CPU, memory, disk, load, network and process count. Designed to fit in any header or footer."
+        desc="Compact single-line status bar with fixed-position alert lamps. Alert indicators are always present — their color changes without shifting any other content."
       />
 
-      <PageSection title="Preview">
-        <Preview>
-          <MetricsBar />
-        </Preview>
-        <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ fontSize: 11, color: t.muted, fontFamily: t.font }}>Without disk</div>
-          <Preview>
-            <MetricsBar showDisk={false} />
-          </Preview>
-          <div style={{ fontSize: 11, color: t.muted, fontFamily: t.font }}>Without net</div>
-          <Preview>
-            <MetricsBar showNet={false} />
-          </Preview>
+      <PageSection title="Size variants">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div>
+            <Preview><MetricsBar size="s" /></Preview>
+            <p style={{ fontSize: 11, color: '#6b7280', margin: '4px 0 0', fontFamily: 'monospace' }}>
+              size="s" — minimal: status + alert lamps + CPU + Mem
+            </p>
+          </div>
+          <div>
+            <Preview><MetricsBar size="m" style={{ width: '100%' }} /></Preview>
+            <p style={{ fontSize: 11, color: '#6b7280', margin: '4px 0 0', fontFamily: 'monospace' }}>
+              size="m" — default: all metrics, abbreviated labels
+            </p>
+          </div>
+          <div>
+            <Preview><MetricsBar size="l" style={{ width: '100%' }} /></Preview>
+            <p style={{ fontSize: 11, color: '#6b7280', margin: '4px 0 0', fontFamily: 'monospace' }}>
+              size="l" — full labels, tooltips, disk free bytes
+            </p>
+          </div>
+          <div>
+            <Preview><MetricsBar metrics={['cpu', 'mem']} /></Preview>
+            <p style={{ fontSize: 11, color: '#6b7280', margin: '4px 0 0', fontFamily: 'monospace' }}>
+              metrics={`['cpu', 'mem']`} — custom metric subset
+            </p>
+          </div>
         </div>
+      </PageSection>
+
+      <Divider />
+
+      <PageSection title="Alert lamps">
+        <p style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.7, marginBottom: 12 }}>
+          Five indicator dots are always rendered (cpu, mem, disk, load, spike).
+          They act as "lamps" — grey when idle, yellow on warning, red on critical.
+          No content shifts when alerts appear or disappear.
+        </p>
+        <Preview><MetricsBar size="l" metrics={[]} style={{ width: '100%' }} /></Preview>
       </PageSection>
 
       <Divider />
@@ -32,20 +55,21 @@ export function PageMetricsBar() {
       <PageSection title="Usage">
         <CodeBlock
           code={`import { TinyTrackProvider, MetricsBar } from 'tinytsdk/react';
+import type { MetricType, SizeType } from 'tinytsdk/react';
 
-// In a header
 <TinyTrackProvider url="ws://localhost:25015">
-  <header>
-    <span>My App</span>
-    <MetricsBar />
-  </header>
-</TinyTrackProvider>
+  {/* Minimal */}
+  <MetricsBar size="s" />
 
-// Without disk and net
-<MetricsBar showDisk={false} showNet={false} />
+  {/* Default */}
+  <MetricsBar />
 
-// Custom styles
-<MetricsBar style={{ fontSize: 13, height: 28 }} />`}
+  {/* Full detail with tooltips */}
+  <MetricsBar size="l" style={{ width: '100%' }} />
+
+  {/* Custom metric subset */}
+  <MetricsBar metrics={['cpu', 'mem'] satisfies MetricType[]} />
+</TinyTrackProvider>`}
         />
       </PageSection>
 
@@ -54,54 +78,13 @@ export function PageMetricsBar() {
       <PageSection title="Props">
         <PropsTable
           rows={[
-            { name: 'showDisk', type: 'boolean', default: 'true', description: 'Show disk usage metric' },
-            { name: 'showNet', type: 'boolean', default: 'true', description: 'Show network RX/TX metrics' },
-            {
-              name: 'compact',
-              type: 'boolean',
-              default: 'auto',
-              description:
-                'Force compact (mobile) layout — hides load, net, proc. Auto-detected from window.innerWidth < 640',
-            },
+            { name: 'size', type: '"s" | "m" | "l"', default: '"m"', description: 's: minimal (lamps + CPU/Mem), m: default, l: full labels + tooltips + disk bytes' },
+            { name: 'metrics', type: 'MetricType[]', default: 'all', description: 'Which metrics to display: cpu, mem, net, disk, load, proc' },
+            { name: 'showAlerts', type: 'boolean', default: 'true', description: 'Show alert lamps (cpu, mem, disk, load, spike)' },
             { name: 'className', type: 'string', default: '—', description: 'CSS class name' },
             { name: 'style', type: 'CSSProperties', default: '—', description: 'Inline style override' },
-            {
-              name: 'theme',
-              type: 'Partial<TtTheme>',
-              default: '—',
-              description: 'Override theme tokens for this component only',
-            },
+            { name: 'theme', type: 'Partial<TtTheme>', default: '—', description: 'Override theme tokens for this component only' },
           ]}
-        />
-      </PageSection>
-
-      <Divider />
-
-      <PageSection title="Responsive notes">
-        <p style={{ fontSize: 13, color: t.muted, fontFamily: t.font, lineHeight: 1.7 }}>
-          On mobile, consider hiding some metrics to save space. The component uses{' '}
-          <code style={{ fontFamily: 'monospace', color: t.cpu }}>inline-flex</code> and{' '}
-          <code style={{ fontFamily: 'monospace', color: t.cpu }}>white-space: nowrap</code> — wrap it in an{' '}
-          <code style={{ fontFamily: 'monospace', color: t.cpu }}>overflow: hidden</code> container or use{' '}
-          <code style={{ fontFamily: 'monospace', color: t.cpu }}>
-            showDisk=&#123;false&#125; showNet=&#123;false&#125;
-          </code>{' '}
-          on small screens.
-        </p>
-        <CodeBlock
-          code={`// Responsive example
-const isMobile = window.innerWidth < 640;
-
-<MetricsBar
-  showDisk={!isMobile}
-  showNet={!isMobile}
-/>
-
-// Force compact (mobile) layout
-<MetricsBar compact={true} />
-
-// Auto-detect (default behaviour)
-<MetricsBar />`}
         />
       </PageSection>
     </div>
