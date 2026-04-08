@@ -1,6 +1,6 @@
 {
   "name": "tinytsdk",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "description": "TinyTrack SDK — WebSocket client + React components for system metrics",
   "main": "dist/index.cjs.js",
@@ -36,9 +36,15 @@
     "three": ">=0.150.0"
   },
   "peerDependenciesMeta": {
-    "react": { "optional": true },
-    "react-dom": { "optional": true },
-    "three": { "optional": true }
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    },
+    "three": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@rollup/plugin-node-resolve": "^15.3.1",
