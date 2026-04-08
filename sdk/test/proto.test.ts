@@ -3,8 +3,8 @@ import {
   parseHeader, parseMetrics, parseConfig, parseAck, parseStats, parseHistoryResp,
   buildCmd, buildHistoryReq, buildSubscribe,
   PROTO_MAGIC, HEADER_SIZE,
-  PKT_METRICS, PKT_CONFIG, PKT_ACK, PKT_STATS, PKT_HISTORY_RESP,
-  CMD_GET_SNAPSHOT, CMD_GET_STATS, CMD_SET_INTERVAL,
+  PKT_METRICS, PKT_CONFIG, PKT_ACK, PKT_RING_STATS, PKT_HISTORY_RESP,
+  CMD_GET_SNAPSHOT, CMD_GET_RING_STATS, CMD_SET_INTERVAL,
   RING_L1, RING_L2, RING_L3,
   ACK_OK,
 } from '../src/proto.js';
@@ -109,6 +109,7 @@ describe('parseMetrics', () => {
     const frame = new Uint8Array(h.buffer);
     new Uint8Array(payload).forEach((b, i) => { frame[HEADER_SIZE + i] = b; });
     const parsed = parseHeader(h.buffer);
+    console.log(h);
     expect(parsed).not.toBeNull();
     const m = parseMetrics(parsed!.payload);
     expect(m.cpu).toBe(3456);

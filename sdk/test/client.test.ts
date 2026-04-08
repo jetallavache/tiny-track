@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TinyTrackClient, RING_L1 } from '../src/index.js';
 import {
-  PROTO_MAGIC, HEADER_SIZE, PKT_METRICS, PKT_CONFIG, PKT_ACK, PKT_STATS,
+  PROTO_MAGIC, HEADER_SIZE, PKT_METRICS, PKT_CONFIG, PKT_ACK, PKT_RING_STATS,
   buildCmd, CMD_GET_SNAPSHOT,
 } from '../src/proto.js';
 
