@@ -16,7 +16,7 @@ export {
 } from './TinyTrackProvider.js';
 
 /* Theme */
-export { ThemeProvider, useTheme, THEMES, invertColor } from './theme.js';
+export { ThemeProvider, useTheme, THEMES, invertColor, dimColor } from './theme.js';
 export type { TtTheme, ThemePreset, ThemeProviderProps } from './theme.js';
 
 /* Components */

@@ -292,6 +292,23 @@ export function invertColor(hex: string, light = '#f3f4f6', dark = '#111827'): s
   return luminance > 0.5 ? dark : light;
 }
 
+/**
+ * Blends a color toward a background color to produce a muted/dim variant.
+ * Useful for bar fill characters that should hint at the metric color without
+ * competing with the value text.
+ *
+ * @param hex    - Metric color in #rrggbb format.
+ * @param bg     - Background color to blend toward (from theme).
+ * @param amount - Blend factor 0–1: 0 = original, 1 = fully bg. Default 0.62.
+ */
+export function dimColor(hex: string, bg: string, amount = 0.62): string {
+  const [r1, g1, b1] = parseHex(hex);
+  const [r2, g2, b2] = parseHex(bg);
+  const mix = (a: number, b: number) => Math.round(a + (b - a) * amount);
+  const toHex = (n: number) => n.toString(16).padStart(2, '0');
+  return `#${toHex(mix(r1, r2))}${toHex(mix(g1, g2))}${toHex(mix(b1, b2))}`;
+}
+
 // ---------------------------------------------------------------------------
 // Context
 // ---------------------------------------------------------------------------
