@@ -41,68 +41,49 @@ if (typeof document !== 'undefined' && !document.getElementById(LIVE_ANIM_ID)) {
   document.head.appendChild(el);
 }
 
-/* ── SVG chevron — ASCII-style, narrow, sharp ───────────────────────────── */
-// Each chevron fits in a 9×(fontSize) cell to match bar width (8 × 9 = 72px)
-function Chevron({ dir, color, h, delay, duration }: {
-  dir: 'left' | 'right';
-  color: string;
-  /** Cell height = fontSize */
-  h: number;
-  delay: number;
-  duration: number;
-}) {
-  const w = 9; // fixed width to match monospace bar character
-  // Sharp ">" / "<": tip at 80% horizontal, arms at top/bottom edges
-  const p = dir === 'right'
-    ? `1,0 ${w - 1},${h * 0.5} 1,${h}`
-    : `${w - 1},0 1,${h * 0.5} ${w - 1},${h}`;
-  return (
-    <svg
-      width={w} height={h}
-      viewBox={`0 0 ${w} ${h}`}
-      style={{
-        display: 'inline-block',
-        flexShrink: 0,
-        animation: `tt-chevron-wave ${duration}s ease-in-out ${delay.toFixed(2)}s infinite`,
-      }}
-    >
-      <polyline
-        points={p}
-        fill="none"
-        stroke={color}
-        strokeWidth={1.4}
-        strokeLinecap="square"
-        strokeLinejoin="miter"
-      />
-    </svg>
-  );
-}
-
-/* ── Animated chevron row for load avg ─────────────────────────────────── */
+/* ── Block-char wave arrows for load avg ────────────────────────────────── */
+// Uses the same block characters as the bar (▓/░) so it visually matches.
+// Rising  (→): wave pulses left-to-right in red
+// Falling (←): wave pulses right-to-left in green
+// Each char animates opacity independently with staggered delay.
 const ARROW_COUNT = 8;
+// ltr chars: ramp up to full block then back — looks like a moving pulse
+const LTR_CHARS = ['░', '░', '▒', '▓', '█', '▓', '▒', '░'] as const;
+const RTL_CHARS = ['░', '▒', '▓', '█', '▓', '▒', '░', '░'] as const;
 
-function LoadArrows({ trend, color, fontSize }: {
+function LoadArrows({ trend, color, faint, fontSize }: {
   trend: 'rising' | 'falling' | 'stable';
   color: string;
+  faint: string;
   fontSize: number;
 }) {
   if (trend === 'stable') return null;
   const ltr = trend === 'rising';
-  const duration = 1.0;
+  const chars = ltr ? LTR_CHARS : RTL_CHARS;
+  const duration = 1.1;
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 0, lineHeight: 1, width: 72, flexShrink: 0 }}>
-      {Array.from({ length: ARROW_COUNT }, (_, i) => {
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 0,
+      width: 72, flexShrink: 0,
+      fontFamily: '"JetBrains Mono","Fira Code",monospace',
+      fontSize, lineHeight: 1, letterSpacing: 1,
+    }}>
+      {chars.map((ch, i) => {
         const idx = ltr ? i : ARROW_COUNT - 1 - i;
         const delay = (idx / ARROW_COUNT) * duration;
+        // dim chars use faint, bright chars use metric color
+        const baseColor = ch === '░' ? faint : color;
         return (
-          <Chevron
+          <span
             key={i}
-            dir={ltr ? 'right' : 'left'}
-            color={color}
-            h={fontSize}
-            delay={delay}
-            duration={duration}
-          />
+            style={{
+              color: baseColor,
+              animation: `tt-chevron-wave ${duration}s ease-in-out ${delay.toFixed(2)}s infinite`,
+              display: 'inline-block',
+            }}
+          >
+            {ch}
+          </span>
         );
       })}
     </span>
@@ -248,7 +229,7 @@ export function MetricsPanel({
 
   /* ── Size 'm' and 'l' ───────────────────────────────────────────────── */
   const isL = size === 'l';
-  const labelW = isL ? 80 : 46;
+  const labelW = isL ? 84 : 46;
   const lbl = (short: string, full: string) => isL ? full : short;
   const trend = m ? loadTrend(m) : 'stable';
   const arrowColor = trend === 'rising' ? t.crit : t.ok;
@@ -283,7 +264,7 @@ export function MetricsPanel({
                 <span style={{ color: t.muted, minWidth: labelW, fontSize: sc.font - 1, whiteSpace: 'nowrap' }}>
                   {lbl('L. avg', 'Load aver.')}
                 </span>
-                <LoadArrows trend={trend} color={arrowColor} fontSize={sc.font} />
+                <LoadArrows trend={trend} color={arrowColor} faint={t.faint} fontSize={sc.font} />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <span style={{ minWidth: labelW }} />
