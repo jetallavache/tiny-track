@@ -229,3 +229,68 @@ export function Divider() {
   const t = useTheme();
   return <div style={{ height: 1, background: t.divider, margin: '32px 0' }} />;
 }
+
+/* ---------------------------------------------------------------------------
+ * LiveExample — preview + code tabs, like MUI/Radix docs
+ * ------------------------------------------------------------------------- */
+export function LiveExample({
+  title,
+  description,
+  code,
+  children,
+  previewBg,
+  center = false,
+}: {
+  title?: string;
+  description?: string;
+  code: string;
+  children: ReactNode;
+  previewBg?: string;
+  center?: boolean;
+}) {
+  const t = useTheme();
+  const [tab, setTab] = useState<'preview' | 'code'>('preview');
+
+  const tabStyle = (active: boolean): React.CSSProperties => ({
+    fontSize: 12,
+    padding: '6px 14px',
+    background: 'transparent',
+    border: 'none',
+    borderBottom: active ? `2px solid ${t.accent ?? t.cpu}` : '2px solid transparent',
+    color: active ? t.text : t.muted,
+    cursor: 'pointer',
+    fontFamily: t.font,
+    fontWeight: active ? 600 : 400,
+  });
+
+  return (
+    <div style={{ marginBottom: 32, border: `1px solid ${t.border}`, borderRadius: t.radius, overflow: 'hidden' }}>
+      {(title || description) && (
+        <div style={{ padding: '12px 16px', borderBottom: `1px solid ${t.border}`, background: t.surface }}>
+          {title && <div style={{ fontSize: 13, fontWeight: 600, color: t.text, fontFamily: t.font }}>{title}</div>}
+          {description && <div style={{ fontSize: 12, color: t.muted, marginTop: 2, fontFamily: t.font }}>{description}</div>}
+        </div>
+      )}
+      <div style={{ display: 'flex', borderBottom: `1px solid ${t.border}`, background: t.surface }}>
+        <button style={tabStyle(tab === 'preview')} onClick={() => setTab('preview')}>Preview</button>
+        <button style={tabStyle(tab === 'code')} onClick={() => setTab('code')}>Code</button>
+      </div>
+      {tab === 'preview' ? (
+        <div style={{
+          padding: 24,
+          background: previewBg ?? t.bg,
+          display: center ? 'flex' : 'block',
+          justifyContent: center ? 'center' : undefined,
+          alignItems: center ? 'flex-start' : undefined,
+          flexWrap: center ? 'wrap' as const : undefined,
+          gap: center ? 16 : undefined,
+          overflowX: 'auto',
+        }}>
+          {children}
+        </div>
+      ) : (
+        <CodeBlock code={code} />
+      )}
+    </div>
+  );
+}
