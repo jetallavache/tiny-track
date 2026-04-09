@@ -18,11 +18,11 @@ enum tt_log_level {
 
 /* Backend types */
 enum tt_log_backend {
-  TT_LOG_BACKEND_STDERR,  /* Output to stderr (for CLI) */
-  TT_LOG_BACKEND_STDOUT,  /* Output to stdout with timestamp */
-  TT_LOG_BACKEND_DOCKER,  /* Output to stdout without timestamp (Docker-friendly)
-                           */
-  TT_LOG_BACKEND_SYSLOG,  /* Traditional syslog */
+  TT_LOG_BACKEND_STDERR, /* Output to stderr (for CLI) */
+  TT_LOG_BACKEND_STDOUT, /* Output to stdout with timestamp */
+  TT_LOG_BACKEND_DOCKER, /* Output to stdout without timestamp (Docker-friendly)
+                          */
+  TT_LOG_BACKEND_SYSLOG, /* Traditional syslog */
   TT_LOG_BACKEND_JOURNAL, /* systemd journal (preferred for daemon) */
   TT_LOG_BACKEND_AUTO     /* Auto-select: journal -> syslog -> stderr */
 };
@@ -39,11 +39,13 @@ struct tt_log_config {
 int tt_log_init(const struct tt_log_config* config);
 
 /* Main logging function */
-void tt_log(enum tt_log_level level, const char* fmt, ...) __attribute__((format(printf, 2, 3)));
+void tt_log(enum tt_log_level level, const char* fmt, ...)
+    __attribute__((format(printf, 2, 3)));
 
 /* Logging with metadata (file, line, func) */
-void tt_log_meta(enum tt_log_level level, const char* file, int line, const char* func,
-                 const char* fmt, ...) __attribute__((format(printf, 5, 6)));
+void tt_log_meta(enum tt_log_level level, const char* file, int line,
+                 const char* func, const char* fmt, ...)
+    __attribute__((format(printf, 5, 6)));
 
 /* Structured logging (for journal) */
 void tt_log_structured(enum tt_log_level level, const char* message, ...);
@@ -63,7 +65,8 @@ void tt_log_shutdown(void);
 #ifdef NDEBUG
 #define tt_log_debug(...) ((void)0)
 #else
-#define tt_log_debug(...) tt_log_meta(TT_LOG_DEBUG, __FILE__, __LINE__, __func__, __VA_ARGS__)
+#define tt_log_debug(...) \
+  tt_log_meta(TT_LOG_DEBUG, __FILE__, __LINE__, __func__, __VA_ARGS__)
 #endif
 
 #endif /* TT_LOG_H */

@@ -17,7 +17,8 @@ static uint64_t now_ms(void) {
   return (uint64_t)tv.tv_sec * 1000 + tv.tv_usec / 1000;
 }
 
-static void collect_metrics(struct ttd_collector_state* state, struct tt_metrics* sample) {
+static void collect_metrics(struct ttd_collector_state* state,
+                            struct tt_metrics* sample) {
   if (!state || !sample) {
     tt_log_err("Invalid parameters to collect_metrics");
     return;
@@ -45,7 +46,8 @@ static void collect_metrics(struct ttd_collector_state* state, struct tt_metrics
 }
 
 int ttd_runtime_init(struct ttd_runtime* rt, struct ttd_config* cfg,
-                     struct ttd_collector_state* state, struct ttd_writer* writer) {
+                     struct ttd_collector_state* state,
+                     struct ttd_writer* writer) {
   if (!rt || !cfg || !state || !writer) {
     tt_log_err("Invalid parameters to ttd_runtime_init");
     return -1;
@@ -60,8 +62,8 @@ int ttd_runtime_init(struct ttd_runtime* rt, struct ttd_config* cfg,
   rt->next_l3 = 0;
   rt->next_shadow = 0;
 
-  tt_log_debug("Runtime init: rt=%p, cfg=%p, state=%p, writer=%p", (void*)rt, (void*)cfg,
-               (void*)state, (void*)writer);
+  tt_log_debug("Runtime init: rt=%p, cfg=%p, state=%p, writer=%p", (void*)rt,
+               (void*)cfg, (void*)state, (void*)writer);
 
   /* Create epoll */
   rt->epoll_fd = epoll_create1(EPOLL_CLOEXEC);
@@ -94,7 +96,8 @@ void ttd_runtime_poll(struct ttd_runtime* rt, int timeout_ms) {
   struct epoll_event events[1];
 
   if (!rt || !rt->writer) {
-    tt_log_err("Invalid runtime state: rt=%p, writer=%p", (void*)rt, rt ? (void*)rt->writer : NULL);
+    tt_log_err("Invalid runtime state: rt=%p, writer=%p", (void*)rt,
+               rt ? (void*)rt->writer : NULL);
     return;
   }
 
@@ -109,7 +112,8 @@ void ttd_runtime_poll(struct ttd_runtime* rt, int timeout_ms) {
   /* Handle timer event */
   if (nfds > 0 && events[0].data.fd == rt->timer_fd) {
     uint64_t expirations = 0;
-    if (read(rt->timer_fd, &expirations, sizeof(expirations)) < 0) expirations = 0;
+    if (read(rt->timer_fd, &expirations, sizeof(expirations)) < 0)
+      expirations = 0;
 
     /* tt_log_debug("Timer fired, collecting metrics (rt=%p, writer=%p)",
                  (void*)rt, (void*)rt->writer); */
@@ -126,15 +130,18 @@ void ttd_runtime_poll(struct ttd_runtime* rt, int timeout_ms) {
   }
 
   /* Periodic tasks */
-  if (tt_timer_expired(&rt->next_l2, rt->cfg->l2_agg_interval_sec * 1000, now)) {
+  if (tt_timer_expired(&rt->next_l2, rt->cfg->l2_agg_interval_sec * 1000,
+                       now)) {
     ttd_writer_aggregate_l2(rt->writer);
   }
 
-  if (tt_timer_expired(&rt->next_l3, rt->cfg->l3_agg_interval_sec * 1000, now)) {
+  if (tt_timer_expired(&rt->next_l3, rt->cfg->l3_agg_interval_sec * 1000,
+                       now)) {
     ttd_writer_aggregate_l3(rt->writer);
   }
 
-  if (tt_timer_expired(&rt->next_shadow, rt->cfg->shadow_sync_interval_sec * 1000, now)) {
+  if (tt_timer_expired(&rt->next_shadow,
+                       rt->cfg->shadow_sync_interval_sec * 1000, now)) {
     ttd_writer_shadow_sync(rt->writer);
     ttd_debug_dump_rusage();
   }

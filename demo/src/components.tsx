@@ -1,9 +1,27 @@
 import { useState, ReactNode } from 'react';
 import { useTheme } from 'tinytsdk/react';
 
-// ---------------------------------------------------------------------------
-// CodeBlock
-// ---------------------------------------------------------------------------
+/* Minimal regex-based TypeScript/TSX syntax highlighter. */
+function highlight(code: string): { text: string; color?: string }[] {
+  const tokens: { text: string; color?: string }[] = [];
+  const re = /("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`)|(\b(?:import|export|from|type|interface|const|let|var|function|return|if|else|new|async|await|default|extends|implements|class|typeof|keyof|as|in|of)\b)|(\/\/[^\n]*)|(\/\*[\s\S]*?\*\/)|((?:\b(?:string|number|boolean|void|null|undefined|never|any|unknown)\b)|(?:\b[A-Z][A-Za-z0-9]*\b))/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(code)) !== null) {
+    if (m.index > last) tokens.push({ text: code.slice(last, m.index) });
+    if (m[1]) tokens.push({ text: m[1], color: '#a3e635' });       /* string */
+    else if (m[2]) tokens.push({ text: m[2], color: '#818cf8' });   /* keyword */
+    else if (m[3] || m[4]) tokens.push({ text: m[3] || m[4], color: '#6b7280' }); /* comment */
+    else if (m[5]) tokens.push({ text: m[5], color: '#38bdf8' });   /* type/ctor */
+    last = m.index + m[0].length;
+  }
+  if (last < code.length) tokens.push({ text: code.slice(last) });
+  return tokens;
+}
+
+/* ---------------------------------------------------------------------------
+ * CodeBlock
+ * ------------------------------------------------------------------------- */
 export function CodeBlock({ code }: { code: string }) {
   const t = useTheme();
   const [copied, setCopied] = useState(false);
@@ -12,6 +30,7 @@ export function CodeBlock({ code }: { code: string }) {
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
+  const tokens = highlight(code.trim());
   return (
     <div style={{ position: 'relative', borderRadius: t.radius, overflow: 'hidden', border: `1px solid ${t.border}` }}>
       <button
@@ -44,7 +63,13 @@ export function CodeBlock({ code }: { code: string }) {
           lineHeight: 1.6,
         }}
       >
-        <code>{code.trim()}</code>
+        <code>
+          {tokens.map((tok, i) =>
+            tok.color
+              ? <span key={i} style={{ color: tok.color }}>{tok.text}</span>
+              : tok.text
+          )}
+        </code>
       </pre>
     </div>
   );
@@ -145,7 +170,7 @@ export function PageSection({ title, children }: { title: string; children: Reac
   );
 }
 
-export function Preview({ children }: { children: ReactNode }) {
+export function Preview({ children, fullWidth }: { children: ReactNode; fullWidth?: boolean }) {
   const t = useTheme();
   return (
     <div
@@ -155,8 +180,20 @@ export function Preview({ children }: { children: ReactNode }) {
         borderRadius: t.radius,
         padding: 20,
         marginTop: 8,
+        overflowX: 'auto',
+        width: fullWidth ? '100%' : undefined,
+        boxSizing: 'border-box',
       }}
     >
+      {children}
+    </div>
+  );
+}
+
+/** Responsive grid for side-by-side component previews. */
+export function PreviewGrid({ children, minWidth = 260 }: { children: ReactNode; minWidth?: number }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${minWidth}px, 1fr))`, gap: 12 }}>
       {children}
     </div>
   );
@@ -191,4 +228,69 @@ export function PageTitle({ title, badge, desc }: { title: string; badge?: strin
 export function Divider() {
   const t = useTheme();
   return <div style={{ height: 1, background: t.divider, margin: '32px 0' }} />;
+}
+
+/* ---------------------------------------------------------------------------
+ * LiveExample — preview + code tabs, like MUI/Radix docs
+ * ------------------------------------------------------------------------- */
+export function LiveExample({
+  title,
+  description,
+  code,
+  children,
+  previewBg,
+  center = false,
+}: {
+  title?: string;
+  description?: string;
+  code: string;
+  children: ReactNode;
+  previewBg?: string;
+  center?: boolean;
+}) {
+  const t = useTheme();
+  const [tab, setTab] = useState<'preview' | 'code'>('preview');
+
+  const tabStyle = (active: boolean): React.CSSProperties => ({
+    fontSize: 12,
+    padding: '6px 14px',
+    background: 'transparent',
+    border: 'none',
+    borderBottom: active ? `2px solid ${t.accent ?? t.cpu}` : '2px solid transparent',
+    color: active ? t.text : t.muted,
+    cursor: 'pointer',
+    fontFamily: t.font,
+    fontWeight: active ? 600 : 400,
+  });
+
+  return (
+    <div style={{ marginBottom: 32, border: `1px solid ${t.border}`, borderRadius: t.radius, overflow: 'hidden' }}>
+      {(title || description) && (
+        <div style={{ padding: '12px 16px', borderBottom: `1px solid ${t.border}`, background: t.surface }}>
+          {title && <div style={{ fontSize: 13, fontWeight: 600, color: t.text, fontFamily: t.font }}>{title}</div>}
+          {description && <div style={{ fontSize: 12, color: t.muted, marginTop: 2, fontFamily: t.font }}>{description}</div>}
+        </div>
+      )}
+      <div style={{ display: 'flex', borderBottom: `1px solid ${t.border}`, background: t.surface }}>
+        <button style={tabStyle(tab === 'preview')} onClick={() => setTab('preview')}>Preview</button>
+        <button style={tabStyle(tab === 'code')} onClick={() => setTab('code')}>Code</button>
+      </div>
+      {tab === 'preview' ? (
+        <div style={{
+          padding: 24,
+          background: previewBg ?? t.bg,
+          display: center ? 'flex' : 'block',
+          justifyContent: center ? 'center' : undefined,
+          alignItems: center ? 'flex-start' : undefined,
+          flexWrap: center ? 'wrap' as const : undefined,
+          gap: center ? 16 : undefined,
+          overflowX: 'auto',
+        }}>
+          {children}
+        </div>
+      ) : (
+        <CodeBlock code={code} />
+      )}
+    </div>
+  );
 }

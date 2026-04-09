@@ -19,12 +19,8 @@ const preview: Preview = {
     (Story, context) => {
       const preset = context.globals.theme ?? 'terminal';
       const bg: Record<string, string> = {
-        terminal: '#111827',
-        dark: '#1e1e2e',
-        light: '#ffffff',
-        material: '#1c1b1f',
-        dracula: '#282a36',
-        heroui: '#0f0f1a',
+        terminal: '#111827', dark: '#1e1e2e', light: '#ffffff',
+        material: '#1c1b1f', dracula: '#282a36', heroui: '#0f0f1a',
       };
       return React.createElement(
         ThemeProvider,
@@ -39,7 +35,15 @@ const preview: Preview = {
   ],
   parameters: {
     layout: 'fullscreen',
-    backgrounds: { disable: true }, // we handle bg via ThemeProvider
+    backgrounds: { disable: true },
+    viewport: {
+      viewports: {
+        mobile: { name: 'Mobile (375)', styles: { width: '375px', height: '812px' } },
+        tablet: { name: 'Tablet (768)', styles: { width: '768px', height: '1024px' } },
+        desktop: { name: 'Desktop (1280)', styles: { width: '1280px', height: '800px' } },
+      },
+      defaultViewport: 'desktop',
+    },
   },
 };
 

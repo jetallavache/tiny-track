@@ -20,8 +20,9 @@ struct tt_timer {
   struct tt_timer* next;   /* Pointer to the next timer instance */
 };
 
-void tt_timer_init(struct tt_timer** head, struct tt_timer* timer, uint64_t milliseconds,
-                   unsigned flags, void (*fn)(void*), void* arg);
+void tt_timer_init(struct tt_timer** head, struct tt_timer* timer,
+                   uint64_t milliseconds, unsigned flags, void (*fn)(void*),
+                   void* arg);
 void tt_timer_free(struct tt_timer** head, struct tt_timer*);
 void tt_timer_poll(struct tt_timer** head, uint64_t new_ms);
 bool tt_timer_expired(uint64_t* expiration, uint64_t period, uint64_t now);

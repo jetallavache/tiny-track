@@ -9,9 +9,11 @@
 #include <time.h>
 #include <unistd.h>
 
-#define NEXT_LINE(ptr)                      \
-  while (*(ptr) && *(ptr) != '\n') (ptr)++; \
-  if (*(ptr)) (ptr)++;
+#define NEXT_LINE(ptr)             \
+  while (*(ptr) && *(ptr) != '\n') \
+    (ptr)++;                       \
+  if (*(ptr))                      \
+    (ptr)++;
 
 /* Persistent file descriptors for /proc files.
  * NOTE: not thread-safe; only one collector instance per process is supported.
@@ -29,10 +31,14 @@ void ttd_collector_init(void) {
 }
 
 void ttd_collector_cleanup(void) {
-  if (g_stat_fd >= 0) close(g_stat_fd);
-  if (g_meminfo_fd >= 0) close(g_meminfo_fd);
-  if (g_loadavg_fd >= 0) close(g_loadavg_fd);
-  if (g_net_fd >= 0) close(g_net_fd);
+  if (g_stat_fd >= 0)
+    close(g_stat_fd);
+  if (g_meminfo_fd >= 0)
+    close(g_meminfo_fd);
+  if (g_loadavg_fd >= 0)
+    close(g_loadavg_fd);
+  if (g_net_fd >= 0)
+    close(g_net_fd);
 }
 
 int direct_statvfs(const char* path, struct statvfs* buf) {
@@ -45,26 +51,31 @@ int direct_statvfs(const char* path, struct statvfs* buf) {
 }
 
 bool readpr_stat(struct ttd_collector_stat* ps) {
-  if (g_stat_fd < 0) return false;
+  if (g_stat_fd < 0)
+    return false;
 
   char buf[512];
   lseek(g_stat_fd, 0, SEEK_SET);
   ssize_t n = read(g_stat_fd, buf, sizeof(buf) - 1);
-  if (n <= 0) return false;
+  if (n <= 0)
+    return false;
   buf[n] = '\0';
 
-  int parsed = sscanf(buf, "cpu %lu %lu %lu %lu %lu %lu %lu", &ps->user, &ps->nice, &ps->system,
-                      &ps->idle, &ps->iowait, &ps->irq, &ps->softirq);
+  int parsed =
+      sscanf(buf, "cpu %lu %lu %lu %lu %lu %lu %lu", &ps->user, &ps->nice,
+             &ps->system, &ps->idle, &ps->iowait, &ps->irq, &ps->softirq);
   return (parsed == 7);
 }
 
 bool readpr_meminf(struct ttd_collector_meminfo* pm) {
-  if (g_meminfo_fd < 0) return false;
+  if (g_meminfo_fd < 0)
+    return false;
 
   char buf[2048];
   lseek(g_meminfo_fd, 0, SEEK_SET);
   ssize_t n = read(g_meminfo_fd, buf, sizeof(buf) - 1);
-  if (n <= 0) return false;
+  if (n <= 0)
+    return false;
   buf[n] = '\0';
 
   bool found_total = false, found_free = false, found_avail = false;
@@ -79,7 +90,8 @@ bool readpr_meminf(struct ttd_collector_meminfo* pm) {
     else if (sscanf(line, "MemAvailable: %lu", &pm->available) == 1)
       found_avail = true;
 
-    if (found_total && found_free && found_avail) break;
+    if (found_total && found_free && found_avail)
+      break;
 
     NEXT_LINE(line);
   }
@@ -88,12 +100,14 @@ bool readpr_meminf(struct ttd_collector_meminfo* pm) {
 }
 
 bool readpr_net(struct ttd_collector_net* pn) {
-  if (g_net_fd < 0) return false;
+  if (g_net_fd < 0)
+    return false;
 
   char buf[4096];
   lseek(g_net_fd, 0, SEEK_SET);
   ssize_t n = read(g_net_fd, buf, sizeof(buf) - 1);
-  if (n <= 0) return false;
+  if (n <= 0)
+    return false;
   buf[n] = '\0';
 
   pn->rx_bytes = 0;
@@ -114,8 +128,9 @@ bool readpr_net(struct ttd_collector_net* pn) {
     if (sscanf(line,
                "%31[^:]: %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu "
                "%lu %lu %lu",
-               iface, &rx, &dummy[0], &dummy[1], &dummy[2], &dummy[3], &dummy[4], &dummy[5],
-               &dummy[6], &tx, &dummy[7], &dummy[8], &dummy[9], &dummy[10], &dummy[11], &dummy[12],
+               iface, &rx, &dummy[0], &dummy[1], &dummy[2], &dummy[3],
+               &dummy[4], &dummy[5], &dummy[6], &tx, &dummy[7], &dummy[8],
+               &dummy[9], &dummy[10], &dummy[11], &dummy[12],
                &dummy[13]) >= 10) {
       if (strcmp(iface, "lo") != 0) {
         pn->rx_bytes += rx;
@@ -128,50 +143,58 @@ bool readpr_net(struct ttd_collector_net* pn) {
 }
 
 bool readpr_loadavg(struct ttd_collector_loadavg* pl) {
-  if (g_loadavg_fd < 0) return false;
+  if (g_loadavg_fd < 0)
+    return false;
 
   char buf[128];
   lseek(g_loadavg_fd, 0, SEEK_SET);
   ssize_t n = read(g_loadavg_fd, buf, sizeof(buf) - 1);
-  if (n <= 0) return false;
+  if (n <= 0)
+    return false;
   buf[n] = '\0';
 
-  int parsed = sscanf(buf, "%f %f %f %d/%d", &pl->load_1min, &pl->load_5min, &pl->load_15min,
-                      &pl->nr_running, &pl->nr_total);
+  int parsed = sscanf(buf, "%f %f %f %d/%d", &pl->load_1min, &pl->load_5min,
+                      &pl->load_15min, &pl->nr_running, &pl->nr_total);
   return (parsed == 5);
 }
 
 float ttd_collect_cpu(struct ttd_collector_state* st) {
   struct ttd_collector_stat curr;
-  if (!readpr_stat(&curr)) return 0.0f;
+  if (!readpr_stat(&curr))
+    return 0.0f;
 
   unsigned long prev_idle = st->stat_prev.idle + st->stat_prev.iowait;
   unsigned long curr_idle = curr.idle + curr.iowait;
 
-  unsigned long prev_total = st->stat_prev.user + st->stat_prev.nice + st->stat_prev.system +
-                             st->stat_prev.idle + st->stat_prev.iowait + st->stat_prev.irq +
+  unsigned long prev_total = st->stat_prev.user + st->stat_prev.nice +
+                             st->stat_prev.system + st->stat_prev.idle +
+                             st->stat_prev.iowait + st->stat_prev.irq +
                              st->stat_prev.softirq;
-  unsigned long curr_total =
-      curr.user + curr.nice + curr.system + curr.idle + curr.iowait + curr.irq + curr.softirq;
+  unsigned long curr_total = curr.user + curr.nice + curr.system + curr.idle +
+                             curr.iowait + curr.irq + curr.softirq;
 
   unsigned long total_diff = curr_total - prev_total;
   unsigned long idle_diff = curr_idle - prev_idle;
 
   st->stat_prev = curr;
 
-  if (total_diff == 0) return 0.0f;
+  if (total_diff == 0)
+    return 0.0f;
   return (float)(total_diff - idle_diff) * 100.0f / total_diff;
 }
 
 float ttd_collect_memory(void) {
   struct ttd_collector_meminfo mem;
-  if (!readpr_meminf(&mem)) return 0.0f;
+  if (!readpr_meminf(&mem))
+    return 0.0f;
 
-  if (mem.total == 0) return 0.0f;
+  if (mem.total == 0)
+    return 0.0f;
   return (float)(mem.total - mem.available) * 100.0f / mem.total;
 }
 
-void ttd_collect_net(struct ttd_collector_state* st, unsigned long* rx, unsigned long* tx) {
+void ttd_collect_net(struct ttd_collector_state* st, unsigned long* rx,
+                     unsigned long* tx) {
   struct ttd_collector_net curr;
   if (!readpr_net(&curr)) {
     *rx = *tx = 0;

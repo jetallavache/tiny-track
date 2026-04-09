@@ -1,52 +1,129 @@
-import { useTheme, MetricsBar } from 'tinytsdk/react';
-import { PageTitle, PageSection, CodeBlock, PropsTable, Preview, Divider } from '../components.js';
+import { MetricsBar } from 'tinytsdk/react';
+import { PageTitle, PageSection, LiveExample, PropsTable, Divider } from '../components.js';
 
 export function PageMetricsBar() {
-  const t = useTheme();
   return (
     <div>
       <PageTitle
         title="MetricsBar"
         badge="component"
-        desc="Compact single-line status bar showing CPU, memory, disk, load, network and process count. Designed to fit in any header or footer."
+        desc="Compact single-line status bar. Renders metrics as oval badges in the order defined by the metrics array. Alert lamps are always present — their color changes without shifting layout."
       />
 
-      <PageSection title="Preview">
-        <Preview>
-          <MetricsBar />
-        </Preview>
-        <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ fontSize: 11, color: t.muted, fontFamily: t.font }}>Without disk</div>
-          <Preview>
-            <MetricsBar showDisk={false} />
-          </Preview>
-          <div style={{ fontSize: 11, color: t.muted, fontFamily: t.font }}>Without net</div>
-          <Preview>
-            <MetricsBar showNet={false} />
-          </Preview>
-        </div>
+      <PageSection title="Size variants">
+        <LiveExample
+          title="size=&quot;s&quot; — minimal"
+          description="Icon labels, compact badges. Auto-selected on mobile."
+          code={`<MetricsBar size="s" />`}
+        >
+          <MetricsBar size="s" />
+        </LiveExample>
+
+        <LiveExample
+          title="size=&quot;m&quot; — default"
+          description="Abbreviated text labels, all metrics."
+          code={`<MetricsBar size="m" style={{ width: '100%' }} />`}
+        >
+          <MetricsBar size="m" style={{ width: '100%' }} />
+        </LiveExample>
+
+        <LiveExample
+          title="size=&quot;l&quot; — full detail"
+          description="Full labels, tooltips, net upload/download split."
+          code={`<MetricsBar size="l" style={{ width: '100%' }} />`}
+        >
+          <MetricsBar size="l" style={{ width: '100%' }} />
+        </LiveExample>
       </PageSection>
 
       <Divider />
 
-      <PageSection title="Usage">
-        <CodeBlock
-          code={`import { TinyTrackProvider, MetricsBar } from 'tinytsdk/react';
+      <PageSection title="Custom metric order">
+        <LiveExample
+          title="metrics prop — subset and order"
+          description="Metrics render left-to-right in the order of the array."
+          code={`<MetricsBar metrics={['disk', 'cpu', 'net', 'mem']} />`}
+        >
+          <MetricsBar metrics={['disk', 'cpu', 'net', 'mem']} />
+        </LiveExample>
 
-// In a header
-<TinyTrackProvider url="ws://localhost:25015">
-  <header>
-    <span>My App</span>
-    <MetricsBar />
-  </header>
-</TinyTrackProvider>
+        <LiveExample
+          title="Single metric"
+          description="Show only what you need."
+          code={`<MetricsBar metrics={['cpu']} size="l" />`}
+        >
+          <MetricsBar metrics={['cpu']} size="l" />
+        </LiveExample>
+      </PageSection>
 
-// Without disk and net
-<MetricsBar showDisk={false} showNet={false} />
+      <Divider />
 
-// Custom styles
-<MetricsBar style={{ fontSize: 13, height: 28 }} />`}
-        />
+      <PageSection title="System info badges">
+        <LiveExample
+          title="sysInfo prop"
+          description="Append system info fields as badges after metrics. Order is preserved."
+          code={`<MetricsBar sysInfo={['hostname', 'os-type', 'uptime']} />`}
+        >
+          <MetricsBar sysInfo={['hostname', 'os-type', 'uptime']} />
+        </LiveExample>
+
+        <LiveExample
+          title="Ring buffer info"
+          description="Show L1/L2/L3 slot counts from the server handshake."
+          code={`<MetricsBar metrics={['cpu', 'mem']} sysInfo={['ringbufInfo', 'uptime']} size="m" />`}
+        >
+          <MetricsBar metrics={['cpu', 'mem']} sysInfo={['ringbufInfo', 'uptime']} size="m" />
+        </LiveExample>
+
+        <LiveExample
+          title="Metrics + all sysInfo fields"
+          description="Full combination."
+          code={`<MetricsBar
+  size="m"
+  metrics={['cpu', 'mem', 'disk']}
+  sysInfo={['hostname', 'os-type', 'uptime', 'ringbufInfo']}
+  style={{ width: '100%' }}
+/>`}
+        >
+          <MetricsBar
+            size="m"
+            metrics={['cpu', 'mem', 'disk']}
+            sysInfo={['hostname', 'os-type', 'uptime', 'ringbufInfo']}
+            style={{ width: '100%' }}
+          />
+        </LiveExample>
+      </PageSection>
+
+      <Divider />
+
+      <PageSection title="Alert lamps">
+        <LiveExample
+          title="Lamps only (no metrics)"
+          description="Five indicator dots: cpu, mem, disk, load, spike. Always rendered, no layout shift."
+          code={`<MetricsBar metrics={[]} size="l" style={{ width: '100%' }} />`}
+        >
+          <MetricsBar metrics={[]} size="l" style={{ width: '100%' }} />
+        </LiveExample>
+      </PageSection>
+
+      <Divider />
+
+      <PageSection title="Theme override">
+        <LiveExample
+          title="Per-component theme"
+          description="Override individual tokens without a ThemeProvider."
+          code={`<MetricsBar
+  theme={{ bg: '#0f172a', cpu: '#f472b6', mem: '#34d399', border: '#1e293b' }}
+  size="m"
+  style={{ width: '100%' }}
+/>`}
+        >
+          <MetricsBar
+            theme={{ bg: '#0f172a', cpu: '#f472b6', mem: '#34d399', border: '#1e293b' }}
+            size="m"
+            style={{ width: '100%' }}
+          />
+        </LiveExample>
       </PageSection>
 
       <Divider />
@@ -54,54 +131,14 @@ export function PageMetricsBar() {
       <PageSection title="Props">
         <PropsTable
           rows={[
-            { name: 'showDisk', type: 'boolean', default: 'true', description: 'Show disk usage metric' },
-            { name: 'showNet', type: 'boolean', default: 'true', description: 'Show network RX/TX metrics' },
-            {
-              name: 'compact',
-              type: 'boolean',
-              default: 'auto',
-              description:
-                'Force compact (mobile) layout — hides load, net, proc. Auto-detected from window.innerWidth < 640',
-            },
+            { name: 'size', type: '"s" | "m" | "l"', default: '"m"', description: 'Badge size: s=icon labels, m=abbreviated, l=full labels' },
+            { name: 'metrics', type: 'MetricType[]', default: 'all', description: 'Metrics to display, rendered in array order' },
+            { name: 'sysInfo', type: 'SysInfoType[]', default: '—', description: 'System info badges: "uptime" | "hostname" | "os-type" | "ringbufInfo"' },
+            { name: 'showAlerts', type: 'boolean', default: 'true', description: 'Show alert lamp badges' },
+            { name: 'theme', type: 'Partial<TtTheme>', default: '—', description: 'Per-component token overrides' },
             { name: 'className', type: 'string', default: '—', description: 'CSS class name' },
             { name: 'style', type: 'CSSProperties', default: '—', description: 'Inline style override' },
-            {
-              name: 'theme',
-              type: 'Partial<TtTheme>',
-              default: '—',
-              description: 'Override theme tokens for this component only',
-            },
           ]}
-        />
-      </PageSection>
-
-      <Divider />
-
-      <PageSection title="Responsive notes">
-        <p style={{ fontSize: 13, color: t.muted, fontFamily: t.font, lineHeight: 1.7 }}>
-          On mobile, consider hiding some metrics to save space. The component uses{' '}
-          <code style={{ fontFamily: 'monospace', color: t.cpu }}>inline-flex</code> and{' '}
-          <code style={{ fontFamily: 'monospace', color: t.cpu }}>white-space: nowrap</code> — wrap it in an{' '}
-          <code style={{ fontFamily: 'monospace', color: t.cpu }}>overflow: hidden</code> container or use{' '}
-          <code style={{ fontFamily: 'monospace', color: t.cpu }}>
-            showDisk=&#123;false&#125; showNet=&#123;false&#125;
-          </code>{' '}
-          on small screens.
-        </p>
-        <CodeBlock
-          code={`// Responsive example
-const isMobile = window.innerWidth < 640;
-
-<MetricsBar
-  showDisk={!isMobile}
-  showNet={!isMobile}
-/>
-
-// Force compact (mobile) layout
-<MetricsBar compact={true} />
-
-// Auto-detect (default behaviour)
-<MetricsBar />`}
         />
       </PageSection>
     </div>

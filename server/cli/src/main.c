@@ -43,15 +43,21 @@ int main(int argc, char** argv) {
   ttc_ctx_init(&ctx);
 
   static const struct option long_opts[] = {
-      {"path", required_argument, NULL, 'p'},     {"config", required_argument, NULL, 'c'},
-      {"pid", required_argument, NULL, 'P'},      {"format", required_argument, NULL, 'f'},
-      {"interval", required_argument, NULL, 'i'}, {"no-color", no_argument, NULL, 'n'},
-      {"verbose", no_argument, NULL, 'v'},        {"version", no_argument, NULL, 'V'},
-      {"help", no_argument, NULL, 'h'},           {NULL, 0, NULL, 0},
+      {"path", required_argument, NULL, 'p'},
+      {"config", required_argument, NULL, 'c'},
+      {"pid", required_argument, NULL, 'P'},
+      {"format", required_argument, NULL, 'f'},
+      {"interval", required_argument, NULL, 'i'},
+      {"no-color", no_argument, NULL, 'n'},
+      {"verbose", no_argument, NULL, 'v'},
+      {"version", no_argument, NULL, 'V'},
+      {"help", no_argument, NULL, 'h'},
+      {NULL, 0, NULL, 0},
   };
 
   int opt;
-  while ((opt = getopt_long(argc, argv, "+p:c:P:f:i:nvVh", long_opts, NULL)) != -1) {
+  while ((opt = getopt_long(argc, argv, "+p:c:P:f:i:nvVh", long_opts, NULL)) !=
+         -1) {
     switch (opt) {
       case 'p':
         ctx.mmap_path = optarg;

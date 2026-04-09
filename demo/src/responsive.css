@@ -1,4 +1,4 @@
-/* Responsive layout */
+/* Sidebar / topbar switching */
 @media (max-width: 768px) {
   .sidebar-desktop { display: none !important; }
   .topbar-mobile   { display: flex !important; }
@@ -6,4 +6,15 @@
 }
 @media (min-width: 769px) {
   .topbar-mobile { display: none !important; }
+}
+
+/* Constrain content width on wide screens */
+@media (min-width: 1200px) {
+  .main-content { max-width: 960px; }
+}
+
+/* Ensure tables and code blocks don't overflow on mobile */
+@media (max-width: 600px) {
+  table { font-size: 11px !important; }
+  pre   { font-size: 11px !important; }
 }

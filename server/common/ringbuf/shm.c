@@ -22,7 +22,8 @@ static void* mmap_fd(int fd, size_t len, int prot) {
 void* ttr_shm_create(const char* path, size_t len, int mode) {
   int fd = open(path, O_CREAT | O_RDWR, mode);
   if (fd < 0) {
-    tt_log_err("open failed: path='%s' errno=%d (%s)", path, errno, strerror(errno));
+    tt_log_err("open failed: path='%s' errno=%d (%s)", path, errno,
+               strerror(errno));
     return (void*)TTR_SHM_OPENFD_ERR;
   }
   fchmod(fd, mode); /* enforce exact mode, bypass umask */
@@ -37,7 +38,8 @@ void* ttr_shm_create(const char* path, size_t len, int mode) {
 void* ttr_shm_read(const char* path, size_t* len) {
   int fd = open(path, O_RDONLY);
   if (fd < 0) {
-    tt_log_err("open failed: path='%s' errno=%d (%s)", path, errno, strerror(errno));
+    tt_log_err("open failed: path='%s' errno=%d (%s)", path, errno,
+               strerror(errno));
     return (void*)TTR_SHM_OPENFD_ERR;
   }
   struct stat st;
@@ -51,10 +53,13 @@ void* ttr_shm_read(const char* path, size_t* len) {
 }
 
 void ttr_shm_dealloc(void* addr, size_t len) {
-  if (munmap(addr, len) < 0) tt_log_err("munmap: %s", strerror(errno));
+  if (munmap(addr, len) < 0)
+    tt_log_err("munmap: %s", strerror(errno));
 }
 
-void ttr_shm_unlink(const char* path) { shm_unlink(path); }
+void ttr_shm_unlink(const char* path) {
+  shm_unlink(path);
+}
 
 const char* tt_shm_strerror(int errcode) {
   switch (errcode) {

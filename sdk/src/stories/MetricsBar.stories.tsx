@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { MetricsBar } from '../react/MetricsBar.js';
+import { MetricsBar } from '../react/components/MetricsBar/index.js';
 import { MockTinyTrackProvider } from './MockProvider.js';
 
 const meta: Meta<typeof MetricsBar> = {
@@ -14,9 +14,10 @@ const meta: Meta<typeof MetricsBar> = {
   ],
   parameters: { layout: 'padded' },
   argTypes: {
-    showDisk: { control: 'boolean' },
-    showNet: { control: 'boolean' },
-    compact: { control: 'boolean' },
+    showAlerts: { control: 'boolean' },
+    size: { control: 'radio', options: ['s', 'm', 'l'] },
+    metrics: { control: 'check', options: ['cpu', 'mem', 'net', 'disk', 'load', 'proc'] },
+    sysInfo: { control: 'check', options: ['uptime', 'hostname', 'os-type', 'ringbufInfo'] },
   },
 };
 export default meta;
@@ -24,15 +25,36 @@ type Story = StoryObj<typeof MetricsBar>;
 
 export const Default: Story = {};
 
-export const Compact: Story = { args: { compact: true } };
+export const Small: Story = { args: { size: 's' } };
+export const Large: Story = { args: { size: 'l', style: { width: '100%' } } };
 
-export const NoDisk: Story = { args: { showDisk: false } };
+export const WithSysInfo: Story = {
+  name: 'With sysInfo badges',
+  args: { sysInfo: ['hostname', 'os-type', 'uptime'] },
+};
 
-export const NoNet: Story = { args: { showNet: false } };
+export const SysInfoAll: Story = {
+  name: 'sysInfo — all fields',
+  args: {
+    metrics: ['cpu', 'mem', 'disk'],
+    sysInfo: ['hostname', 'os-type', 'uptime', 'ringbufInfo'],
+    style: { width: '100%' },
+  },
+};
 
-export const MinimalMobile: Story = {
-  args: { compact: true, showDisk: false, showNet: false },
-  name: 'Minimal (mobile)',
+export const CustomOrder: Story = {
+  name: 'Custom metric order',
+  args: { metrics: ['disk', 'load', 'cpu', 'net', 'mem'] },
+};
+
+export const CpuMemOnly: Story = {
+  args: { metrics: ['cpu', 'mem'] },
+  name: 'CPU + Mem only',
+};
+
+export const AlertsOnly: Story = {
+  name: 'Alert lamps only',
+  args: { metrics: [], size: 'l', style: { width: '100%' } },
 };
 
 export const HighLoad: Story = {
@@ -45,12 +67,8 @@ export const HighLoad: Story = {
   ],
 };
 
-export const Static: Story = {
-  decorators: [
-    (Story) => (
-      <MockTinyTrackProvider animate={false} overrides={{ cpu: 3500, mem: 5500 }}>
-        <Story />
-      </MockTinyTrackProvider>
-    ),
-  ],
+export const Mobile: Story = {
+  name: 'Mobile (compact auto)',
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+  args: { style: { width: '100%' } },
 };

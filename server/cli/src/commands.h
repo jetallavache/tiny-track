@@ -8,7 +8,8 @@ int ttc_cmd_metrics(const struct ttc_ctx* ctx);
 int ttc_cmd_history(const struct ttc_ctx* ctx, int level, int count);
 int ttc_cmd_signal(const struct ttc_ctx* ctx, const char* signame);
 int ttc_cmd_service(const struct ttc_ctx* ctx, const char* action);
-int ttc_cmd_logs(const struct ttc_ctx* ctx, int lines, const char* level, const char* service);
+int ttc_cmd_logs(const struct ttc_ctx* ctx, int lines, const char* level,
+                 const char* service);
 int ttc_cmd_debug(const struct ttc_ctx* ctx);
 int ttc_cmd_version(const struct ttc_ctx* ctx);
 int ttc_cmd_script(const struct ttc_ctx* ctx, const char* path);

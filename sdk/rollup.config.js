@@ -1,7 +1,7 @@
 import resolve from '@rollup/plugin-node-resolve';
 import typescript from '@rollup/plugin-typescript';
 
-const external = ['react', 'react/jsx-runtime'];
+const external = ['react', 'react/jsx-runtime', 'three'];
 
 const tsPlugin = () => typescript({ tsconfig: './tsconfig.json', declaration: false });
 

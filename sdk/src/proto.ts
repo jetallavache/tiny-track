@@ -110,7 +110,7 @@ export interface TtFrame {
 }
 
 /** Parse the 10-byte header. Returns null if buffer is too short or magic is wrong. */
-export function parseHeader(buf: ArrayBuffer, offset = 0): TtFrame | null {
+export function parseHeader(buf: ArrayBufferLike, offset = 0): TtFrame | null {
   if (buf.byteLength - offset < HEADER_SIZE) return null;
   const v = new DataView(buf, offset);
   if (v.getUint8(0) !== PROTO_MAGIC) return null;

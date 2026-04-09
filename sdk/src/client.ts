@@ -54,6 +54,8 @@ export type ClientEventMap = {
   stats: [s: TtStats];
   history: [r: TtHistoryResp];
   sysinfo: [s: TtSysInfo];
+  /** Raw packet: fired for every incoming binary message before parsing */
+  packet: [pktType: number, payload: DataView];
 };
 
 type Listener<K extends keyof ClientEventMap> = (...args: ClientEventMap[K]) => void;
@@ -190,6 +192,8 @@ export class TinyTrackClient {
     ws.onmessage = (e: MessageEvent<ArrayBuffer>) => {
       const frame = parseHeader(e.data);
       if (!frame) return;
+      // Emit raw packet before parsing — for useRawPackets()
+      this._emit('packet', frame.type, frame.payload);
       switch (frame.type) {
         case PKT_METRICS:
           this._emit('metrics', parseMetrics(frame.payload));

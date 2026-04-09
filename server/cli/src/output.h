@@ -20,17 +20,19 @@
 const char* ttc_color(const struct ttc_ctx* ctx, const char* code);
 
 /* Threshold-based color for a percentage value */
-const char* ttc_pct_color(const struct ttc_ctx* ctx, double pct, double warn, double crit);
+const char* ttc_pct_color(const struct ttc_ctx* ctx, double pct, double warn,
+                          double crit);
 
 /* Print a metrics sample in the requested format */
 void ttc_print_metrics(const struct ttc_ctx* ctx, const struct tt_metrics* m);
 
 /* Print ring buffer level info */
-void ttc_print_ring_level(const struct ttc_ctx* ctx, int level, const struct ttr_meta* meta,
-                          const char* label);
+void ttc_print_ring_level(const struct ttc_ctx* ctx, int level,
+                          const struct ttr_meta* meta, const char* label);
 
 /* Print a key=value row in table mode, or emit JSON field */
-void ttc_print_field(const struct ttc_ctx* ctx, const char* key, const char* value, bool last);
+void ttc_print_field(const struct ttc_ctx* ctx, const char* key,
+                     const char* value, bool last);
 
 /* Horizontal separator */
 void ttc_print_sep(const struct ttc_ctx* ctx, int width);

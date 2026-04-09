@@ -11,29 +11,26 @@ import { PageMetricsPanel } from './pages/PageMetricsPanel.js';
 import { PageDashboard } from './pages/PageDashboard.js';
 import { PageTimeSeriesChart } from './pages/PageTimeSeriesChart.js';
 import { PageTimeline } from './pages/PageTimeline.js';
-import './responsive.css';
+import { PageSystemLoad } from './pages/PageSystemLoad.js';
+import { PageMetrics3D } from './pages/PageMetrics3D.js';
+import { PageRawPackets } from './pages/PageRawPackets.js';
 
 const WS_URL = import.meta.env.VITE_WS_URL ?? `ws://${window.location.host}`;
 const PRESETS: ThemePreset[] = ['terminal', 'dark', 'light', 'material', 'dracula', 'heroui'];
 
 function PageContent({ route }: { route: Route }) {
   switch (route) {
-    case 'introduction':
-      return <Introduction />;
-    case 'installation':
-      return <Installation />;
-    case 'themes':
-      return <Themes />;
-    case 'MetricsBar':
-      return <PageMetricsBar />;
-    case 'MetricsPanel':
-      return <PageMetricsPanel />;
-    case 'Dashboard':
-      return <PageDashboard />;
-    case 'TimeSeriesChart':
-      return <PageTimeSeriesChart />;
-    case 'Timeline':
-      return <PageTimeline />;
+    case 'introduction':    return <Introduction />;
+    case 'installation':    return <Installation />;
+    case 'themes':          return <Themes />;
+    case 'MetricsBar':      return <PageMetricsBar />;
+    case 'MetricsPanel':    return <PageMetricsPanel />;
+    case 'Dashboard':       return <PageDashboard />;
+    case 'TimeSeriesChart': return <PageTimeSeriesChart />;
+    case 'Timeline':        return <PageTimeline />;
+    case 'SystemLoad':      return <PageSystemLoad />;
+    case 'Metrics3D':       return <PageMetrics3D />;
+    case 'RawPackets':      return <PageRawPackets />;
   }
 }
 
@@ -65,7 +62,7 @@ export default function App() {
               flex: 1,
               padding: 40,
               overflowY: 'auto',
-              maxWidth: 860,
+              minWidth: 0,
               boxSizing: 'border-box',
             }}
           >

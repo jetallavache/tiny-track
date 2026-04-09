@@ -3,8 +3,8 @@ import {
   parseHeader, parseMetrics, parseConfig, parseAck, parseStats, parseHistoryResp,
   buildCmd, buildHistoryReq, buildSubscribe,
   PROTO_MAGIC, HEADER_SIZE,
-  PKT_METRICS, PKT_CONFIG, PKT_ACK, PKT_STATS, PKT_HISTORY_RESP,
-  CMD_GET_SNAPSHOT, CMD_GET_STATS, CMD_SET_INTERVAL,
+  PKT_METRICS, PKT_CONFIG, PKT_ACK, PKT_RING_STATS, PKT_HISTORY_RESP,
+  CMD_GET_SNAPSHOT, CMD_GET_RING_STATS, CMD_SET_INTERVAL,
   RING_L1, RING_L2, RING_L3,
   ACK_OK,
 } from '../src/proto.js';

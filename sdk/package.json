@@ -1,6 +1,6 @@
 {
   "name": "tinytsdk",
-  "version": "0.2.0",
+  "version": "0.4.0",
   "type": "module",
   "description": "TinyTrack SDK — WebSocket client + React components for system metrics",
   "main": "dist/index.cjs.js",
@@ -32,13 +32,17 @@
   },
   "peerDependencies": {
     "react": ">=18.0.0",
-    "react-dom": ">=18.0.0"
+    "react-dom": ">=18.0.0",
+    "three": ">=0.150.0"
   },
   "peerDependenciesMeta": {
     "react": {
       "optional": true
     },
     "react-dom": {
+      "optional": true
+    },
+    "three": {
       "optional": true
     }
   },
@@ -72,5 +76,8 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/jetallavache/tiny-track"
+  },
+  "dependencies": {
+    "@types/three": "^0.183.1"
   }
 }

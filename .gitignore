@@ -69,6 +69,7 @@ __pycache__/
 # SDK build output
 sdk/dist/
 sdk/*.tsbuildinfo
+sdk/storybook-static
 
 # Demo build output
 demo/dist/

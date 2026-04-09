@@ -35,7 +35,8 @@ struct tt_metrics {
  * timestamp is set to the latest sample's timestamp.
  * Conforms to ttr_aggregate_fn signature.
  */
-void tt_metrics_aggregate_avg(const void* samples, uint32_t count, size_t cell_size, void* out);
+void tt_metrics_aggregate_avg(const void* samples, uint32_t count,
+                              size_t cell_size, void* out);
 
 /*
  * tt_metrics_aggregate_max - take the maximum value of each field across N
@@ -43,7 +44,8 @@ void tt_metrics_aggregate_avg(const void* samples, uint32_t count, size_t cell_s
  * over a window). timestamp is set to the latest sample's timestamp.
  * Conforms to ttr_aggregate_fn signature.
  */
-void tt_metrics_aggregate_max(const void* samples, uint32_t count, size_t cell_size, void* out);
+void tt_metrics_aggregate_max(const void* samples, uint32_t count,
+                              size_t cell_size, void* out);
 
 /*
  * tt_metrics_aggregate_min - take the minimum value of each field across N
@@ -51,7 +53,8 @@ void tt_metrics_aggregate_max(const void* samples, uint32_t count, size_t cell_s
  * timestamp is set to the latest sample's timestamp.
  * Conforms to ttr_aggregate_fn signature.
  */
-void tt_metrics_aggregate_min(const void* samples, uint32_t count, size_t cell_size, void* out);
+void tt_metrics_aggregate_min(const void* samples, uint32_t count,
+                              size_t cell_size, void* out);
 
 /* Alias kept for backward compatibility — resolves to aggregate_avg. */
 #define tt_metrics_aggregate tt_metrics_aggregate_avg

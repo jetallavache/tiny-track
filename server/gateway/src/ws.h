@@ -20,9 +20,11 @@ struct ttg_ws_message {
   uint8_t flags;       /* WebSocket message flags */
 };
 
-struct ttg_conn* ttg_ws_connect(struct ttg_mgr*, const char* url, ttg_event_handler fn,
-                                void* fn_data, const char* fmt, ...);
-void ttg_ws_upgrade(struct ttg_conn*, struct ttg_http_message*, const char* fmt, ...);
+struct ttg_conn* ttg_ws_connect(struct ttg_mgr*, const char* url,
+                                ttg_event_handler fn, void* fn_data,
+                                const char* fmt, ...);
+void ttg_ws_upgrade(struct ttg_conn*, struct ttg_http_message*, const char* fmt,
+                    ...);
 size_t ttg_ws_send(struct ttg_conn*, const void* buf, size_t len, int op);
 size_t ttg_ws_wrap(struct ttg_conn*, size_t len, int op);
 size_t ttg_ws_printf(struct ttg_conn* c, int op, const char* fmt, ...);
