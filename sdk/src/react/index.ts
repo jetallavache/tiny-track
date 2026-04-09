@@ -16,7 +16,7 @@ export {
 } from './TinyTrackProvider.js';
 
 /* Theme */
-export { ThemeProvider, useTheme, THEMES } from './theme.js';
+export { ThemeProvider, useTheme, THEMES, invertColor } from './theme.js';
 export type { TtTheme, ThemePreset, ThemeProviderProps } from './theme.js';
 
 /* Components */
@@ -40,6 +40,6 @@ export type { Metrics3DProps }       from './components/Metrics3D/index.js';
 export type { SparklineProps }       from './components/Sparkline/index.js';
 
 /* Shared utility types */
-export type { MetricType, AggregationType, SizeType } from './utils/metrics.js';
-export type { Alert, LoadTrend }                      from './utils/alerts.js';
-export type { AlertState }                            from './components/MetricsBar/MetricItem.js';
+export type { MetricType, AggregationType, SizeType, SysInfoType } from './utils/metrics.js';
+export type { Alert, LoadTrend }                                    from './utils/alerts.js';
+export type { AlertState }                                          from './components/MetricsBar/MetricItem.js';

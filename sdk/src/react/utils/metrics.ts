@@ -6,6 +6,9 @@ import { TtMetrics } from '../../client.js';
 /** Identifiers for the six available system metrics. */
 export type MetricType = 'cpu' | 'mem' | 'net' | 'disk' | 'load' | 'proc';
 
+/** System info fields displayable in MetricsBar. */
+export type SysInfoType = 'uptime' | 'hostname' | 'os-type' | 'ringbufInfo';
+
 /** Aggregation strategy matching server-side tt_metrics_aggregate_avg/max/min. */
 export type AggregationType = 'avg' | 'max' | 'min';
 
