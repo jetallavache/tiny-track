@@ -260,13 +260,13 @@ export function MetricsPanel({
           <div key="load" style={{ display: 'contents' }}>
             {mr('load-row', lbl('Load', 'System load'), loadScore !== null ? `${loadScore}%` : '—', loadScore !== null ? bar(loadScore * 100) : null, loadColor, isL ? 'Overall system load score (0–100)' : undefined)}
             {m ? (<>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ color: t.muted, minWidth: labelW, fontSize: sc.font - 1, whiteSpace: 'nowrap' }}>
                   {lbl('L. avg', 'Load aver.')}
                 </span>
                 <LoadArrows trend={trend} color={arrowColor} faint={t.faint} fontSize={sc.font} />
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ minWidth: labelW }} />
                 <span style={{ color: t.faint, fontSize: sc.font - 2, fontVariantNumeric: 'tabular-nums' }}>
                   ({fmtLoad(m.load1)} / {fmtLoad(m.load5)} / {fmtLoad(m.load15)})
