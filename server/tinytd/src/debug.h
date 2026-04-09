@@ -18,7 +18,8 @@ void ttd_debug_dump_collector(const struct tt_metrics* sample);
 void ttd_debug_dump_l1(const void* live_addr, uint32_t l1_capacity);
 
 /* Dump aggregated sample written to L2 or L3 after aggregation */
-void ttd_debug_dump_agg(int level, const struct tt_metrics* agg, uint32_t head, uint32_t capacity);
+void ttd_debug_dump_agg(int level, const struct tt_metrics* agg, uint32_t head,
+                        uint32_t capacity);
 
 /* Dump page faults, context switches via getrusage */
 void ttd_debug_dump_rusage(void);

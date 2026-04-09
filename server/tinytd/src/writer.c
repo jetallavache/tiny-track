@@ -27,8 +27,9 @@ int ttd_writer_init(struct ttd_writer* ctx, struct ttd_config* cfg) {
     return ret;
   }
 
-  tt_log_debug("Writer initialized: live_addr=%p, shadow_addr=%p, crc=%s", ctx->ring.live_addr,
-               ctx->ring.shadow_addr, cfg->enable_crc ? "on" : "off");
+  tt_log_debug("Writer initialized: live_addr=%p, shadow_addr=%p, crc=%s",
+               ctx->ring.live_addr, ctx->ring.shadow_addr,
+               cfg->enable_crc ? "on" : "off");
   return 0;
 }
 
@@ -48,12 +49,15 @@ int ttd_writer_aggregate_l2(struct ttd_writer* ctx) {
     size_t cell_size = sizeof(struct tt_metrics);
     struct ttr_meta* l2_meta =
         (struct ttr_meta*)((uint8_t*)ctx->ring.live_addr +
-                           ttr_layout_l2_meta_offset(ctx->ring.cfg.l1_capacity, cell_size));
+                           ttr_layout_l2_meta_offset(ctx->ring.cfg.l1_capacity,
+                                                     cell_size));
     uint8_t* l2_data =
-        (uint8_t*)ctx->ring.live_addr + ttr_layout_l2_offset(ctx->ring.cfg.l1_capacity, cell_size);
+        (uint8_t*)ctx->ring.live_addr +
+        ttr_layout_l2_offset(ctx->ring.cfg.l1_capacity, cell_size);
     uint32_t head = l2_meta->head;
     uint32_t prev = (head == 0 ? l2_meta->capacity : head) - 1;
-    const struct tt_metrics* agg = (const struct tt_metrics*)(l2_data + prev * cell_size);
+    const struct tt_metrics* agg =
+        (const struct tt_metrics*)(l2_data + prev * cell_size);
     ttd_debug_dump_agg(2, agg, head, l2_meta->capacity);
   }
 #endif
@@ -68,19 +72,26 @@ int ttd_writer_aggregate_l3(struct ttd_writer* ctx) {
     struct ttr_meta* l3_meta =
         (struct ttr_meta*)((uint8_t*)ctx->ring.live_addr +
                            ttr_layout_l3_meta_offset(ctx->ring.cfg.l1_capacity,
-                                                     ctx->ring.cfg.l2_capacity, cell_size));
+                                                     ctx->ring.cfg.l2_capacity,
+                                                     cell_size));
     uint8_t* l3_data =
         (uint8_t*)ctx->ring.live_addr +
-        ttr_layout_l3_offset(ctx->ring.cfg.l1_capacity, ctx->ring.cfg.l2_capacity, cell_size);
+        ttr_layout_l3_offset(ctx->ring.cfg.l1_capacity,
+                             ctx->ring.cfg.l2_capacity, cell_size);
     uint32_t head = l3_meta->head;
     uint32_t prev = (head == 0 ? l3_meta->capacity : head) - 1;
-    const struct tt_metrics* agg = (const struct tt_metrics*)(l3_data + prev * cell_size);
+    const struct tt_metrics* agg =
+        (const struct tt_metrics*)(l3_data + prev * cell_size);
     ttd_debug_dump_agg(3, agg, head, l3_meta->capacity);
   }
 #endif
   return ret;
 }
 
-int ttd_writer_shadow_sync(struct ttd_writer* ctx) { return ttr_writer_shadow_sync(&ctx->ring); }
+int ttd_writer_shadow_sync(struct ttd_writer* ctx) {
+  return ttr_writer_shadow_sync(&ctx->ring);
+}
 
-void ttd_writer_cleanup(struct ttd_writer* ctx) { ttr_writer_cleanup(&ctx->ring); }
+void ttd_writer_cleanup(struct ttd_writer* ctx) {
+  ttr_writer_cleanup(&ctx->ring);
+}
