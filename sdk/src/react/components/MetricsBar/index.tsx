@@ -9,8 +9,8 @@ import { useMemo, useRef, CSSProperties } from 'react';
 import { useMetrics } from '../../TinyTrackProvider.js';
 import { useTheme, TtTheme } from '../../theme.js';
 import { buildAlertState } from '../../utils/alerts.js';
-import { fmtPct, fmtBytes, fmtLoad } from '../../utils/format.js';
-import { MetricType, SizeType, SIZE_SCALE, ALL_METRICS } from '../../utils/metrics.js';
+import { fmtPct, fmtBytes, fmtLoad, fmtUptimeSec } from '../../utils/format.js';
+import { MetricType, SysInfoType, SizeType, SIZE_SCALE, ALL_METRICS } from '../../utils/metrics.js';
 import { AlertLamps, AlertState, MetricIcon } from './MetricItem.js';
 
 export interface MetricsBarProps {
@@ -19,6 +19,8 @@ export interface MetricsBarProps {
   showAlerts?: boolean;
   theme?: Partial<TtTheme>;
   metrics?: MetricType[];
+  /** System info fields to display as badges (order preserved). */
+  sysInfo?: SysInfoType[];
   size?: SizeType;
 }
 
@@ -127,11 +129,12 @@ export function MetricsBar({
   showAlerts = true,
   theme: themeProp,
   metrics = ALL_METRICS,
+  sysInfo,
   size = 'm',
 }: MetricsBarProps) {
   const base = useTheme();
   const t = themeProp ? { ...base, ...themeProp } : base;
-  const { metrics: m, connected } = useMetrics();
+  const { metrics: m, connected, sysinfo } = useMetrics();
 
   const prevRef = useRef(m);
   const alertState = useMemo(() => {
@@ -141,9 +144,98 @@ export function MetricsBar({
     /* eslint-disable-next-line react-hooks/exhaustive-deps */
   }, [m]);
 
-  const show = (metric: MetricType) => metrics.includes(metric);
   const gap = GAP[size];
   const logoSz = VALUE_FS[size] + 2;
+
+  /* ─── Metric badge renderer (ordered by metrics array) ─────────────────── */
+  function renderMetric(metric: MetricType) {
+    switch (metric) {
+      case 'cpu': return (
+        <Badge key="cpu" t={t} size={size} title="CPU usage" accentColor={t.cpu}>
+          <MetricLabel type="cpu" label={size === 'l' ? 'CPU usage' : 'CPU'} size={size} color={t.cpu} />
+          <BValue color={t.cpu} size={size}>{m ? fmtPct(m.cpu) : '—'}</BValue>
+        </Badge>
+      );
+      case 'mem': return (
+        <Badge key="mem" t={t} size={size} title="Memory usage" accentColor={t.mem}>
+          <MetricLabel type="mem" label={size === 'l' ? 'Memory usage' : 'MEM'} size={size} color={t.mem} />
+          <BValue color={t.mem} size={size}>{m ? fmtPct(m.mem) : '—'}</BValue>
+        </Badge>
+      );
+      case 'disk': return (
+        <Badge key="disk" t={t} size={size} title="Disk usage" accentColor={t.disk}>
+          <MetricLabel type="disk" label={size === 'l' ? 'Disk usage' : 'DISK'} size={size} color={t.disk} />
+          <BValue color={t.disk} size={size}>{m ? fmtPct(m.duUsage) : '—'}</BValue>
+        </Badge>
+      );
+      case 'load': return (
+        <Badge key="load" t={t} size={size} title="Load average 1m / 5m / 15m" accentColor={t.load}>
+          <MetricLabel type="load" label={size === 'l' ? 'Load average' : 'LOAD'} size={size} color={t.load} />
+          <BValue color={t.load} size={size}>
+            {m ? `${fmtLoad(m.load1)} / ${fmtLoad(m.load5)} / ${fmtLoad(m.load15)}` : '—'}
+          </BValue>
+        </Badge>
+      );
+      case 'net': return (
+        <Badge key="net" t={t} size={size} title="Network TX / RX">
+          {size === 'l' ? (<>
+            <MetricLabel type="net" label="" size={size} color={t.muted} />
+            <BLabel size={size}>Upload</BLabel>
+            <BValue color={t.cpu} size={size}>↑ {m ? fmtBytes(m.netTx) : '—'}/s</BValue>
+            <BLabel size={size}>Download</BLabel>
+            <BValue color={t.mem} size={size}>↓ {m ? fmtBytes(m.netRx) : '—'}/s</BValue>
+          </>) : (
+            <>
+              <MetricLabel type="net" label="NET" size={size} color={t.net} />
+              <BValue color={t.cpu} size={size}>↑{m ? fmtBytes(m.netTx) : '—'}</BValue>
+              <BValue color={t.mem} size={size}>↓{m ? fmtBytes(m.netRx) : '—'}</BValue>
+            </>
+          )}
+        </Badge>
+      );
+      case 'proc': return (
+        <Badge key="proc" t={t} size={size} title="Running / total processes">
+          <MetricLabel type="proc" label={size === 'l' ? 'Processes' : 'PROC'} size={size} color={t.muted} />
+          <BValue color={t.text} size={size}>{m ? `${m.nrRunning}/${m.nrTotal}` : '—'}</BValue>
+        </Badge>
+      );
+      default: return null;
+    }
+  }
+
+  /* ─── SysInfo badge renderer ────────────────────────────────────────────── */
+  function renderSysInfo(field: SysInfoType) {
+    if (!sysinfo) return null;
+    switch (field) {
+      case 'hostname': return (
+        <Badge key="hostname" t={t} size={size} title="Hostname">
+          <BLabel size={size}>host</BLabel>
+          <BValue color={t.text} size={size}>{sysinfo.hostname}</BValue>
+        </Badge>
+      );
+      case 'os-type': return (
+        <Badge key="os-type" t={t} size={size} title="OS type">
+          <BLabel size={size}>os</BLabel>
+          <BValue color={t.muted} size={size}>{sysinfo.osType}</BValue>
+        </Badge>
+      );
+      case 'uptime': return (
+        <Badge key="uptime" t={t} size={size} title="System uptime">
+          <BLabel size={size}>up</BLabel>
+          <BValue color={t.faint} size={size}>{fmtUptimeSec(sysinfo.uptimeSec)}</BValue>
+        </Badge>
+      );
+      case 'ringbufInfo': return (
+        <Badge key="ringbufInfo" t={t} size={size} title="Ring buffer slots L1/L2/L3">
+          <BLabel size={size}>buf</BLabel>
+          <BValue color={t.faint} size={size}>
+            {sysinfo.slotsL1}/{sysinfo.slotsL2}/{sysinfo.slotsL3}
+          </BValue>
+        </Badge>
+      );
+      default: return null;
+    }
+  }
 
   return (
     <div
@@ -155,7 +247,7 @@ export function MetricsBar({
         fontFamily: t.font,
         color: t.text,
         background: t.bg,
-        border: `1px solid ${t.border}`,
+        border: `${t.borderWidth}px solid ${t.border}`,
         borderRadius: t.radius,
         padding: gap,
         boxSizing: 'border-box',
@@ -187,66 +279,11 @@ export function MetricsBar({
         </Badge>
       )}
 
-      {/* ── CPU ── */}
-      {show('cpu') && (
-        <Badge t={t} size={size} title="CPU usage" accentColor={t.cpu}>
-          <MetricLabel type="cpu" label={size === 'l' ? 'CPU usage' : 'CPU'} size={size} color={t.cpu} />
-          <BValue color={t.cpu} size={size}>{m ? fmtPct(m.cpu) : '—'}</BValue>
-        </Badge>
-      )}
+      {/* ── Metrics in array order ── */}
+      {metrics.map(renderMetric)}
 
-      {/* ── MEM ── */}
-      {show('mem') && (
-        <Badge t={t} size={size} title="Memory usage" accentColor={t.mem}>
-          <MetricLabel type="mem" label={size === 'l' ? 'Memory usage' : 'MEM'} size={size} color={t.mem} />
-          <BValue color={t.mem} size={size}>{m ? fmtPct(m.mem) : '—'}</BValue>
-        </Badge>
-      )}
-
-      {/* ── DISK ── */}
-      {show('disk') && (
-        <Badge t={t} size={size} title="Disk usage" accentColor={t.disk}>
-          <MetricLabel type="disk" label={size === 'l' ? 'Disk usage' : 'DISK'} size={size} color={t.disk} />
-          <BValue color={t.disk} size={size}>{m ? fmtPct(m.duUsage) : '—'}</BValue>
-        </Badge>
-      )}
-
-      {/* ── LOAD ── */}
-      {show('load') && (
-        <Badge t={t} size={size} title="Load average 1m / 5m / 15m" accentColor={t.load}>
-          <MetricLabel type="load" label={size === 'l' ? 'Load average' : 'LOAD'} size={size} color={t.load} />
-          <BValue color={t.load} size={size}>
-            {m ? `${fmtLoad(m.load1)} / ${fmtLoad(m.load5)} / ${fmtLoad(m.load15)}` : '—'}
-          </BValue>
-        </Badge>
-      )}
-
-      {/* ── NET ── */}
-      {show('net') && (
-        <Badge t={t} size={size} title="Network TX / RX">
-          {size === 'l' ? (<>
-            <MetricLabel type="net" label="" size={size} color={t.muted} />
-            <BLabel size={size}>Upload</BLabel>
-            <BValue color={t.cpu} size={size}>↑ {m ? fmtBytes(m.netTx) : '—'}/s</BValue>
-            <BLabel size={size}>Download</BLabel>
-            <BValue color={t.mem} size={size}>↓ {m ? fmtBytes(m.netRx) : '—'}/s</BValue>
-          </>) : (
-            <>
-              <MetricLabel type="net" label="NET" size={size} color={t.net} />
-              <BValue color={t.cpu} size={size}>↑{m ? fmtBytes(m.netTx) : '—'}</BValue>
-              <BValue color={t.mem} size={size}>↓{m ? fmtBytes(m.netRx) : '—'}</BValue>
-            </>
-          )}
-        </Badge>
-      )}
-
-      {/* ── PROC ── */}
-      {show('proc') && (
-        <Badge t={t} size={size} title="Running / total processes" >
-          <MetricLabel type="proc" label={size === 'l' ? 'Processes' : 'PROC'} size={size} color={t.muted} />
-          <BValue color={t.text} size={size}>{m ? `${m.nrRunning}/${m.nrTotal}` : '—'}</BValue>
-        </Badge>
-      )}
+      {/* ── SysInfo badges in array order ── */}
+      {sysInfo?.map(renderSysInfo)}
     </div>
   );
 }
