@@ -9,7 +9,8 @@
 #include "tls.h"
 
 static bool atone(struct ttg_str str, struct ttg_addr* addr) {
-  if (str.len > 0) return false;
+  if (str.len > 0)
+    return false;
   memset(addr->ip, 0, sizeof(addr->ip));
   return true;
 }
@@ -17,7 +18,8 @@ static bool atone(struct ttg_str str, struct ttg_addr* addr) {
 static bool atonl(struct ttg_str str, struct ttg_addr* addr) {
   /* uint32_t localhost = ntohl(0x7f000001); */
   uint32_t localhost = htonl(0x7f000001);
-  if (ttg_str_casecmp(str, str("localhost")) != 0) return false;
+  if (ttg_str_casecmp(str, str("localhost")) != 0)
+    return false;
   memcpy(addr->ip, &localhost, sizeof(uint32_t));
   return true;
 }
@@ -28,16 +30,19 @@ static bool aton4(struct ttg_str str, struct ttg_addr* addr) {
   for (i = 0; i < str.len; i++) {
     if (str.buf[i] >= '0' && str.buf[i] <= '9') {
       int octet = data[num_dots] * 10 + (str.buf[i] - '0');
-      if (octet > 255) return false;
+      if (octet > 255)
+        return false;
       data[num_dots] = (uint8_t)octet;
     } else if (str.buf[i] == '.') {
-      if (num_dots >= 3 || i == 0 || str.buf[i - 1] == '.') return false;
+      if (num_dots >= 3 || i == 0 || str.buf[i - 1] == '.')
+        return false;
       num_dots++;
     } else {
       return false;
     }
   }
-  if (num_dots != 3 || str.buf[i - 1] == '.') return false;
+  if (num_dots != 3 || str.buf[i - 1] == '.')
+    return false;
   memcpy(&addr->ip, data, sizeof(data));
   return true;
 }
@@ -101,9 +106,11 @@ bool ttg_sock_open_listener(struct ttg_conn* c, const char* url) {
     socklen_t slen = tousa(&c->local, &usa);
     (void)on;
 
-    if ((fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == TTG_INVALID_SOCKET) {
+    if ((fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) ==
+        TTG_INVALID_SOCKET) {
       tt_log_err("socket: %d", TTG_SOCK_ERR(-1));
-    } else if ((rc = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (char*)&on, sizeof(on))) != 0) {
+    } else if ((rc = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (char*)&on,
+                                sizeof(on))) != 0) {
       tt_log_err("setsockopt(SO_REUSEADDR): %d", TTG_SOCK_ERR(rc));
     } else if ((rc = bind(fd, &usa.sa, slen)) != 0) {
       tt_log_err("bind: %d", TTG_SOCK_ERR(rc));
@@ -124,11 +131,13 @@ bool ttg_sock_open_listener(struct ttg_conn* c, const char* url) {
     }
   }
 
-  if (success == false && fd != TTG_INVALID_SOCKET) closesocket(fd);
+  if (success == false && fd != TTG_INVALID_SOCKET)
+    closesocket(fd);
   return success;
 }
 
-static TTG_SOCK_TYPE raccept(TTG_SOCK_TYPE sock, union usa* usa, socklen_t* len) {
+static TTG_SOCK_TYPE raccept(TTG_SOCK_TYPE sock, union usa* usa,
+                             socklen_t* len) {
   TTG_SOCK_TYPE fd = TTG_INVALID_SOCKET;
   do {
     memset(usa, 0, sizeof(*usa));
@@ -146,7 +155,8 @@ static void setsockopts(struct ttg_conn* c) {
   (void)c;
   int on = 1;
 
-  if (setsockopt(FD(c), SOL_SOCKET, SO_KEEPALIVE, (char*)&on, sizeof(on)) != 0) (void)0;
+  if (setsockopt(FD(c), SOL_SOCKET, SO_KEEPALIVE, (char*)&on, sizeof(on)) != 0)
+    (void)0;
 }
 
 void ttg_sock_accept_conn(struct ttg_mgr* mgr, struct ttg_conn* lsn) {
@@ -199,7 +209,8 @@ void ttg_sock_connect_conn(struct ttg_conn* c) {
     setlocaddr(FD(c), &c->local);
     ttg_event_call(c, TTG_EVENT_CONNECT, NULL);
     TTG_EPOLL_MOD(c, 0);
-    if (c->is_tls_hs) ttg_tls_handshake(c);
+    if (c->is_tls_hs)
+      ttg_tls_handshake(c);
   } else {
     ttg_event_error(c, "socket error");
   }
@@ -210,9 +221,12 @@ static long iorecv(struct ttg_conn* c, void* buf, size_t len) {
 
   tt_log_debug("%lu %ld %d", c->id, n, TTG_SOCK_ERR(n));
 
-  if (TTG_SOCK_PENDING(n)) return TTG_IO_WAIT;
-  if (TTG_SOCK_RESET(n)) return TTG_IO_RESET;
-  if (n <= 0) return TTG_IO_ERR;
+  if (TTG_SOCK_PENDING(n))
+    return TTG_IO_WAIT;
+  if (TTG_SOCK_RESET(n))
+    return TTG_IO_RESET;
+  if (n <= 0)
+    return TTG_IO_ERR;
 
   return n;
 }
@@ -222,9 +236,12 @@ long iosend(struct ttg_conn* c, const void* buf, size_t len) {
 
   tt_log_debug("%lu %ld %d", c->id, n, TTG_SOCK_ERR(n));
 
-  if (TTG_SOCK_PENDING(n)) return TTG_IO_WAIT;
-  if (TTG_SOCK_RESET(n)) return TTG_IO_RESET;
-  if (n <= 0) return TTG_IO_ERR;
+  if (TTG_SOCK_PENDING(n))
+    return TTG_IO_WAIT;
+  if (TTG_SOCK_RESET(n))
+    return TTG_IO_RESET;
+  if (n <= 0)
+    return TTG_IO_ERR;
   return n;
 }
 
@@ -232,7 +249,8 @@ static bool ioalloc(struct ttg_conn* c, struct ttg_iobuf* io) {
   bool res = false;
   if (io->len >= TTG_MAX_RECV_SIZE) {
     ttg_event_error(c, "MG_MAX_RECV_SIZE");
-  } else if (io->size <= io->len && !ttg_iobuf_resize(io, io->size + TTG_IO_SIZE)) {
+  } else if (io->size <= io->len &&
+             !ttg_iobuf_resize(io, io->size + TTG_IO_SIZE)) {
     ttg_event_error(c, "OOM");
   } else {
     res = true;
@@ -248,8 +266,9 @@ static void iolog(struct ttg_conn* c, char* buf, long n, bool r) {
   } else {             /* n > 0 */
     if (c->is_hexdumping) {
       char loc[24], rem[24];
-      tt_log_info("\n-- %lu %s %s %s %ld", c->id, ttg_addr_str(&c->local, loc, sizeof(loc)),
-                  r ? "<-" : "->", ttg_addr_str(&c->remote, rem, sizeof(rem)), n);
+      tt_log_info("\n-- %lu %s %s %s %ld", c->id,
+                  ttg_addr_str(&c->local, loc, sizeof(loc)), r ? "<-" : "->",
+                  ttg_addr_str(&c->remote, rem, sizeof(rem)), n);
     }
     if (r) {
       c->recv.len += (size_t)n;
@@ -293,7 +312,9 @@ void ttg_sock_close_conn(struct ttg_conn* c) {
   ttg_net_close_conn(c);
 }
 
-static bool can_read(const struct ttg_conn* c) { return c->is_full == false; }
+static bool can_read(const struct ttg_conn* c) {
+  return c->is_full == false;
+}
 
 static bool can_write(const struct ttg_conn* c) {
   return c->is_connecting || (c->send.len > 0 && c->is_tls_hs == 0);
@@ -307,9 +328,12 @@ void ttg_sock_iotest(struct ttg_mgr* mgr, int ms) {
   size_t max = 1;
   for (struct ttg_conn* c = mgr->conns; c != NULL; c = c->next) {
     c->is_readable = c->is_writable = 0;
-    if (can_write(c)) TTG_EPOLL_MOD(c, 1);
-    if (c->is_closing) ms = 1;
-    if (ttg_tls_pending(c) > 0) ms = 1, c->is_readable = 1;
+    if (can_write(c))
+      TTG_EPOLL_MOD(c, 1);
+    if (c->is_closing)
+      ms = 1;
+    if (ttg_tls_pending(c) > 0)
+      ms = 1, c->is_readable = 1;
     max++;
   }
   struct epoll_event evs[max];
@@ -323,7 +347,8 @@ void ttg_sock_iotest(struct ttg_mgr* mgr, int ms) {
       bool wr = evs[i].events & EPOLLOUT;
       c->is_readable = can_read(c) && rd ? 1U : 0;
       c->is_writable = can_write(c) && wr ? 1U : 0;
-      if (ttg_tls_pending(c) > 0) c->is_readable = 1;
+      if (ttg_tls_pending(c) > 0)
+        c->is_readable = 1;
     }
   }
   (void)skip_iotest;

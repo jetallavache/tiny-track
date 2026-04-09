@@ -27,7 +27,7 @@ struct ttg_config {
  * Load [gateway] section from config file, then apply CLI overrides.
  * listen_override / shm_override may be NULL (no override).
  */
-void ttg_config_load(struct ttg_config* cfg, const char* config_path, const char* listen_override,
-                     const char* shm_override);
+void ttg_config_load(struct ttg_config* cfg, const char* config_path,
+                     const char* listen_override, const char* shm_override);
 
 #endif /* TTG_CONFIG_H */

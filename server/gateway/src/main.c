@@ -29,22 +29,28 @@ static void signal_handler(int sig) {
 
 static void daemonize(void) {
   pid_t pid = fork();
-  if (pid < 0) exit(EXIT_FAILURE);
-  if (pid > 0) exit(EXIT_SUCCESS);
+  if (pid < 0)
+    exit(EXIT_FAILURE);
+  if (pid > 0)
+    exit(EXIT_SUCCESS);
 
-  if (setsid() < 0) exit(EXIT_FAILURE);
+  if (setsid() < 0)
+    exit(EXIT_FAILURE);
 
   signal(SIGCHLD, SIG_IGN);
   signal(SIGHUP, SIG_IGN);
 
   pid = fork();
-  if (pid < 0) exit(EXIT_FAILURE);
-  if (pid > 0) exit(EXIT_SUCCESS);
+  if (pid < 0)
+    exit(EXIT_FAILURE);
+  if (pid > 0)
+    exit(EXIT_SUCCESS);
 
   umask(0);
   chdir("/");
 
-  for (int fd = sysconf(_SC_OPEN_MAX); fd >= 3; fd--) close(fd);
+  for (int fd = sysconf(_SC_OPEN_MAX); fd >= 3; fd--)
+    close(fd);
 
   /* Redirect stdin/stdout/stderr to /dev/null so fd 0-2 stay reserved */
   int devnull = open("/dev/null", O_RDWR);
@@ -52,13 +58,15 @@ static void daemonize(void) {
     dup2(devnull, STDIN_FILENO);
     dup2(devnull, STDOUT_FILENO);
     dup2(devnull, STDERR_FILENO);
-    if (devnull > 2) close(devnull);
+    if (devnull > 2)
+      close(devnull);
   }
 }
 
 static int write_pid_file(const char* path) {
   FILE* f = fopen(path, "w");
-  if (!f) return -1;
+  if (!f)
+    return -1;
   fprintf(f, "%d\n", getpid());
   fclose(f);
   return 0;
@@ -97,14 +105,19 @@ int main(int argc, char** argv) {
   int do_daemonize = 1;
 
   static const struct option long_opts[] = {
-      {"config", required_argument, NULL, 'c'}, {"port", required_argument, NULL, 'p'},
-      {"listen", required_argument, NULL, 'l'}, {"shm", required_argument, NULL, 's'},
-      {"daemon", no_argument, NULL, 'd'},       {"no-daemon", no_argument, NULL, 'n'},
-      {"help", no_argument, NULL, 'h'},         {NULL, 0, NULL, 0},
+      {"config", required_argument, NULL, 'c'},
+      {"port", required_argument, NULL, 'p'},
+      {"listen", required_argument, NULL, 'l'},
+      {"shm", required_argument, NULL, 's'},
+      {"daemon", no_argument, NULL, 'd'},
+      {"no-daemon", no_argument, NULL, 'n'},
+      {"help", no_argument, NULL, 'h'},
+      {NULL, 0, NULL, 0},
   };
 
   int opt;
-  while ((opt = getopt_long(argc, argv, "c:p:l:s:dnh", long_opts, NULL)) != -1) {
+  while ((opt = getopt_long(argc, argv, "c:p:l:s:dnh", long_opts, NULL)) !=
+         -1) {
     switch (opt) {
       case 'c':
         config_path = optarg;
@@ -151,7 +164,8 @@ int main(int argc, char** argv) {
   ttg_config_load(&cfg, config_path, listen_override, shm_override);
 
   /* Daemonize before tt_log_init (closes all fds) */
-  if (do_daemonize) daemonize();
+  if (do_daemonize)
+    daemonize();
 
   /* Init sysfs paths (env vars TT_PROC_ROOT/TT_ROOTFS_PATH override defaults)
    */
@@ -221,7 +235,8 @@ int main(int argc, char** argv) {
 
   ttg_http_listen(&mgr, cfg.listen, ttg_session_event_fn, NULL);
 
-  while (running) ttg_net_mgr_poll(&mgr, 500);
+  while (running)
+    ttg_net_mgr_poll(&mgr, 500);
 
   ttg_net_mgr_free(&mgr);
   ttg_reader_close(&reader);

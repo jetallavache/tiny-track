@@ -49,19 +49,25 @@ size_t ttg_b64_update(unsigned char ch, char* to, size_t n) {
 size_t ttg_b64_final(char* to, size_t n) {
   size_t saved = n;
   /* printf("---[%.*s]\n", n, to); */
-  if (n & 3) n = ttg_b64_update(0, to, n);
-  if ((saved & 3) == 2) n--;
+  if (n & 3)
+    n = ttg_b64_update(0, to, n);
+  if ((saved & 3) == 2)
+    n--;
   /* printf("    %d[%.*s]\n", n, n, to); */
-  while (n & 3) to[n++] = '=';
+  while (n & 3)
+    to[n++] = '=';
   to[n] = '\0';
   return n;
 }
 
 size_t ttg_b64_encode(const unsigned char* p, size_t n, char* to, size_t dl) {
   size_t i, len = 0;
-  if (dl > 0) to[0] = '\0';
-  if (dl < ((n / 3) + (n % 3 ? 1 : 0)) * 4 + 1) return 0;
-  for (i = 0; i < n; i++) len = ttg_b64_update(p[i], to, len);
+  if (dl > 0)
+    to[0] = '\0';
+  if (dl < ((n / 3) + (n % 3 ? 1 : 0)) * 4 + 1)
+    return 0;
+  for (i = 0; i < n; i++)
+    len = ttg_b64_update(p[i], to, len);
   len = ttg_b64_final(to, len);
   return len;
 }
@@ -69,23 +75,26 @@ size_t ttg_b64_encode(const unsigned char* p, size_t n, char* to, size_t dl) {
 size_t ttg_b64_decode(const char* src, size_t n, char* dst, size_t dl) {
   const char* end = src == NULL ? NULL : src + n; /* Cannot add to NULL */
   size_t len = 0;
-  if (dl < n / 4 * 3 + 1) goto fail;
+  if (dl < n / 4 * 3 + 1)
+    goto fail;
   while (src != NULL && src + 3 < end) {
-    int a = b64_decode_single(src[0]), b = b64_decode_single(src[1]), c = b64_decode_single(src[2]),
-        d = b64_decode_single(src[3]);
+    int a = b64_decode_single(src[0]), b = b64_decode_single(src[1]),
+        c = b64_decode_single(src[2]), d = b64_decode_single(src[3]);
     if (a == 64 || a < 0 || b == 64 || b < 0 || c < 0 || d < 0) {
       goto fail;
     }
     dst[len++] = (char)((a << 2) | (b >> 4));
     if (src[2] != '=') {
       dst[len++] = (char)((b << 4) | (c >> 2));
-      if (src[3] != '=') dst[len++] = (char)((c << 6) | d);
+      if (src[3] != '=')
+        dst[len++] = (char)((c << 6) | d);
     }
     src += 4;
   }
   dst[len] = '\0';
   return len;
 fail:
-  if (dl > 0) dst[0] = '\0';
+  if (dl > 0)
+    dst[0] = '\0';
   return 0;
 }

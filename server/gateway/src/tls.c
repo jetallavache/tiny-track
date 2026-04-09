@@ -32,14 +32,17 @@ int ttg_tls_ctx_init(struct ttg_mgr* mgr, const struct ttg_tls_cfg* cfg) {
 
   SSL_CTX* ctx = SSL_CTX_new(TLS_server_method());
   if (!ctx) {
-    tt_log_err("SSL_CTX_new failed: %s", ERR_error_string(ERR_get_error(), NULL));
+    tt_log_err("SSL_CTX_new failed: %s",
+               ERR_error_string(ERR_get_error(), NULL));
     return -1;
   }
 
   SSL_CTX_set_min_proto_version(ctx, TLS1_2_VERSION);
-  SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1);
+  SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 |
+                               SSL_OP_NO_TLSv1_1);
 
-  if (SSL_CTX_use_certificate_file(ctx, cfg->cert_file, SSL_FILETYPE_PEM) != 1) {
+  if (SSL_CTX_use_certificate_file(ctx, cfg->cert_file, SSL_FILETYPE_PEM) !=
+      1) {
     tt_log_err("Failed to load cert: %s", cfg->cert_file);
     SSL_CTX_free(ctx);
     return -1;
@@ -60,7 +63,8 @@ int ttg_tls_ctx_init(struct ttg_mgr* mgr, const struct ttg_tls_cfg* cfg) {
       SSL_CTX_free(ctx);
       return -1;
     }
-    SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, NULL);
+    SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
+                       NULL);
   }
 
   struct ttg_tls_ctx* tc = calloc(1, sizeof(*tc));
@@ -77,7 +81,8 @@ int ttg_tls_ctx_init(struct ttg_mgr* mgr, const struct ttg_tls_cfg* cfg) {
 
 void ttg_tls_ctx_free(struct ttg_mgr* mgr) {
   struct ttg_tls_ctx* tc = (struct ttg_tls_ctx*)mgr->tls_ctx;
-  if (!tc) return;
+  if (!tc)
+    return;
   SSL_CTX_free(tc->ssl_ctx);
   free(tc);
   mgr->tls_ctx = NULL;
@@ -120,7 +125,8 @@ int ttg_tls_init(struct ttg_conn* c) {
 
 void ttg_tls_free(struct ttg_conn* c) {
   struct ttg_tls* t = (struct ttg_tls*)c->tls;
-  if (!t) return;
+  if (!t)
+    return;
   SSL_free(t->ssl);
   free(t);
   c->tls = NULL;
@@ -128,12 +134,14 @@ void ttg_tls_free(struct ttg_conn* c) {
 
 void ttg_tls_handshake(struct ttg_conn* c) {
   struct ttg_tls* t = (struct ttg_tls*)c->tls;
-  if (!t) return;
+  if (!t)
+    return;
 
   int rc = SSL_accept(t->ssl);
   if (rc == 1) {
     c->is_tls_hs = 0;
-    tt_log_info("%lu TLS handshake complete (%s)", c->id, SSL_get_cipher(t->ssl));
+    tt_log_info("%lu TLS handshake complete (%s)", c->id,
+                SSL_get_cipher(t->ssl));
     return;
   }
 
@@ -141,26 +149,32 @@ void ttg_tls_handshake(struct ttg_conn* c) {
   if (err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE)
     return; /* handshake in progress — wait for next poll */
 
-  tt_log_err("%lu TLS handshake failed: %s", c->id, ERR_error_string(ERR_get_error(), NULL));
+  tt_log_err("%lu TLS handshake failed: %s", c->id,
+             ERR_error_string(ERR_get_error(), NULL));
   c->is_closing = 1;
 }
 
 long ttg_tls_recv(struct ttg_conn* c, void* buf, size_t len) {
   struct ttg_tls* t = (struct ttg_tls*)c->tls;
   int n = SSL_read(t->ssl, buf, (int)len);
-  if (n > 0) return n;
+  if (n > 0)
+    return n;
   int err = SSL_get_error(t->ssl, n);
-  if (err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE) return TTG_IO_WAIT;
-  if (err == SSL_ERROR_ZERO_RETURN) return TTG_IO_RESET; /* clean shutdown */
+  if (err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE)
+    return TTG_IO_WAIT;
+  if (err == SSL_ERROR_ZERO_RETURN)
+    return TTG_IO_RESET; /* clean shutdown */
   return TTG_IO_ERR;
 }
 
 long ttg_tls_send(struct ttg_conn* c, const void* buf, size_t len) {
   struct ttg_tls* t = (struct ttg_tls*)c->tls;
   int n = SSL_write(t->ssl, buf, (int)len);
-  if (n > 0) return n;
+  if (n > 0)
+    return n;
   int err = SSL_get_error(t->ssl, n);
-  if (err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE) return TTG_IO_WAIT;
+  if (err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE)
+    return TTG_IO_WAIT;
   return TTG_IO_ERR;
 }
 
