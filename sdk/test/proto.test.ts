@@ -109,7 +109,6 @@ describe('parseMetrics', () => {
     const frame = new Uint8Array(h.buffer);
     new Uint8Array(payload).forEach((b, i) => { frame[HEADER_SIZE + i] = b; });
     const parsed = parseHeader(h.buffer);
-    console.log(h);
     expect(parsed).not.toBeNull();
     const m = parseMetrics(parsed!.payload);
     expect(m.cpu).toBe(3456);

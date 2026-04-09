@@ -4,7 +4,7 @@
 
 <br/>
 
-![Version](https://img.shields.io/badge/version-0.2.0-4A90D9?style=flat-square)
+![Version](https://img.shields.io/badge/version-0.3.0-4A90D9?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-27AE60?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-Linux-E67E22?style=flat-square)
 ![Language](https://img.shields.io/badge/language-C11-8E44AD?style=flat-square)
