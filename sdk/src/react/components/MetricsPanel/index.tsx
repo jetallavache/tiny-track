@@ -8,7 +8,7 @@
  */
 import { useMemo, useRef, useState, useEffect, CSSProperties } from 'react';
 import { useMetrics } from '../../TinyTrackProvider.js';
-import { useTheme, TtTheme, themeStyles } from '../../theme.js';
+import { useTheme, TtTheme, themeStyles, invertColor } from '../../theme.js';
 import { useAlertBadge } from '../../hooks/useAlertBadge.js';
 import { detectAlerts } from '../../utils/alerts.js';
 import { fmtPct, fmtBytes, fmtLoad, fmtUptimeSec, bar } from '../../utils/format.js';
@@ -76,7 +76,7 @@ function Chevron({ dir, color, size, delay, duration }: {
 }
 
 /* ── Animated chevron row for load avg ─────────────────────────────────── */
-const ARROW_COUNT = 7;
+const ARROW_COUNT = 8;
 
 function LoadArrows({ trend, color, fontSize }: {
   trend: 'rising' | 'falling' | 'stable';
@@ -210,91 +210,59 @@ export function MetricsPanel({
   /* ── Size 's': minimal card ─────────────────────────────────────────── */
   if (size === 's') {
     const has = (metric: MetricType) => metrics.includes(metric);
+    const row = (label: string, children: React.ReactNode) => (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <span style={{ color: t.muted, minWidth: 28, fontSize: sc.font - 1 }}>{label}</span>
+        {children}
+      </div>
+    );
     return (
       <div className={className} style={{ ...s.root, fontSize: sc.font, gap: sc.gap, padding: sc.pad, width: 'fit-content', minWidth: 120, ...style }}>
         {headerS}
         <div style={s.divider} />
-
-        {has('cpu') && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ color: t.muted, minWidth: 28, fontSize: sc.font - 1 }}>CPU</span>
-            <span style={{ color: t.cpu, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{m ? fmtPct(m.cpu) : '—'}</span>
-          </div>
-        )}
-        {has('mem') && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ color: t.muted, minWidth: 28, fontSize: sc.font - 1 }}>Mem</span>
-            <span style={{ color: t.mem, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{m ? fmtPct(m.mem) : '—'}</span>
-          </div>
-        )}
-        {has('disk') && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ color: t.muted, minWidth: 28, fontSize: sc.font - 1 }}>Disk</span>
-            <span style={{ color: t.disk, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{m ? fmtPct(m.duUsage) : '—'}</span>
-          </div>
-        )}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ color: t.muted, minWidth: 28, fontSize: sc.font - 1 }}>Load</span>
-          {m && (() => {
-            const sTrend = loadTrend(m);
-            const arrow = sTrend === 'rising' ? '▲' : sTrend === 'falling' ? '▼' : '';
-            const aColor = sTrend === 'rising' ? t.crit : sTrend === 'falling' ? t.ok : t.faint;
-            return <>
-              {arrow && <span style={{ color: aColor, fontSize: sc.font - 2, lineHeight: 1 }}>{arrow}</span>}
-              <span style={{ color: loadColor, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{loadScore}%</span>
-            </>;
-          })()}
-          {!m && <span style={{ color: loadColor, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>—</span>}
-        </div>
-        {has('net') && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ color: t.muted, minWidth: 28, fontSize: sc.font - 1 }}>Net</span>
-            <span style={{ color: t.net, fontVariantNumeric: 'tabular-nums' }}>↑{m ? fmtBytes(m.netTx) : '—'}</span>
-            <span style={{ color: t.mem, fontVariantNumeric: 'tabular-nums' }}>↓{m ? fmtBytes(m.netRx) : '—'}</span>
-          </div>
-        )}
-        {has('proc') && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ color: t.muted, minWidth: 28, fontSize: sc.font - 1 }}>Proc</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{m ? `${m.nrRunning}/${m.nrTotal}` : '—'}</span>
-          </div>
-        )}
+        {has('cpu') && row('CPU', <span style={{ color: t.cpu, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{m ? fmtPct(m.cpu) : '—'}</span>)}
+        {has('mem') && row('Mem', <span style={{ color: t.mem, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{m ? fmtPct(m.mem) : '—'}</span>)}
+        {has('disk') && row('Disk', <span style={{ color: t.disk, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{m ? fmtPct(m.duUsage) : '—'}</span>)}
+        {row('Load', m ? (() => {
+          const sTrend = loadTrend(m);
+          const aColor = sTrend === 'rising' ? t.crit : sTrend === 'falling' ? t.ok : t.faint;
+          const arrow = sTrend === 'rising' ? '▲' : sTrend === 'falling' ? '▼' : '';
+          return <>{arrow && <span style={{ color: aColor, fontSize: sc.font - 2 }}>{arrow}</span>}
+            <span style={{ color: loadColor, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{loadScore}%</span></>;
+        })() : <span style={{ color: t.faint }}>—</span>)}
+        {has('net') && row('Net', <>
+          <span style={{ color: t.net, fontVariantNumeric: 'tabular-nums' }}>↑{m ? fmtBytes(m.netTx) : '—'}</span>
+          <span style={{ color: t.divider, fontSize: sc.font - 2 }}>/</span>
+          <span style={{ color: t.mem, fontVariantNumeric: 'tabular-nums' }}>↓{m ? fmtBytes(m.netRx) : '—'}</span>
+        </>)}
+        {has('proc') && row('Proc', <>
+          <span style={{ color: t.text, fontVariantNumeric: 'tabular-nums' }}>{m ? m.nrRunning : '—'}</span>
+          <span style={{ color: t.divider, fontSize: sc.font - 2 }}>/</span>
+          <span style={{ color: t.muted, fontVariantNumeric: 'tabular-nums' }}>{m ? m.nrTotal : '—'}</span>
+        </>)}
       </div>
     );
   }
 
   /* ── Size 'm' and 'l' ───────────────────────────────────────────────── */
   const isL = size === 'l';
-  const labelW = isL ? 80 : 36;
+  const labelW = isL ? 80 : 46;
   const lbl = (short: string, full: string) => isL ? full : short;
   const trend = m ? loadTrend(m) : 'stable';
   const arrowColor = trend === 'rising' ? t.crit : t.ok;
 
-  /* ── Metric rows builder ────────────────────────────────────────────── */
   function renderMetricRows(metricList: MetricType[]) {
+    const mr = (key: string, label: string, value: string, barStr: string | null, color: string, tooltip?: string) => (
+      <MetricRow key={key} label={label} value={value} barStr={barStr} color={color}
+        s={s} t={t} fontSize={sc.font} labelWidth={labelW} tooltip={tooltip} />
+    );
     return metricList.map((metric) => {
       switch (metric) {
-        case 'cpu': return (
-          <MetricRow key="cpu"
-            label={lbl('CPU', 'CPU usage')} value={m ? fmtPct(m.cpu) : '—'}
-            barStr={m ? bar(m.cpu) : null} color={t.cpu} s={s} fontSize={sc.font}
-            labelWidth={labelW} tooltip={isL ? `CPU: ${m ? fmtPct(m.cpu) : '—'}` : undefined}
-          />
-        );
-        case 'mem': return (
-          <MetricRow key="mem"
-            label={lbl('Mem', 'Memory')} value={m ? fmtPct(m.mem) : '—'}
-            barStr={m ? bar(m.mem) : null} color={t.mem} s={s} fontSize={sc.font}
-            labelWidth={labelW} tooltip={isL ? `Memory: ${m ? fmtPct(m.mem) : '—'}` : undefined}
-          />
-        );
+        case 'cpu': return mr('cpu', lbl('CPU', 'CPU usage'), m ? fmtPct(m.cpu) : '—', m ? bar(m.cpu) : null, t.cpu, isL ? `CPU: ${m ? fmtPct(m.cpu) : '—'}` : undefined);
+        case 'mem': return mr('mem', lbl('Mem', 'Memory'), m ? fmtPct(m.mem) : '—', m ? bar(m.mem) : null, t.mem, isL ? `Memory: ${m ? fmtPct(m.mem) : '—'}` : undefined);
         case 'disk': return (
           <div key="disk" style={{ display: 'contents' }}>
-            <MetricRow
-              label={lbl('Disk', 'Disk usage')} value={m ? fmtPct(m.duUsage) : '—'}
-              barStr={m ? bar(m.duUsage) : null} color={t.disk} s={s} fontSize={sc.font}
-              labelWidth={labelW} tooltip={isL ? `Disk: ${m ? fmtPct(m.duUsage) : '—'}` : undefined}
-            />
+            {mr('disk-row', lbl('Disk', 'Disk usage'), m ? fmtPct(m.duUsage) : '—', m ? bar(m.duUsage) : null, t.disk, isL ? `Disk: ${m ? fmtPct(m.duUsage) : '—'}` : undefined)}
             {m && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ minWidth: labelW }} />
@@ -307,34 +275,36 @@ export function MetricsPanel({
         );
         case 'load': return (
           <div key="load" style={{ display: 'contents' }}>
-            <MetricRow
-              label={lbl('Load', 'System load')} value={loadScore !== null ? `${loadScore}%` : '—'}
-              barStr={loadScore !== null ? bar(loadScore * 100) : null} color={loadColor} s={s} fontSize={sc.font}
-              labelWidth={labelW} tooltip={isL ? 'Overall system load score (0–100)' : undefined}
-            />
-            {m ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            {mr('load-row', lbl('Load', 'System load'), loadScore !== null ? `${loadScore}%` : '—', loadScore !== null ? bar(loadScore * 100) : null, loadColor, isL ? 'Overall system load score (0–100)' : undefined)}
+            {m ? (<>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <span style={{ color: t.muted, minWidth: labelW, fontSize: sc.font - 1, whiteSpace: 'nowrap' }}>
                   {lbl('L. avg', 'Load aver.')}
                 </span>
                 <LoadArrows trend={trend} color={arrowColor} fontSize={sc.font} />
-                <span style={{ color: t.load, fontVariantNumeric: 'tabular-nums', fontSize: sc.font - 1 }}>
-                  {fmtLoad(m.load1)} / {fmtLoad(m.load5)} / {fmtLoad(m.load15)}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ minWidth: labelW }} />
+                <span style={{ color: t.faint, fontSize: sc.font - 2, fontVariantNumeric: 'tabular-nums' }}>
+                  ({fmtLoad(m.load1)} / {fmtLoad(m.load5)} / {fmtLoad(m.load15)})
                 </span>
               </div>
-            ) : (
-              <MetricRow label={lbl('L. avg', 'Load aver.')} value="—" barStr={null} color={t.load} s={s} fontSize={sc.font} labelWidth={labelW} />
-            )}
+            </>) : mr('load-avg', lbl('L. avg', 'Load aver.'), '—', null, t.load)}
           </div>
         );
         case 'proc': return (
-          <MetricRow key="proc"
-            label={lbl('Proc', 'Processes')}
-            value={m ? `${m.nrRunning} / ${m.nrTotal}` : '—'}
-            barStr={null}
-            color={t.text} s={s} fontSize={sc.font} labelWidth={labelW}
-            tooltip={isL ? 'Running / total processes' : undefined}
-          />
+          <div key="proc" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ color: t.muted, minWidth: labelW, fontSize: sc.font - 1, whiteSpace: 'nowrap' }}>
+              {lbl('Proc', 'Processes')}
+            </span>
+            <span style={{ color: t.text, fontSize: sc.font, fontVariantNumeric: 'tabular-nums' }}>
+              {m ? m.nrRunning : '—'}
+            </span>
+            <span style={{ color: t.faint, fontSize: sc.font - 2 }}>/</span>
+            <span style={{ color: t.muted, fontSize: sc.font, fontVariantNumeric: 'tabular-nums' }}>
+              {m ? m.nrTotal : '—'}
+            </span>
+          </div>
         );
         case 'net': return (
           <div key="net" style={{ display: 'contents' }}>
@@ -347,7 +317,7 @@ export function MetricsPanel({
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <span style={{ color: t.muted, minWidth: labelW, fontSize: sc.font - 1, whiteSpace: 'nowrap' }}>Download</span>
-                <span style={{ color: t.mem, fontVariantNumeric: 'tabular-nums', fontSize: sc.font }}>
+                <span style={{ color: invertColor(t.net, t.mem, t.net), fontVariantNumeric: 'tabular-nums', fontSize: sc.font }}>
                   ↓ {m ? fmtBytes(m.netRx) : '—'}/s
                 </span>
               </div>
@@ -359,7 +329,7 @@ export function MetricsPanel({
                 <span style={{ color: t.net, fontVariantNumeric: 'tabular-nums', fontSize: sc.font }}>
                   ↑{m ? fmtBytes(m.netTx) : '—'}
                 </span>
-                <span style={{ color: t.muted, fontSize: sc.font - 2 }}>/</span>
+                <span style={{ color: t.faint, fontSize: sc.font - 2 }}>/</span>
                 <span style={{ color: t.mem, fontVariantNumeric: 'tabular-nums', fontSize: sc.font }}>
                   ↓{m ? fmtBytes(m.netRx) : '—'}
                 </span>
