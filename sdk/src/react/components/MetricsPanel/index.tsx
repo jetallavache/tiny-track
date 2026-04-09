@@ -27,28 +27,56 @@ export interface MetricsPanelProps {
 }
 
 /* ── Keyframe injection (once) ─────────────────────────────────────────── */
-const LIVE_ANIM_ID = 'tt-live-pulse';
+const LIVE_ANIM_ID = 'tt-panel-anims';
 if (typeof document !== 'undefined' && !document.getElementById(LIVE_ANIM_ID)) {
   const el = document.createElement('style');
   el.id = LIVE_ANIM_ID;
   el.textContent = `
     @keyframes tt-live-pulse { 0%,100%{opacity:1} 50%{opacity:0.2} }
-    @keyframes tt-arrow-wave-ltr {
-      0%   { opacity: 0.15; }
-      50%  { opacity: 1; }
-      100% { opacity: 0.15; }
-    }
-    @keyframes tt-arrow-wave-rtl {
-      0%   { opacity: 0.15; }
-      50%  { opacity: 1; }
-      100% { opacity: 0.15; }
+    @keyframes tt-chevron-wave {
+      0%,100% { opacity: 0.12; }
+      50%      { opacity: 1;    }
     }
   `;
   document.head.appendChild(el);
 }
 
-/* ── Racing arrows for load avg ────────────────────────────────────────── */
-const ARROW_COUNT = 8;
+/* ── SVG chevron arrow (< or >) sized like a text character ────────────── */
+function Chevron({ dir, color, size, delay, duration }: {
+  dir: 'left' | 'right';
+  color: string;
+  size: number;
+  delay: number;
+  duration: number;
+}) {
+  // Points form a "<" or ">" shape, fitting inside a square of `size`
+  const p = dir === 'right'
+    ? `${size * 0.25},${size * 0.1} ${size * 0.75},${size * 0.5} ${size * 0.25},${size * 0.9}`
+    : `${size * 0.75},${size * 0.1} ${size * 0.25},${size * 0.5} ${size * 0.75},${size * 0.9}`;
+  return (
+    <svg
+      width={size} height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      style={{
+        display: 'inline-block',
+        flexShrink: 0,
+        animation: `tt-chevron-wave ${duration}s ease-in-out ${delay.toFixed(2)}s infinite`,
+      }}
+    >
+      <polyline
+        points={p}
+        fill="none"
+        stroke={color}
+        strokeWidth={size * 0.18}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/* ── Animated chevron row for load avg ─────────────────────────────────── */
+const ARROW_COUNT = 7;
 
 function LoadArrows({ trend, color, fontSize }: {
   trend: 'rising' | 'falling' | 'stable';
@@ -57,27 +85,22 @@ function LoadArrows({ trend, color, fontSize }: {
 }) {
   if (trend === 'stable') return null;
   const ltr = trend === 'rising';
-  const char = ltr ? '▶' : '◀';
-  const anim = ltr ? 'tt-arrow-wave-ltr' : 'tt-arrow-wave-rtl';
-  const duration = 0.9; // seconds per full wave cycle
+  const duration = 1.0;
+  const sz = Math.round(fontSize * 0.95);
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 1, lineHeight: 1 }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 0, lineHeight: 1 }}>
       {Array.from({ length: ARROW_COUNT }, (_, i) => {
-        // stagger: ltr = left-to-right delay, rtl = right-to-left
         const idx = ltr ? i : ARROW_COUNT - 1 - i;
         const delay = (idx / ARROW_COUNT) * duration;
         return (
-          <span
+          <Chevron
             key={i}
-            style={{
-              fontSize: fontSize - 1,
-              color,
-              animation: `${anim} ${duration}s ease-in-out ${delay.toFixed(2)}s infinite`,
-              display: 'inline-block',
-            }}
-          >
-            {char}
-          </span>
+            dir={ltr ? 'right' : 'left'}
+            color={color}
+            size={sz}
+            delay={delay}
+            duration={duration}
+          />
         );
       })}
     </span>
@@ -308,23 +331,39 @@ export function MetricsPanel({
           <MetricRow key="proc"
             label={lbl('Proc', 'Processes')}
             value={m ? `${m.nrRunning} / ${m.nrTotal}` : '—'}
-            barStr={m && m.nrTotal > 0 ? bar(Math.round((m.nrRunning / m.nrTotal) * 10000)) : null}
+            barStr={null}
             color={t.text} s={s} fontSize={sc.font} labelWidth={labelW}
             tooltip={isL ? 'Running / total processes' : undefined}
           />
         );
         case 'net': return (
           <div key="net" style={{ display: 'contents' }}>
-            <div style={s.divider} />
             {isL ? (<>
-              <MetricRow label="Upload" value={m ? `↑ ${fmtBytes(m.netTx)}/s` : '—'}
-                barStr={null} color={t.net} s={s} fontSize={sc.font} labelWidth={labelW} />
-              <MetricRow label="Download" value={m ? `↓ ${fmtBytes(m.netRx)}/s` : '—'}
-                barStr={null} color={t.mem} s={s} fontSize={sc.font} labelWidth={labelW} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ color: t.muted, minWidth: labelW, fontSize: sc.font - 1, whiteSpace: 'nowrap' }}>Upload</span>
+                <span style={{ color: t.net, fontVariantNumeric: 'tabular-nums', fontSize: sc.font }}>
+                  ↑ {m ? fmtBytes(m.netTx) : '—'}/s
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ color: t.muted, minWidth: labelW, fontSize: sc.font - 1, whiteSpace: 'nowrap' }}>Download</span>
+                <span style={{ color: t.mem, fontVariantNumeric: 'tabular-nums', fontSize: sc.font }}>
+                  ↓ {m ? fmtBytes(m.netRx) : '—'}/s
+                </span>
+              </div>
             </>) : (
-              <MetricRow label={lbl('Net', 'Network')}
-                value={m ? `↑${fmtBytes(m.netTx)}/s ↓${fmtBytes(m.netRx)}/s` : '—'}
-                barStr={null} color={t.net} s={s} fontSize={sc.font} labelWidth={labelW} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ color: t.muted, minWidth: labelW, fontSize: sc.font - 1, whiteSpace: 'nowrap' }}>
+                  {lbl('Net', 'Network')}
+                </span>
+                <span style={{ color: t.net, fontVariantNumeric: 'tabular-nums', fontSize: sc.font }}>
+                  ↑{m ? fmtBytes(m.netTx) : '—'}
+                </span>
+                <span style={{ color: t.muted, fontSize: sc.font - 2 }}>/</span>
+                <span style={{ color: t.mem, fontVariantNumeric: 'tabular-nums', fontSize: sc.font }}>
+                  ↓{m ? fmtBytes(m.netRx) : '—'}
+                </span>
+              </div>
             )}
           </div>
         );
@@ -357,10 +396,12 @@ export function MetricsPanel({
     </>
   ) : null;
 
-  /* ── columns=2: split metrics into two groups ───────────────────────── */
+  /* ── columns=2: balanced split ─────────────────────────────────────── */
   if (columns === 2) {
-    const col1: MetricType[] = metrics.filter(m => ['cpu', 'mem', 'disk'].includes(m));
-    const col2: MetricType[] = metrics.filter(m => ['load', 'net', 'proc'].includes(m));
+    // Distribute metrics evenly: first half in col1, second half in col2
+    const mid = Math.ceil(metrics.length / 2);
+    const col1 = metrics.slice(0, mid);
+    const col2 = metrics.slice(mid);
     return (
       <div className={className} style={{ ...s.root, fontSize: sc.font, gap: sc.gap, padding: sc.pad, width: 'fit-content', ...style }}>
         {header}
@@ -372,9 +413,9 @@ export function MetricsPanel({
           <div style={{ width: 1, background: t.divider, alignSelf: 'stretch' }} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: sc.gap }}>
             {renderMetricRows(col2)}
-            {footer}
           </div>
         </div>
+        {footer}
       </div>
     );
   }
