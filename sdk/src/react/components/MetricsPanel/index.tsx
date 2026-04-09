@@ -22,6 +22,8 @@ export interface MetricsPanelProps {
   theme?: Partial<TtTheme>;
   metrics?: MetricType[];
   size?: SizeType;
+  /** Layout columns: 1 = single column (default), 2 = two-column split */
+  columns?: 1 | 2;
 }
 
 /* ── Keyframe injection (once) ─────────────────────────────────────────── */
@@ -29,8 +31,57 @@ const LIVE_ANIM_ID = 'tt-live-pulse';
 if (typeof document !== 'undefined' && !document.getElementById(LIVE_ANIM_ID)) {
   const el = document.createElement('style');
   el.id = LIVE_ANIM_ID;
-  el.textContent = `@keyframes tt-live-pulse { 0%,100%{opacity:1} 50%{opacity:0.2} }`;
+  el.textContent = `
+    @keyframes tt-live-pulse { 0%,100%{opacity:1} 50%{opacity:0.2} }
+    @keyframes tt-arrow-wave-ltr {
+      0%   { opacity: 0.15; }
+      50%  { opacity: 1; }
+      100% { opacity: 0.15; }
+    }
+    @keyframes tt-arrow-wave-rtl {
+      0%   { opacity: 0.15; }
+      50%  { opacity: 1; }
+      100% { opacity: 0.15; }
+    }
+  `;
   document.head.appendChild(el);
+}
+
+/* ── Racing arrows for load avg ────────────────────────────────────────── */
+const ARROW_COUNT = 8;
+
+function LoadArrows({ trend, color, fontSize }: {
+  trend: 'rising' | 'falling' | 'stable';
+  color: string;
+  fontSize: number;
+}) {
+  if (trend === 'stable') return null;
+  const ltr = trend === 'rising';
+  const char = ltr ? '▶' : '◀';
+  const anim = ltr ? 'tt-arrow-wave-ltr' : 'tt-arrow-wave-rtl';
+  const duration = 0.9; // seconds per full wave cycle
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 1, lineHeight: 1 }}>
+      {Array.from({ length: ARROW_COUNT }, (_, i) => {
+        // stagger: ltr = left-to-right delay, rtl = right-to-left
+        const idx = ltr ? i : ARROW_COUNT - 1 - i;
+        const delay = (idx / ARROW_COUNT) * duration;
+        return (
+          <span
+            key={i}
+            style={{
+              fontSize: fontSize - 1,
+              color,
+              animation: `${anim} ${duration}s ease-in-out ${delay.toFixed(2)}s infinite`,
+              display: 'inline-block',
+            }}
+          >
+            {char}
+          </span>
+        );
+      })}
+    </span>
+  );
 }
 
 /* ── Logo SVG ───────────────────────────────────────────────────────────── */
@@ -62,13 +113,13 @@ export function MetricsPanel({
   className, style, theme: themeProp,
   metrics = ALL_METRICS,
   size = 'm',
+  columns = 1,
 }: MetricsPanelProps) {
   const base = useTheme();
   const t = themeProp ? { ...base, ...themeProp } : base;
   const s = themeStyles(t);
   const sc = SIZE_SCALE[size];
   const { metrics: m, connected, sysinfo } = useMetrics();
-  const show = (metric: MetricType) => metrics.includes(metric);
 
   const prevRef = useRef(m);
   const allAlerts = useMemo(() => {
@@ -135,24 +186,25 @@ export function MetricsPanel({
 
   /* ── Size 's': minimal card ─────────────────────────────────────────── */
   if (size === 's') {
+    const has = (metric: MetricType) => metrics.includes(metric);
     return (
       <div className={className} style={{ ...s.root, fontSize: sc.font, gap: sc.gap, padding: sc.pad, width: 'fit-content', minWidth: 120, ...style }}>
         {headerS}
         <div style={s.divider} />
 
-        {show('cpu') && (
+        {has('cpu') && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ color: t.muted, minWidth: 28, fontSize: sc.font - 1 }}>CPU</span>
             <span style={{ color: t.cpu, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{m ? fmtPct(m.cpu) : '—'}</span>
           </div>
         )}
-        {show('mem') && (
+        {has('mem') && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ color: t.muted, minWidth: 28, fontSize: sc.font - 1 }}>Mem</span>
             <span style={{ color: t.mem, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{m ? fmtPct(m.mem) : '—'}</span>
           </div>
         )}
-        {show('disk') && (
+        {has('disk') && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ color: t.muted, minWidth: 28, fontSize: sc.font - 1 }}>Disk</span>
             <span style={{ color: t.disk, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{m ? fmtPct(m.duUsage) : '—'}</span>
@@ -161,24 +213,24 @@ export function MetricsPanel({
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ color: t.muted, minWidth: 28, fontSize: sc.font - 1 }}>Load</span>
           {m && (() => {
-            const trend = loadTrend(m);
-            const arrow = trend === 'rising' ? '▲' : trend === 'falling' ? '▼' : '';
-            const arrowColor = trend === 'rising' ? t.crit : trend === 'falling' ? t.ok : t.faint;
+            const sTrend = loadTrend(m);
+            const arrow = sTrend === 'rising' ? '▲' : sTrend === 'falling' ? '▼' : '';
+            const aColor = sTrend === 'rising' ? t.crit : sTrend === 'falling' ? t.ok : t.faint;
             return <>
-              {arrow && <span style={{ color: arrowColor, fontSize: sc.font - 2, lineHeight: 1 }}>{arrow}</span>}
+              {arrow && <span style={{ color: aColor, fontSize: sc.font - 2, lineHeight: 1 }}>{arrow}</span>}
               <span style={{ color: loadColor, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{loadScore}%</span>
             </>;
           })()}
           {!m && <span style={{ color: loadColor, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>—</span>}
         </div>
-        {show('net') && (
+        {has('net') && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <span style={{ color: t.muted, minWidth: 28, fontSize: sc.font - 1 }}>Net</span>
             <span style={{ color: t.net, fontVariantNumeric: 'tabular-nums' }}>↑{m ? fmtBytes(m.netTx) : '—'}</span>
             <span style={{ color: t.mem, fontVariantNumeric: 'tabular-nums' }}>↓{m ? fmtBytes(m.netRx) : '—'}</span>
           </div>
         )}
-        {show('proc') && (
+        {has('proc') && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ color: t.muted, minWidth: 28, fontSize: sc.font - 1 }}>Proc</span>
             <span style={{ fontVariantNumeric: 'tabular-nums' }}>{m ? `${m.nrRunning}/${m.nrTotal}` : '—'}</span>
@@ -192,99 +244,100 @@ export function MetricsPanel({
   const isL = size === 'l';
   const labelW = isL ? 80 : 36;
   const lbl = (short: string, full: string) => isL ? full : short;
+  const trend = m ? loadTrend(m) : 'stable';
+  const arrowColor = trend === 'rising' ? t.crit : t.ok;
 
-  return (
-    <div className={className} style={{ ...s.root, fontSize: sc.font, gap: sc.gap, padding: sc.pad, width: 'fit-content', ...style }}>
-      {header}
-      <div style={s.divider} />
-
-      {show('cpu') && (
-        <MetricRow
-          label={lbl('CPU', 'CPU usage')} value={m ? fmtPct(m.cpu) : '—'}
-          barStr={m ? bar(m.cpu) : null} color={t.cpu} s={s} fontSize={sc.font}
-          labelWidth={labelW} tooltip={isL ? `CPU: ${m ? fmtPct(m.cpu) : '—'}` : undefined}
-        />
-      )}
-      {show('mem') && (
-        <MetricRow
-          label={lbl('Mem', 'Memory')} value={m ? fmtPct(m.mem) : '—'}
-          barStr={m ? bar(m.mem) : null} color={t.mem} s={s} fontSize={sc.font}
-          labelWidth={labelW} tooltip={isL ? `Memory: ${m ? fmtPct(m.mem) : '—'}` : undefined}
-        />
-      )}
-      {show('disk') && (<>
-        <MetricRow
-          label={lbl('Disk', 'Disk usage')} value={m ? fmtPct(m.duUsage) : '—'}
-          barStr={m ? bar(m.duUsage) : null} color={t.disk} s={s} fontSize={sc.font}
-          labelWidth={labelW} tooltip={isL ? `Disk: ${m ? fmtPct(m.duUsage) : '—'}` : undefined}
-        />
-        {m && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ minWidth: labelW }} />
-            <span style={{ color: t.faint, fontSize: sc.font - 2 }}>
-              ({fmtBytes(m.duTotal - m.duFree)} / {fmtBytes(m.duTotal)})
-            </span>
+  /* ── Metric rows builder ────────────────────────────────────────────── */
+  function renderMetricRows(metricList: MetricType[]) {
+    return metricList.map((metric) => {
+      switch (metric) {
+        case 'cpu': return (
+          <MetricRow key="cpu"
+            label={lbl('CPU', 'CPU usage')} value={m ? fmtPct(m.cpu) : '—'}
+            barStr={m ? bar(m.cpu) : null} color={t.cpu} s={s} fontSize={sc.font}
+            labelWidth={labelW} tooltip={isL ? `CPU: ${m ? fmtPct(m.cpu) : '—'}` : undefined}
+          />
+        );
+        case 'mem': return (
+          <MetricRow key="mem"
+            label={lbl('Mem', 'Memory')} value={m ? fmtPct(m.mem) : '—'}
+            barStr={m ? bar(m.mem) : null} color={t.mem} s={s} fontSize={sc.font}
+            labelWidth={labelW} tooltip={isL ? `Memory: ${m ? fmtPct(m.mem) : '—'}` : undefined}
+          />
+        );
+        case 'disk': return (
+          <div key="disk" style={{ display: 'contents' }}>
+            <MetricRow
+              label={lbl('Disk', 'Disk usage')} value={m ? fmtPct(m.duUsage) : '—'}
+              barStr={m ? bar(m.duUsage) : null} color={t.disk} s={s} fontSize={sc.font}
+              labelWidth={labelW} tooltip={isL ? `Disk: ${m ? fmtPct(m.duUsage) : '—'}` : undefined}
+            />
+            {m && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ minWidth: labelW }} />
+                <span style={{ color: t.faint, fontSize: sc.font - 2 }}>
+                  ({fmtBytes(m.duTotal - m.duFree)} / {fmtBytes(m.duTotal)})
+                </span>
+              </div>
+            )}
           </div>
-        )}
-      </>)}
+        );
+        case 'load': return (
+          <div key="load" style={{ display: 'contents' }}>
+            <MetricRow
+              label={lbl('Load', 'System load')} value={loadScore !== null ? `${loadScore}%` : '—'}
+              barStr={loadScore !== null ? bar(loadScore * 100) : null} color={loadColor} s={s} fontSize={sc.font}
+              labelWidth={labelW} tooltip={isL ? 'Overall system load score (0–100)' : undefined}
+            />
+            {m ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ color: t.muted, minWidth: labelW, fontSize: sc.font - 1, whiteSpace: 'nowrap' }}>
+                  {lbl('L. avg', 'Load aver.')}
+                </span>
+                <LoadArrows trend={trend} color={arrowColor} fontSize={sc.font} />
+                <span style={{ color: t.load, fontVariantNumeric: 'tabular-nums', fontSize: sc.font - 1 }}>
+                  {fmtLoad(m.load1)} / {fmtLoad(m.load5)} / {fmtLoad(m.load15)}
+                </span>
+              </div>
+            ) : (
+              <MetricRow label={lbl('L. avg', 'Load aver.')} value="—" barStr={null} color={t.load} s={s} fontSize={sc.font} labelWidth={labelW} />
+            )}
+          </div>
+        );
+        case 'proc': return (
+          <MetricRow key="proc"
+            label={lbl('Proc', 'Processes')}
+            value={m ? `${m.nrRunning} / ${m.nrTotal}` : '—'}
+            barStr={m && m.nrTotal > 0 ? bar(Math.round((m.nrRunning / m.nrTotal) * 10000)) : null}
+            color={t.text} s={s} fontSize={sc.font} labelWidth={labelW}
+            tooltip={isL ? 'Running / total processes' : undefined}
+          />
+        );
+        case 'net': return (
+          <div key="net" style={{ display: 'contents' }}>
+            <div style={s.divider} />
+            {isL ? (<>
+              <MetricRow label="Upload" value={m ? `↑ ${fmtBytes(m.netTx)}/s` : '—'}
+                barStr={null} color={t.net} s={s} fontSize={sc.font} labelWidth={labelW} />
+              <MetricRow label="Download" value={m ? `↓ ${fmtBytes(m.netRx)}/s` : '—'}
+                barStr={null} color={t.mem} s={s} fontSize={sc.font} labelWidth={labelW} />
+            </>) : (
+              <MetricRow label={lbl('Net', 'Network')}
+                value={m ? `↑${fmtBytes(m.netTx)}/s ↓${fmtBytes(m.netRx)}/s` : '—'}
+                barStr={null} color={t.net} s={s} fontSize={sc.font} labelWidth={labelW} />
+            )}
+          </div>
+        );
+        default: return null;
+      }
+    });
+  }
 
+  /* ── Footer ─────────────────────────────────────────────────────────── */
+  const footer = sysinfo ? (
+    <>
       <div style={s.divider} />
-
-      {/* System load score — same style as CPU/Mem/Disk */}
-      <MetricRow
-        label={lbl('Load', 'System load')} value={loadScore !== null ? `${loadScore}%` : '—'}
-        barStr={loadScore !== null ? bar(loadScore * 100) : null} color={loadColor} s={s} fontSize={sc.font}
-        labelWidth={labelW} tooltip={isL ? 'Overall system load score (0–100)' : undefined}
-      />
-
-      {show('load') && m && (
-        <MetricRow
-          label={lbl('L. avg', 'Load aver.')}
-          value={`${fmtLoad(m.load1)} / ${fmtLoad(m.load5)} / ${fmtLoad(m.load15)}`}
-          barStr={bar(Math.min(10000, Math.round((m.load1 / 400) * 10000)))}
-          color={t.load} s={s} fontSize={sc.font} labelWidth={labelW}
-          tooltip="Load average: 1m / 5m / 15m"
-        />
-      )}
-      {show('load') && !m && (
-        <MetricRow label={lbl('Load avg', 'Load average')} value="—" barStr={null} color={t.load} s={s} fontSize={sc.font} labelWidth={labelW} />
-      )}
-
-      {show('proc') && (
-        <MetricRow
-          label={lbl('Proc', 'Processes')}
-          value={m ? `${m.nrRunning} / ${m.nrTotal}` : '—'}
-          barStr={m && m.nrTotal > 0 ? bar(Math.round((m.nrRunning / m.nrTotal) * 10000)) : null}
-          color={t.text} s={s} fontSize={sc.font} labelWidth={labelW}
-          tooltip={isL ? 'Running / total processes' : undefined}
-        />
-      )}
-
-      {show('net') && (<>
-        <div style={s.divider} />
-        {isL ? (<>
-          <MetricRow
-            label="Upload"
-            value={m ? `↑ ${fmtBytes(m.netTx)}/s` : '—'}
-            barStr={null} color={t.net} s={s} fontSize={sc.font} labelWidth={labelW}
-          />
-          <MetricRow
-            label="Download"
-            value={m ? `↓ ${fmtBytes(m.netRx)}/s` : '—'}
-            barStr={null} color={t.mem} s={s} fontSize={sc.font} labelWidth={labelW}
-          />
-        </>) : (
-          <MetricRow
-            label={lbl('Net', 'Network')}
-            value={m ? `↑${fmtBytes(m.netTx)}/s ↓${fmtBytes(m.netRx)}/s` : '—'}
-            barStr={null} color={t.net} s={s} fontSize={sc.font} labelWidth={labelW}
-          />
-        )}
-      </>)}
-
-      {/* 'l' size: OS info */}
-      {isL && sysinfo && (<>
-        <div style={s.divider} />
+      {isL && (<>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ ...s.label, minWidth: labelW + 78, fontSize: sc.font - 2 }}>OS</span>
           <span style={{ color: t.faint, fontSize: sc.font - 1 }}>{sysinfo.osType}</span>
@@ -296,16 +349,43 @@ export function MetricsPanel({
           </span>
         </div>
       </>)}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ color: t.muted, fontSize: sc.font - 2 }}>{sysinfo.hostname}</span>
+        <span style={{ color: t.faint, fontSize: sc.font - 2 }}>·</span>
+        <span style={{ color: t.faint, fontSize: sc.font - 2 }}>up {fmtUptimeSec(currentUptime!)}</span>
+      </div>
+    </>
+  ) : null;
 
-      {/* Footer: hostname + uptime */}
-      {sysinfo && (<>
+  /* ── columns=2: split metrics into two groups ───────────────────────── */
+  if (columns === 2) {
+    const col1: MetricType[] = metrics.filter(m => ['cpu', 'mem', 'disk'].includes(m));
+    const col2: MetricType[] = metrics.filter(m => ['load', 'net', 'proc'].includes(m));
+    return (
+      <div className={className} style={{ ...s.root, fontSize: sc.font, gap: sc.gap, padding: sc.pad, width: 'fit-content', ...style }}>
+        {header}
         <div style={s.divider} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ color: t.muted, fontSize: sc.font - 2 }}>{sysinfo.hostname}</span>
-          <span style={{ color: t.faint, fontSize: sc.font - 2 }}>·</span>
-          <span style={{ color: t.faint, fontSize: sc.font - 2 }}>up {fmtUptimeSec(currentUptime!)}</span>
+        <div style={{ display: 'flex', gap: sc.gap * 3, alignItems: 'flex-start' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: sc.gap }}>
+            {renderMetricRows(col1)}
+          </div>
+          <div style={{ width: 1, background: t.divider, alignSelf: 'stretch' }} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: sc.gap }}>
+            {renderMetricRows(col2)}
+            {footer}
+          </div>
         </div>
-      </>)}
+      </div>
+    );
+  }
+
+  /* ── columns=1 (default) ────────────────────────────────────────────── */
+  return (
+    <div className={className} style={{ ...s.root, fontSize: sc.font, gap: sc.gap, padding: sc.pad, width: 'fit-content', ...style }}>
+      {header}
+      <div style={s.divider} />
+      {renderMetricRows(metrics)}
+      {footer}
     </div>
   );
 }
