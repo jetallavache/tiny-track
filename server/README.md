@@ -3,7 +3,7 @@ TinyTrack Server
 
 Lightweight Linux system metrics daemon with WebSocket streaming.
 
-Version 0.1.6.  MIT License.
+Version 0.3.0.  MIT License.
 
 
 COMPONENTS

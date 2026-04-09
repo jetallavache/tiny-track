@@ -11,7 +11,8 @@ struct ttc_reader {
 
 int ttc_reader_open(struct ttc_reader* ctx, const char* path);
 int ttc_reader_get_latest(struct ttc_reader* ctx, struct tt_metrics* out);
-int ttc_reader_get_history(struct ttc_reader* ctx, int level, struct tt_metrics* out, int count);
+int ttc_reader_get_history(struct ttc_reader* ctx, int level,
+                           struct tt_metrics* out, int count);
 void ttc_reader_close(struct ttc_reader* ctx);
 const char* ttc_reader_strerror(int errcode);
 
