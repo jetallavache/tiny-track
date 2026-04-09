@@ -15,13 +15,16 @@ static const char* cached_live_path = NULL;
 static const char* cached_shadow_path = NULL;
 static const char* cached_pid_file = NULL;
 
-static const char* get_path_from_config(const char* config_key, const char** cache) {
-  if (*cache != NULL) return *cache;
+static const char* get_path_from_config(const char* config_key,
+                                        const char** cache) {
+  if (*cache != NULL)
+    return *cache;
 
   const char* config_file = tt_config_file_path();
   char cfg_value[256];
   if (access(config_file, R_OK) == 0 &&
-      tt_config_ini_read(config_file, config_key, cfg_value, sizeof(cfg_value)) == 0) {
+      tt_config_ini_read(config_file, config_key, cfg_value,
+                         sizeof(cfg_value)) == 0) {
     char* copy = malloc(strlen(cfg_value) + 1);
     if (copy) {
       strcpy(copy, cfg_value);
@@ -48,7 +51,8 @@ const char* tt_config_pid_path(void) {
 const char* tt_config_file_path(void) {
   /* Priority: env -> ~/.tinytrack.conf -> /etc/tinytrack/tinytrack.conf */
   const char* env = getenv("TINYTRACK_CONFIG");
-  if (env) return env;
+  if (env)
+    return env;
 
   /* Check home directory */
   const char* home = getenv("HOME");

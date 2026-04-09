@@ -12,22 +12,25 @@ static void init_level_ptrs(struct ttr_reader* ctx) {
   uint8_t* base = (uint8_t*)ctx->addr;
   uint32_t l1cap = 0, cs = 0;
 
-  ctx->l1_meta = (struct ttr_meta*)(base + TTR_HEADER_SIZE + TTR_CONSUMER_TABLE_SIZE);
+  ctx->l1_meta =
+      (struct ttr_meta*)(base + TTR_HEADER_SIZE + TTR_CONSUMER_TABLE_SIZE);
   ctx->l1_data = base + ttr_layout_l1_offset();
 
   l1cap = ctx->l1_meta->capacity;
   cs = ctx->l1_meta->cell_size;
 
-  ctx->l2_meta = (struct ttr_meta*)(base + ttr_layout_l2_meta_offset(l1cap, cs));
+  ctx->l2_meta =
+      (struct ttr_meta*)(base + ttr_layout_l2_meta_offset(l1cap, cs));
   ctx->l2_data = base + ttr_layout_l2_offset(l1cap, cs);
 
   ctx->l3_meta =
-      (struct ttr_meta*)(base + ttr_layout_l3_meta_offset(l1cap, ctx->l2_meta->capacity, cs));
+      (struct ttr_meta*)(base + ttr_layout_l3_meta_offset(
+                                    l1cap, ctx->l2_meta->capacity, cs));
   ctx->l3_data = base + ttr_layout_l3_offset(l1cap, ctx->l2_meta->capacity, cs);
 }
 
-static int level_ptrs(const struct ttr_reader* ctx, int level, struct ttr_meta** meta,
-                      uint8_t** data) {
+static int level_ptrs(const struct ttr_reader* ctx, int level,
+                      struct ttr_meta** meta, uint8_t** data) {
   switch (level) {
     case 1:
       *meta = ctx->l1_meta;
@@ -53,7 +56,8 @@ int ttr_reader_open(struct ttr_reader* ctx, const char* path) {
     return TTR_READER_ERR_INVALID;
   }
   if ((intptr_t)(ctx->addr = ttr_shm_read(path, &ctx->size)) < 0) {
-    tt_log_err("Failed to read mmap (%s)", tt_shm_strerror((intptr_t)ctx->addr));
+    tt_log_err("Failed to read mmap (%s)",
+               tt_shm_strerror((intptr_t)ctx->addr));
     return TTR_READER_ERR_READ;
   }
 
@@ -92,7 +96,8 @@ int ttr_reader_get_latest(struct ttr_reader* ctx, void* out, size_t out_size) {
     seq = ttr_seqlock_read_begin(&meta->seq);
     uint32_t head = meta->head;
     /* head==0 with no data written yet (first_ts==0) means empty */
-    if (head == 0 && meta->first_ts == 0) return TTR_READER_ERR_NODATA;
+    if (head == 0 && meta->first_ts == 0)
+      return TTR_READER_ERR_NODATA;
     /* latest sample is at (head - 1 + capacity) % capacity */
     uint32_t idx = (head == 0 ? meta->capacity : head) - 1;
     memcpy(out, ctx->l1_data + idx * cs, copy_size);
@@ -101,8 +106,8 @@ int ttr_reader_get_latest(struct ttr_reader* ctx, void* out, size_t out_size) {
   return TTR_READER_OK;
 }
 
-int ttr_reader_get_history(struct ttr_reader* ctx, int level, void* out, size_t out_size,
-                           int count) {
+int ttr_reader_get_history(struct ttr_reader* ctx, int level, void* out,
+                           size_t out_size, int count) {
   if (!ctx || !out || count <= 0) {
     tt_log_err("ttr_reader_get_history: invalid argument");
     return TTR_READER_ERR_INVALID;
@@ -111,7 +116,8 @@ int ttr_reader_get_history(struct ttr_reader* ctx, int level, void* out, size_t 
   struct ttr_meta* meta;
   uint8_t* data;
   int err = level_ptrs(ctx, level, &meta, &data);
-  if (err != TTR_READER_OK) return err;
+  if (err != TTR_READER_OK)
+    return err;
 
   size_t cs = meta->cell_size;
   size_t copy_size = out_size < cs ? out_size : cs;
@@ -121,8 +127,10 @@ int ttr_reader_get_history(struct ttr_reader* ctx, int level, void* out, size_t 
   do {
     seq = ttr_seqlock_read_begin(&meta->seq);
     uint32_t head = meta->head;
-    if (head == 0) return TTR_READER_ERR_NODATA;
-    if ((uint32_t)count > head) count = (int)head;
+    if (head == 0)
+      return TTR_READER_ERR_NODATA;
+    if ((uint32_t)count > head)
+      count = (int)head;
     for (int i = 0; i < count; i++) {
       uint32_t idx = (head - count + i + meta->capacity) % meta->capacity;
       memcpy((uint8_t*)out + i * cs, data + idx * cs, copy_size);

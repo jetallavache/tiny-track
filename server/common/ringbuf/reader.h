@@ -29,8 +29,8 @@ struct ttr_reader {
 
 int ttr_reader_open(struct ttr_reader* ctx, const char* path);
 int ttr_reader_get_latest(struct ttr_reader* ctx, void* out, size_t out_size);
-int ttr_reader_get_history(struct ttr_reader* ctx, int level, void* out, size_t out_size,
-                           int count);
+int ttr_reader_get_history(struct ttr_reader* ctx, int level, void* out,
+                           size_t out_size, int count);
 void ttr_reader_close(struct ttr_reader* ctx);
 const char* ttr_reader_strerror(int errcode);
 

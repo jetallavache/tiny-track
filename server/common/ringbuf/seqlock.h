@@ -26,7 +26,8 @@ static inline uint32_t ttr_seqlock_read_begin(_Atomic uint32_t* seq) {
 }
 
 /* Reader: check consistency */
-static inline int ttr_seqlock_read_retry(_Atomic uint32_t* seq, uint32_t start) {
+static inline int ttr_seqlock_read_retry(_Atomic uint32_t* seq,
+                                         uint32_t start) {
   atomic_thread_fence(memory_order_acquire);
   return atomic_load_explicit(seq, memory_order_acquire) != start;
 }
