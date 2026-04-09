@@ -16,10 +16,8 @@ const meta: Meta<typeof MetricsBar> = {
   argTypes: {
     showAlerts: { control: 'boolean' },
     size: { control: 'radio', options: ['s', 'm', 'l'] },
-    metrics: {
-      control: 'check',
-      options: ['cpu', 'mem', 'net', 'disk', 'load', 'proc'],
-    },
+    metrics: { control: 'check', options: ['cpu', 'mem', 'net', 'disk', 'load', 'proc'] },
+    sysInfo: { control: 'check', options: ['uptime', 'hostname', 'os-type', 'ringbufInfo'] },
   },
 };
 export default meta;
@@ -28,29 +26,41 @@ type Story = StoryObj<typeof MetricsBar>;
 export const Default: Story = {};
 
 export const Small: Story = { args: { size: 's' } };
-export const Large: Story = { args: { size: 'l' } };
+export const Large: Story = { args: { size: 'l', style: { width: '100%' } } };
 
-export const Compact: Story = { args: { size: 'm' }, name: 'Compact (wrapping)' };
+export const WithSysInfo: Story = {
+  name: 'With sysInfo badges',
+  args: { sysInfo: ['hostname', 'os-type', 'uptime'] },
+};
+
+export const SysInfoAll: Story = {
+  name: 'sysInfo — all fields',
+  args: {
+    metrics: ['cpu', 'mem', 'disk'],
+    sysInfo: ['hostname', 'os-type', 'uptime', 'ringbufInfo'],
+    style: { width: '100%' },
+  },
+};
+
+export const CustomOrder: Story = {
+  name: 'Custom metric order',
+  args: { metrics: ['disk', 'load', 'cpu', 'net', 'mem'] },
+};
 
 export const CpuMemOnly: Story = {
   args: { metrics: ['cpu', 'mem'] },
   name: 'CPU + Mem only',
 };
 
+export const AlertsOnly: Story = {
+  name: 'Alert lamps only',
+  args: { metrics: [], size: 'l', style: { width: '100%' } },
+};
+
 export const HighLoad: Story = {
   decorators: [
     (Story) => (
       <MockTinyTrackProvider overrides={{ cpu: 9200, mem: 8800, load1: 1200 }}>
-        <Story />
-      </MockTinyTrackProvider>
-    ),
-  ],
-};
-
-export const Static: Story = {
-  decorators: [
-    (Story) => (
-      <MockTinyTrackProvider animate={false} overrides={{ cpu: 3500, mem: 5500 }}>
         <Story />
       </MockTinyTrackProvider>
     ),
