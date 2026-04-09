@@ -41,22 +41,25 @@ if (typeof document !== 'undefined' && !document.getElementById(LIVE_ANIM_ID)) {
   document.head.appendChild(el);
 }
 
-/* ── SVG chevron arrow (< or >) sized like a text character ────────────── */
-function Chevron({ dir, color, size, delay, duration }: {
+/* ── SVG chevron — ASCII-style, narrow, sharp ───────────────────────────── */
+// Each chevron fits in a 9×(fontSize) cell to match bar width (8 × 9 = 72px)
+function Chevron({ dir, color, h, delay, duration }: {
   dir: 'left' | 'right';
   color: string;
-  size: number;
+  /** Cell height = fontSize */
+  h: number;
   delay: number;
   duration: number;
 }) {
-  // Points form a "<" or ">" shape, fitting inside a square of `size`
+  const w = 9; // fixed width to match monospace bar character
+  // Sharp ">" / "<": tip at 80% horizontal, arms at top/bottom edges
   const p = dir === 'right'
-    ? `${size * 0.25},${size * 0.1} ${size * 0.75},${size * 0.5} ${size * 0.25},${size * 0.9}`
-    : `${size * 0.75},${size * 0.1} ${size * 0.25},${size * 0.5} ${size * 0.75},${size * 0.9}`;
+    ? `1,0 ${w - 1},${h * 0.5} 1,${h}`
+    : `${w - 1},0 1,${h * 0.5} ${w - 1},${h}`;
   return (
     <svg
-      width={size} height={size}
-      viewBox={`0 0 ${size} ${size}`}
+      width={w} height={h}
+      viewBox={`0 0 ${w} ${h}`}
       style={{
         display: 'inline-block',
         flexShrink: 0,
@@ -67,9 +70,9 @@ function Chevron({ dir, color, size, delay, duration }: {
         points={p}
         fill="none"
         stroke={color}
-        strokeWidth={size * 0.18}
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        strokeWidth={1.4}
+        strokeLinecap="square"
+        strokeLinejoin="miter"
       />
     </svg>
   );
@@ -86,9 +89,8 @@ function LoadArrows({ trend, color, fontSize }: {
   if (trend === 'stable') return null;
   const ltr = trend === 'rising';
   const duration = 1.0;
-  const sz = Math.round(fontSize * 0.95);
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 0, lineHeight: 1 }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 0, lineHeight: 1, width: 72, flexShrink: 0 }}>
       {Array.from({ length: ARROW_COUNT }, (_, i) => {
         const idx = ltr ? i : ARROW_COUNT - 1 - i;
         const delay = (idx / ARROW_COUNT) * duration;
@@ -97,7 +99,7 @@ function LoadArrows({ trend, color, fontSize }: {
             key={i}
             dir={ltr ? 'right' : 'left'}
             color={color}
-            size={sz}
+            h={fontSize}
             delay={delay}
             duration={duration}
           />
