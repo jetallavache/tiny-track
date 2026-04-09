@@ -57,7 +57,7 @@ export function PageMetricsPanel() {
           code={`<MetricsPanel columns={2} size="l" />`}
           center
         >
-          <MetricsPanel columns={2} size="l" />
+          <MetricsPanel columns={2} size="l" metrics={['cpu', 'mem', 'net', 'disk', 'load']}/>
         </LiveExample>
       </PageSection>
 
