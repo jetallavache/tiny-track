@@ -24,7 +24,48 @@ const meta: Meta<typeof Metrics3D> = {
 export default meta;
 type Story = StoryObj<typeof Metrics3D>;
 
-export const Default: Story = { args: { metrics: ['cpu', 'mem', 'disk'] } };
-export const AllMetrics: Story = { args: { metrics: ['cpu', 'mem', 'disk', 'load', 'net'] }, name: 'All metrics' };
-export const Large: Story = { args: { metrics: ['cpu', 'mem', 'disk'], size: 'l' } };
-export const DeepHistory: Story = { args: { metrics: ['cpu', 'mem'], historyDepth: 60 }, name: 'Deep history' };
+export const Default: Story = {
+  args: { metrics: ['cpu', 'mem', 'disk'] },
+};
+
+export const AllMetrics: Story = {
+  name: 'All metrics',
+  args: { metrics: ['cpu', 'mem', 'disk', 'load', 'net'] },
+};
+
+export const Large: Story = {
+  args: { metrics: ['cpu', 'mem', 'disk'], size: 'l' },
+};
+
+export const DeepHistory: Story = {
+  name: 'Deep history (60 steps)',
+  args: { metrics: ['cpu', 'mem'], historyDepth: 60 },
+};
+
+export const HighLoad: Story = {
+  name: 'High load',
+  decorators: [
+    (Story) => (
+      <MockTinyTrackProvider overrides={{ cpu: 9200, mem: 8800, load1: 1800, load5: 1500, load15: 1200 }}>
+        <div style={{ padding: 16 }}>
+          <Story />
+        </div>
+      </MockTinyTrackProvider>
+    ),
+  ],
+  args: { metrics: ['cpu', 'mem', 'disk', 'load'] },
+};
+
+export const Paused: Story = {
+  name: 'Paused (static data)',
+  decorators: [
+    (Story) => (
+      <MockTinyTrackProvider animate={false} overrides={{ cpu: 6500, mem: 7200, duUsage: 8100 }}>
+        <div style={{ padding: 16 }}>
+          <Story />
+        </div>
+      </MockTinyTrackProvider>
+    ),
+  ],
+  args: { metrics: ['cpu', 'mem', 'disk'] },
+};

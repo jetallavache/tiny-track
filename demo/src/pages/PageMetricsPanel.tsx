@@ -54,7 +54,7 @@ export function PageMetricsPanel() {
         <LiveExample
           title="columns={2} size=&quot;l&quot;"
           description="Full detail in two columns."
-          code={`<MetricsPanel columns={2} size="l" />`}
+          code={`<MetricsPanel columns={2} size="l" metrics={['cpu', 'mem', 'net', 'disk', 'load']}/>`}
           center
         >
           <MetricsPanel columns={2} size="l" metrics={['cpu', 'mem', 'net', 'disk', 'load']}/>

@@ -1,48 +1,137 @@
-import { useTheme, Dashboard } from 'tinytsdk/react';
-import { PageTitle, PageSection, CodeBlock, PropsTable, Preview, Divider } from '../components.js';
+import { Dashboard } from 'tinytsdk/react';
+import { PageTitle, PageSection, LiveExample, PropsTable, Divider } from '../components.js';
 
 export function PageDashboard() {
-  const t = useTheme();
   return (
     <div>
       <PageTitle
         title="Dashboard"
         badge="component"
-        desc="Full-featured dashboard with CPU/memory bars, sparklines (expanded mode), disk, network, load average, alert badges, configurable refresh interval, Start/Stop streaming control, and a built-in WebSocket packet console."
+        desc="Admin dashboard with SVG gauge speedometers for all 5 metrics, inline sparklines, ring buffer status, system info row, and keyboard shortcuts."
       />
 
-      <PageSection title="Compact mode">
-        <Preview>
-          <Dashboard mode="compact" style={{ maxWidth: 520 }} />
-        </Preview>
-      </PageSection>
+      <PageSection title="Size variants">
+        <LiveExample
+          title='size="s" — compact gauges'
+          description="Small gauges, no sparklines."
+          code={`<Dashboard size="s" />`}
+          center
+        >
+          <Dashboard size="s" style={{ maxWidth: 480 }} />
+        </LiveExample>
 
-      <PageSection title="Expanded mode">
-        <Preview>
-          <Dashboard mode="expanded" style={{ maxWidth: 520 }} />
-        </Preview>
+        <LiveExample
+          title='size="m" — default'
+          description="Standard gauges with ring buffer status."
+          code={`<Dashboard size="m" />`}
+          center
+        >
+          <Dashboard size="m" style={{ maxWidth: 560 }} />
+        </LiveExample>
+
+        <LiveExample
+          title='size="l" — large'
+          description="Large gauges, more spacing."
+          code={`<Dashboard size="l" />`}
+          center
+        >
+          <Dashboard size="l" style={{ maxWidth: 640 }} />
+        </LiveExample>
       </PageSection>
 
       <Divider />
 
-      <PageSection title="Usage">
-        <CodeBlock
-          code={`import { TinyTrackProvider, Dashboard } from 'tinytsdk/react';
+      <PageSection title="Expanded mode (sparklines)">
+        <LiveExample
+          title='mode="expanded"'
+          description="Click any gauge or press 1–5 to focus a single sparkline. Press Esc to show all."
+          code={`<Dashboard mode="expanded" />`}
+          center
+        >
+          <Dashboard mode="expanded" style={{ maxWidth: 560 }} />
+        </LiveExample>
 
-<TinyTrackProvider url="ws://localhost:25015">
-  {/* Compact (default) */}
-  <Dashboard />
+        <LiveExample
+          title="Focused sparkline (gauge click)"
+          description="Click a gauge to expand only its sparkline inline."
+          code={`<Dashboard mode="expanded" />
+// Click CPU gauge → only CPU sparkline shown
+// Press 1–5 to focus by keyboard`}
+          center
+        >
+          <Dashboard mode="expanded" style={{ maxWidth: 560 }} />
+        </LiveExample>
+      </PageSection>
 
-  {/* Expanded with sparklines */}
-  <Dashboard mode="expanded" />
+      <Divider />
 
-  {/* Custom history buffer */}
-  <Dashboard historySize={120} />
+      <PageSection title="Metric subset">
+        <LiveExample
+          title="CPU + MEM only"
+          description="Pass metrics prop to show a subset."
+          code={`<Dashboard metrics={['cpu', 'mem']} />`}
+          center
+        >
+          <Dashboard metrics={['cpu', 'mem']} style={{ maxWidth: 400 }} />
+        </LiveExample>
 
-  {/* Full width */}
-  <Dashboard style={{ width: '100%' }} />
-</TinyTrackProvider>`}
-        />
+        <LiveExample
+          title="Without network"
+          description="Hide NET gauge."
+          code={`<Dashboard metrics={['cpu', 'mem', 'disk', 'load']} />`}
+          center
+        >
+          <Dashboard metrics={['cpu', 'mem', 'disk', 'load']} style={{ maxWidth: 480 }} />
+        </LiveExample>
+      </PageSection>
+
+      <Divider />
+
+      <PageSection title="System info row">
+        <LiveExample
+          title="showSysInfo={false}"
+          description="Hide the hostname / OS / uptime row."
+          code={`<Dashboard showSysInfo={false} />`}
+          center
+        >
+          <Dashboard showSysInfo={false} style={{ maxWidth: 560 }} />
+        </LiveExample>
+      </PageSection>
+
+      <Divider />
+
+      <PageSection title="Theme override">
+        <LiveExample
+          title="Per-component theme"
+          description="Override tokens without a ThemeProvider."
+          code={`<Dashboard
+  theme={{ bg: '#0d1117', cpu: '#f97316', mem: '#a78bfa', border: '#21262d' }}
+/>`}
+          center
+        >
+          <Dashboard
+            theme={{ bg: '#0d1117', cpu: '#f97316', mem: '#a78bfa', border: '#21262d' }}
+            style={{ maxWidth: 560 }}
+          />
+        </LiveExample>
+      </PageSection>
+
+      <Divider />
+
+      <PageSection title="Keyboard shortcuts">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxWidth: 480 }}>
+          {([
+            ['s', 'Start / Stop streaming (CMD_START / CMD_STOP)'],
+            ['r', 'Reset session min/max on all gauges'],
+            ['1–5', 'Focus sparkline for CPU / MEM / DISK / LOAD / NET'],
+            ['Esc', 'Show all sparklines (unfocus)'],
+          ] as [string, string][]).map(([key, desc]) => (
+            <div key={key} style={{ display: 'flex', gap: 12, padding: '6px 12px', background: 'var(--tt-surface, #1e2533)', borderRadius: 4, border: '1px solid var(--tt-border, #2a3347)' }}>
+              <code style={{ fontSize: 11, color: '#4A90D9', fontFamily: 'monospace', minWidth: 48 }}>{key}</code>
+              <span style={{ fontSize: 12, color: '#9ca3af' }}>{desc}</span>
+            </div>
+          ))}
+        </div>
       </PageSection>
 
       <Divider />
@@ -50,56 +139,16 @@ export function PageDashboard() {
       <PageSection title="Props">
         <PropsTable
           rows={[
-            {
-              name: 'mode',
-              type: '"compact" | "expanded"',
-              default: '"compact"',
-              description: 'Compact shows bars only; expanded adds sparkline charts',
-            },
-            {
-              name: 'historySize',
-              type: 'number',
-              default: '60',
-              description: 'Number of samples to keep for sparklines',
-            },
+            { name: 'mode', type: '"compact" | "expanded"', default: '"compact"', description: 'compact: gauges only; expanded: gauges + sparklines' },
+            { name: 'showSysInfo', type: 'boolean', default: 'true', description: 'Show/hide hostname · OS · uptime row' },
+            { name: 'historySize', type: 'number', default: '60', description: 'Samples to keep for sparklines' },
+            { name: 'metrics', type: 'MetricType[]', default: 'all 5', description: 'cpu | mem | disk | load | net — rendered in array order' },
+            { name: 'size', type: '"s" | "m" | "l"', default: '"m"', description: 'Scale variant for gauges, fonts, spacing' },
+            { name: 'theme', type: 'Partial<TtTheme>', default: '—', description: 'Per-component token overrides' },
             { name: 'className', type: 'string', default: '—', description: 'CSS class name' },
             { name: 'style', type: 'CSSProperties', default: '—', description: 'Inline style override' },
-            {
-              name: 'theme',
-              type: 'Partial<TtTheme>',
-              default: '—',
-              description: 'Override theme tokens for this component only',
-            },
           ]}
         />
-      </PageSection>
-
-      <Divider />
-
-      <PageSection title="Built-in controls">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {[
-            ['⏸ stop / ▶ start', 'Send CMD_STOP / CMD_START to pause or resume the metrics stream'],
-            ['⊞ / ⊟', 'Toggle between compact and expanded mode'],
-            ['⊞ log', 'Open the WebSocket packet console (shows all → and ← packets)'],
-            ['Refresh select', 'Send CMD_SET_INTERVAL to change the server push interval (1s–30s)'],
-          ].map(([ctrl, desc]) => (
-            <div
-              key={ctrl}
-              style={{
-                display: 'flex',
-                gap: 12,
-                padding: '6px 12px',
-                background: t.surface,
-                borderRadius: t.radius,
-                border: `1px solid ${t.divider}`,
-              }}
-            >
-              <code style={{ fontSize: 11, color: t.cpu, fontFamily: 'monospace', minWidth: 120 }}>{ctrl}</code>
-              <span style={{ fontSize: 12, color: t.muted, fontFamily: t.font }}>{desc}</span>
-            </div>
-          ))}
-        </div>
       </PageSection>
     </div>
   );

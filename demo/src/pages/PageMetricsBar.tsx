@@ -7,7 +7,7 @@ export function PageMetricsBar() {
       <PageTitle
         title="MetricsBar"
         badge="component"
-        desc="Compact single-line status bar. Renders metrics as oval badges in the order defined by the metrics array. Alert lamps are always present — their color changes without shifting layout."
+        desc="Compact single-line status bar. Every badge is interactive — click or tap to open a detail popup with extended information. Alert lamps show threshold violations and open a popup with descriptions."
       />
 
       <PageSection title="Size variants">
@@ -96,10 +96,34 @@ export function PageMetricsBar() {
 
       <Divider />
 
+      <PageSection title="Interactive popups">
+        <LiveExample
+          title="Click any badge for details"
+          description="Each metric badge opens a popup with extended data: disk shows total/free, load shows 1m/5m/15m, net shows TX/RX separately, proc shows running/total."
+          code={`<MetricsBar size="l" style={{ width: '100%' }} />`}
+        >
+          <div style={{ paddingBottom: 140 }}>
+            <MetricsBar size="l" style={{ width: '100%' }} />
+          </div>
+        </LiveExample>
+
+        <LiveExample
+          title="sysInfo popups"
+          description="System info badges also have popups: hostname shows OS, uptime shows seconds, ringbufInfo shows all buffer config."
+          code={`<MetricsBar metrics={[]} sysInfo={['hostname', 'uptime', 'ringbufInfo']} size="l" />`}
+        >
+          <div style={{ paddingBottom: 160 }}>
+            <MetricsBar metrics={[]} sysInfo={['hostname', 'uptime', 'ringbufInfo']} size="l" />
+          </div>
+        </LiveExample>
+      </PageSection>
+
+      <Divider />
+
       <PageSection title="Alert lamps">
         <LiveExample
           title="Lamps only (no metrics)"
-          description="Five indicator dots: cpu, mem, disk, load, spike. Always rendered, no layout shift."
+          description="Five indicator icons: cpu, mem, disk, load, spike. Always rendered, no layout shift. Click or tap to open a popup with active alert descriptions."
           code={`<MetricsBar metrics={[]} size="l" style={{ width: '100%' }} />`}
         >
           <MetricsBar metrics={[]} size="l" style={{ width: '100%' }} />

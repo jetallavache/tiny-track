@@ -1,15 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { TimeSeriesChart } from '../react/components/TimeSeriesChart/index.js';
-import { MockTinyTrackProvider } from './MockProvider.js';
-import { RING_L1, RING_L2 } from '../proto.js';
+import { MockTinyTrackProvider, mockData } from './MockProvider.js';
 
 const meta: Meta<typeof TimeSeriesChart> = {
   title: 'Components/TimeSeriesChart',
   component: TimeSeriesChart,
   decorators: [
     (Story) => (
-      <MockTinyTrackProvider historySize={120}>
-        <div style={{ width: 480, padding: 16 }}>
+      <MockTinyTrackProvider historySize={60}>
+        <div style={{ padding: 16, width: 480 }}>
           <Story />
         </div>
       </MockTinyTrackProvider>
@@ -17,62 +16,60 @@ const meta: Meta<typeof TimeSeriesChart> = {
   ],
   parameters: { layout: 'centered' },
   argTypes: {
-    metrics: { control: 'check', options: ['cpu', 'mem', 'load', 'net', 'disk'] },
+    metrics: { control: 'check', options: ['cpu', 'mem', 'net', 'disk', 'load'] },
     aggregation: { control: 'radio', options: ['avg', 'max', 'min'] },
     size: { control: 'radio', options: ['s', 'm', 'l'] },
+    level: { control: { type: 'range', min: 1, max: 3, step: 1 } },
     height: { control: { type: 'range', min: 60, max: 300, step: 20 } },
   },
 };
 export default meta;
 type Story = StoryObj<typeof TimeSeriesChart>;
 
-export const CPU: Story = { args: { metrics: ['cpu'], level: RING_L1 } };
-export const Memory: Story = { args: { metrics: ['mem'], level: RING_L1 } };
-export const Network: Story = { args: { metrics: ['net'], level: RING_L1 } };
-export const Load: Story = { args: { metrics: ['load'], level: RING_L1 } };
-export const Disk: Story = { args: { metrics: ['disk'], level: RING_L1 } };
-
-export const CpuMem: Story = {
-  name: 'CPU + Mem overlay',
-  args: { metrics: ['cpu', 'mem'], level: RING_L1 },
+export const Default: Story = {
+  args: { metrics: ['cpu'], style: { width: '100%' } },
 };
 
-export const MaxAgg: Story = {
-  name: 'CPU max aggregation',
-  args: { metrics: ['cpu'], aggregation: 'max', level: RING_L1 },
-};
-
-export const Large: Story = { args: { metrics: ['cpu'], size: 'l', level: RING_L1 } };
-
-export const DiskL2: Story = {
-  name: 'Disk (L2 — 24h)',
-  args: { metrics: ['disk'], level: RING_L2, maxSamples: 120 },
+export const MultiMetric: Story = {
+  name: 'Multi-metric overlay',
+  args: { metrics: ['cpu', 'mem'], style: { width: '100%' } },
 };
 
 export const AllMetrics: Story = {
   name: 'All metrics',
-  render: () => (
-    <MockTinyTrackProvider historySize={120}>
-      <div style={{ width: 480, padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {(['cpu', 'mem', 'load', 'net', 'disk'] as const).map((m) => (
-          <TimeSeriesChart key={m} metrics={[m]} level={RING_L1} height={80} style={{ width: '100%' }} />
-        ))}
-      </div>
-    </MockTinyTrackProvider>
-  ),
+  args: { metrics: ['cpu', 'mem', 'disk', 'load', 'net'], style: { width: '100%' } },
 };
 
-export const MobileView: Story = {
-  name: 'Mobile (375px)',
-  args: { metrics: ['cpu'], size: 's', style: { width: '100%' } },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
+export const AggregationMax: Story = {
+  name: 'Aggregation — max',
+  args: { metrics: ['cpu', 'mem'], aggregation: 'max', style: { width: '100%' } },
+};
+
+export const AggregationMin: Story = {
+  name: 'Aggregation — min',
+  args: { metrics: ['cpu', 'mem'], aggregation: 'min', style: { width: '100%' } },
+};
+
+export const Large: Story = {
+  args: { metrics: ['cpu'], size: 'l', style: { width: '100%' } },
+};
+
+export const HighLoad: Story = {
+  name: 'High load',
   decorators: [
     (Story) => (
-      <MockTinyTrackProvider historySize={60}>
-        <div style={{ padding: 12 }}>
+      <MockTinyTrackProvider historySize={60} overrides={mockData.highLoad}>
+        <div style={{ padding: 16, width: 480 }}>
           <Story />
         </div>
       </MockTinyTrackProvider>
     ),
   ],
+  args: { metrics: ['cpu', 'mem'], style: { width: '100%' } },
+};
+
+export const Mobile: Story = {
+  name: 'Mobile viewport',
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+  args: { metrics: ['cpu'], style: { width: '100%' } },
 };

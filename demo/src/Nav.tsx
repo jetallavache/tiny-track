@@ -13,6 +13,7 @@ export type Route =
   | 'Timeline'
   | 'SystemLoad'
   | 'Metrics3D'
+  | 'DiskMap'
   | 'RawPackets';
 
 const NAV: { label: string; route: Route; group?: string }[] = [
@@ -26,6 +27,7 @@ const NAV: { label: string; route: Route; group?: string }[] = [
   { label: 'Timeline', route: 'Timeline', group: 'Components' },
   { label: 'SystemLoad', route: 'SystemLoad', group: 'Components' },
   { label: 'Metrics3D', route: 'Metrics3D', group: 'Components' },
+  { label: 'DiskMap', route: 'DiskMap', group: 'Components' },
   { label: 'Raw Packets & Types', route: 'RawPackets', group: 'Advanced' },
 ];
 

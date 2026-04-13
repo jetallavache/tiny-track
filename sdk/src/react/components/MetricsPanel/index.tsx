@@ -8,13 +8,14 @@
  */
 import { useMemo, useRef, useState, useEffect, CSSProperties } from 'react';
 import { useMetrics } from '../../TinyTrackProvider.js';
-import { useTheme, TtTheme, themeStyles, invertColor } from '../../theme.js';
+import { useTheme, TtTheme, themeStyles, invertColor, dimColor } from '../../theme.js';
 import { useAlertBadge } from '../../hooks/useAlertBadge.js';
 import { detectAlerts } from '../../utils/alerts.js';
 import { fmtPct, fmtBytes, fmtLoad, fmtUptimeSec, bar } from '../../utils/format.js';
 import { MetricType, SizeType, SIZE_SCALE, ALL_METRICS } from '../../utils/metrics.js';
-import { loadTrend } from '../../utils/alerts.js';
+import { loadTrend, calcLoadScore } from '../../utils/alerts.js';
 import { MetricRow } from './MetricRow.js';
+import { BytesDisplay } from '../BytesDisplay.js';
 
 export interface MetricsPanelProps {
   className?: string;
@@ -51,28 +52,42 @@ const ARROW_COUNT = 8;
 const LTR_CHARS = ['░', '░', '▒', '▓', '█', '▓', '▒', '░'] as const;
 const RTL_CHARS = ['░', '▒', '▓', '█', '▓', '▒', '░', '░'] as const;
 
-function LoadArrows({ trend, color, faint, fontSize }: {
+function LoadArrows({
+  trend,
+  color,
+  faint,
+  fontSize,
+  bg,
+}: {
   trend: 'rising' | 'falling' | 'stable';
   color: string;
   faint: string;
   fontSize: number;
+  bg: string;
 }) {
   if (trend === 'stable') return null;
   const ltr = trend === 'rising';
   const chars = ltr ? LTR_CHARS : RTL_CHARS;
   const duration = 1.1;
+  const brightColor = dimColor(color, bg);
   return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 0,
-      width: 72, flexShrink: 0,
-      fontFamily: '"JetBrains Mono","Fira Code",monospace',
-      fontSize, lineHeight: 1, letterSpacing: 1,
-    }}>
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 0,
+        width: 72,
+        flexShrink: 0,
+        fontFamily: '"JetBrains Mono","Fira Code",monospace',
+        fontSize,
+        lineHeight: 1,
+        letterSpacing: 1,
+      }}
+    >
       {chars.map((ch, i) => {
         const idx = ltr ? i : ARROW_COUNT - 1 - i;
         const delay = (idx / ARROW_COUNT) * duration;
-        // dim chars use faint, bright chars use metric color
-        const baseColor = ch === '░' ? faint : color;
+        const baseColor = ch === '░' ? faint : brightColor;
         return (
           <span
             key={i}
@@ -95,19 +110,19 @@ function TtLogo({ px, color }: { px: number; color: string }) {
   return (
     <svg width={px} height={px} viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0, color }}>
       <polygon points="8,1 14,4.5 14,11.5 8,15 2,11.5 2,4.5" stroke="currentColor" strokeWidth="1.2" fill="none" />
-      <polyline points="3.5,8 5.5,8 6.5,5 8,11 9.5,6 10.5,8 12.5,8" stroke="currentColor" strokeWidth="1.1" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <polyline
+        points="3.5,8 5.5,8 6.5,5 8,11 9.5,6 10.5,8 12.5,8"
+        stroke="currentColor"
+        strokeWidth="1.1"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
 
 /* ── System load score (0–100) ─────────────────────────────────────────── */
-function calcLoadScore(load1: number, load5: number, load15: number): number {
-  // load values are stored as integer * 100 (e.g. 125 = 1.25)
-  // Weighted blend, cap at load=4.0 (reasonable for most systems)
-  const l1 = load1 / 100, l5 = load5 / 100, l15 = load15 / 100;
-  const raw = l1 * 0.5 + l5 * 0.3 + l15 * 0.2;
-  return Math.min(100, Math.round((raw / 4) * 100));
-}
 function loadScoreColor(score: number, t: TtTheme): string {
   if (score < 20) return t.faint;
   if (score < 45) return t.ok;
@@ -116,7 +131,9 @@ function loadScoreColor(score: number, t: TtTheme): string {
 }
 
 export function MetricsPanel({
-  className, style, theme: themeProp,
+  className,
+  style,
+  theme: themeProp,
   metrics = ALL_METRICS,
   size = 'm',
   columns = 1,
@@ -160,11 +177,15 @@ export function MetricsPanel({
   const headerS = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
       <TtLogo px={sc.font + 2} color={liveColor} />
-      <span style={{
-        fontSize: sc.font - 1, fontWeight: 700, letterSpacing: '0.08em',
-        color: liveColor,
-        animation: connected ? 'tt-live-pulse 2s ease-in-out infinite' : undefined,
-      }}>
+      <span
+        style={{
+          fontSize: sc.font - 1,
+          fontWeight: 700,
+          letterSpacing: '0.08em',
+          color: liveColor,
+          animation: connected ? 'tt-live-pulse 2s ease-in-out infinite' : undefined,
+        }}
+      >
         {connected ? 'LIVE' : 'OFF'}
       </span>
       {sysinfo && (
@@ -179,11 +200,15 @@ export function MetricsPanel({
   const header = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
       <TtLogo px={sc.font + 2} color={liveColor} />
-      <span style={{
-        fontSize: sc.font - 1, fontWeight: 700, letterSpacing: '0.08em',
-        color: liveColor,
-        animation: connected ? 'tt-live-pulse 2s ease-in-out infinite' : undefined,
-      }}>
+      <span
+        style={{
+          fontSize: sc.font - 1,
+          fontWeight: 700,
+          letterSpacing: '0.08em',
+          color: liveColor,
+          animation: connected ? 'tt-live-pulse 2s ease-in-out infinite' : undefined,
+        }}
+      >
         {connected ? 'LIVE' : 'OFF'}
       </span>
       {badge && <span style={s.alert(badge.level)}>{badge.label}</span>}
@@ -200,29 +225,83 @@ export function MetricsPanel({
       </div>
     );
     return (
-      <div className={className} style={{ ...s.root, fontSize: sc.font, gap: sc.gap, padding: sc.pad, width: 'fit-content', minWidth: 120, ...style }}>
+      <div
+        className={className}
+        style={{
+          ...s.root,
+          fontSize: sc.font,
+          gap: sc.gap,
+          padding: sc.pad,
+          width: 'fit-content',
+          minWidth: 120,
+          ...style,
+        }}
+      >
         {headerS}
         <div style={s.divider} />
-        {has('cpu') && row('CPU', <span style={{ color: t.cpu, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{m ? fmtPct(m.cpu) : '—'}</span>)}
-        {has('mem') && row('Mem', <span style={{ color: t.mem, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{m ? fmtPct(m.mem) : '—'}</span>)}
-        {has('disk') && row('Disk', <span style={{ color: t.disk, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{m ? fmtPct(m.duUsage) : '—'}</span>)}
-        {row('Load', m ? (() => {
-          const sTrend = loadTrend(m);
-          const aColor = sTrend === 'rising' ? t.crit : sTrend === 'falling' ? t.ok : t.faint;
-          const arrow = sTrend === 'rising' ? '▲' : sTrend === 'falling' ? '▼' : '';
-          return <>{arrow && <span style={{ color: aColor, fontSize: sc.font - 2 }}>{arrow}</span>}
-            <span style={{ color: loadColor, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{loadScore}%</span></>;
-        })() : <span style={{ color: t.faint }}>—</span>)}
-        {has('net') && row('Net', <>
-          <span style={{ color: t.net, fontVariantNumeric: 'tabular-nums' }}>↑{m ? fmtBytes(m.netTx) : '—'}</span>
-          <span style={{ color: t.divider, fontSize: sc.font - 2 }}>/</span>
-          <span style={{ color: t.mem, fontVariantNumeric: 'tabular-nums' }}>↓{m ? fmtBytes(m.netRx) : '—'}</span>
-        </>)}
-        {has('proc') && row('Proc', <>
-          <span style={{ color: t.text, fontVariantNumeric: 'tabular-nums' }}>{m ? m.nrRunning : '—'}</span>
-          <span style={{ color: t.divider, fontSize: sc.font - 2 }}>/</span>
-          <span style={{ color: t.muted, fontVariantNumeric: 'tabular-nums' }}>{m ? m.nrTotal : '—'}</span>
-        </>)}
+        {has('cpu') &&
+          row(
+            'CPU',
+            <span style={{ color: t.cpu, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+              {m ? fmtPct(m.cpu) : '—'}
+            </span>,
+          )}
+        {has('mem') &&
+          row(
+            'Mem',
+            <span style={{ color: t.mem, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+              {m ? fmtPct(m.mem) : '—'}
+            </span>,
+          )}
+        {has('disk') &&
+          row(
+            'Disk',
+            <span style={{ color: t.disk, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+              {m ? fmtPct(m.duUsage) : '—'}
+            </span>,
+          )}
+        {row(
+          'Load',
+          m ? (
+            (() => {
+              const sTrend = loadTrend(m);
+              const aColor = sTrend === 'rising' ? t.crit : sTrend === 'falling' ? t.ok : t.faint;
+              const arrow = sTrend === 'rising' ? '▲' : sTrend === 'falling' ? '▼' : '';
+              return (
+                <>
+                  {arrow && <span style={{ color: aColor, fontSize: sc.font - 2 }}>{arrow}</span>}
+                  <span style={{ color: loadColor, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+                    {loadScore}%
+                  </span>
+                </>
+              );
+            })()
+          ) : (
+            <span style={{ color: t.faint }}>—</span>
+          ),
+        )}
+        {has('net') &&
+          row(
+            'Net',
+            <>
+              <span style={{ color: t.net, fontVariantNumeric: 'tabular-nums' }}>
+                ↑{m ? <BytesDisplay bytes={m.netTx} color={t.net} /> : '—'}
+              </span>
+              <span style={{ color: t.divider, fontSize: sc.font - 2 }}>/</span>
+              <span style={{ color: t.mem, fontVariantNumeric: 'tabular-nums' }}>
+                ↓{m ? <BytesDisplay bytes={m.netRx} color={t.mem} /> : '—'}
+              </span>
+            </>,
+          )}
+        {has('proc') &&
+          row(
+            'Proc',
+            <>
+              <span style={{ color: t.text, fontVariantNumeric: 'tabular-nums' }}>{m ? m.nrRunning : '—'}</span>
+              <span style={{ color: t.divider, fontSize: sc.font - 2 }}>/</span>
+              <span style={{ color: t.muted, fontVariantNumeric: 'tabular-nums' }}>{m ? m.nrTotal : '—'}</span>
+            </>,
+          )}
       </div>
     );
   }
@@ -230,97 +309,148 @@ export function MetricsPanel({
   /* ── Size 'm' and 'l' ───────────────────────────────────────────────── */
   const isL = size === 'l';
   const labelW = isL ? 84 : 46;
-  const lbl = (short: string, full: string) => isL ? full : short;
+  const lbl = (short: string, full: string) => (isL ? full : short);
   const trend = m ? loadTrend(m) : 'stable';
   const arrowColor = trend === 'rising' ? t.crit : t.ok;
 
   function renderMetricRows(metricList: MetricType[]) {
     const mr = (key: string, label: string, value: string, barStr: string | null, color: string, tooltip?: string) => (
-      <MetricRow key={key} label={label} value={value} barStr={barStr} color={color}
-        s={s} t={t} fontSize={sc.font} labelWidth={labelW} tooltip={tooltip} />
+      <MetricRow
+        key={key}
+        label={label}
+        value={value}
+        barStr={barStr}
+        color={color}
+        s={s}
+        t={t}
+        fontSize={sc.font}
+        labelWidth={labelW}
+        tooltip={tooltip}
+      />
     );
     return metricList.map((metric) => {
       switch (metric) {
-        case 'cpu': return mr('cpu', lbl('CPU', 'CPU usage'), m ? fmtPct(m.cpu) : '—', m ? bar(m.cpu) : null, t.cpu, isL ? `CPU: ${m ? fmtPct(m.cpu) : '—'}` : undefined);
-        case 'mem': return mr('mem', lbl('Mem', 'Memory'), m ? fmtPct(m.mem) : '—', m ? bar(m.mem) : null, t.mem, isL ? `Memory: ${m ? fmtPct(m.mem) : '—'}` : undefined);
-        case 'disk': return (
-          <div key="disk" style={{ display: 'contents' }}>
-            {mr('disk-row', lbl('Disk', 'Disk usage'), m ? fmtPct(m.duUsage) : '—', m ? bar(m.duUsage) : null, t.disk, isL ? `Disk: ${m ? fmtPct(m.duUsage) : '—'}` : undefined)}
-            {m && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ minWidth: labelW }} />
-                <span style={{ color: t.faint, fontSize: sc.font - 2 }}>
-                  ({fmtBytes(m.duTotal - m.duFree)} / {fmtBytes(m.duTotal)})
-                </span>
-              </div>
-            )}
-          </div>
-        );
-        case 'load': return (
-          <div key="load" style={{ display: 'contents' }}>
-            {mr('load-row', lbl('Load', 'System load'), loadScore !== null ? `${loadScore}%` : '—', loadScore !== null ? bar(loadScore * 100) : null, loadColor, isL ? 'Overall system load score (0–100)' : undefined)}
-            {m ? (<>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ color: t.muted, minWidth: labelW, fontSize: sc.font - 1, whiteSpace: 'nowrap' }}>
-                  {lbl('L. avg', 'Load aver.')}
-                </span>
-                <LoadArrows trend={trend} color={arrowColor} faint={t.faint} fontSize={sc.font} />
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ minWidth: labelW }} />
-                <span style={{ color: t.faint, fontSize: sc.font - 2, fontVariantNumeric: 'tabular-nums' }}>
-                  ({fmtLoad(m.load1)} / {fmtLoad(m.load5)} / {fmtLoad(m.load15)})
-                </span>
-              </div>
-            </>) : mr('load-avg', lbl('L. avg', 'Load aver.'), '—', null, t.load)}
-          </div>
-        );
-        case 'proc': return (
-          <div key="proc" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ color: t.muted, minWidth: labelW, fontSize: sc.font - 1, whiteSpace: 'nowrap' }}>
-              {lbl('Proc', 'Processes')}
-            </span>
-            <span style={{ color: t.text, fontSize: sc.font, fontVariantNumeric: 'tabular-nums' }}>
-              {m ? m.nrRunning : '—'}
-            </span>
-            <span style={{ color: t.faint, fontSize: sc.font - 2 }}>/</span>
-            <span style={{ color: t.muted, fontSize: sc.font, fontVariantNumeric: 'tabular-nums' }}>
-              {m ? m.nrTotal : '—'}
-            </span>
-          </div>
-        );
-        case 'net': return (
-          <div key="net" style={{ display: 'contents' }}>
-            {isL ? (<>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ color: t.muted, minWidth: labelW, fontSize: sc.font - 1, whiteSpace: 'nowrap' }}>Upload</span>
-                <span style={{ color: t.net, fontVariantNumeric: 'tabular-nums', fontSize: sc.font }}>
-                  ↑ {m ? fmtBytes(m.netTx) : '—'}/s
-                </span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ color: t.muted, minWidth: labelW, fontSize: sc.font - 1, whiteSpace: 'nowrap' }}>Download</span>
-                <span style={{ color: invertColor(t.net, t.mem, t.net), fontVariantNumeric: 'tabular-nums', fontSize: sc.font }}>
-                  ↓ {m ? fmtBytes(m.netRx) : '—'}/s
-                </span>
-              </div>
-            </>) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ color: t.muted, minWidth: labelW, fontSize: sc.font - 1, whiteSpace: 'nowrap' }}>
-                  {lbl('Net', 'Network')}
-                </span>
-                <span style={{ color: t.net, fontVariantNumeric: 'tabular-nums', fontSize: sc.font }}>
-                  ↑{m ? fmtBytes(m.netTx) : '—'}
-                </span>
-                <span style={{ color: t.faint, fontSize: sc.font - 2 }}>/</span>
-                <span style={{ color: t.mem, fontVariantNumeric: 'tabular-nums', fontSize: sc.font }}>
-                  ↓{m ? fmtBytes(m.netRx) : '—'}
-                </span>
-              </div>
-            )}
-          </div>
-        );
-        default: return null;
+        case 'cpu':
+          return mr(
+            'cpu',
+            lbl('CPU', 'CPU usage'),
+            m ? fmtPct(m.cpu) : '—',
+            m ? bar(m.cpu) : null,
+            t.cpu,
+            isL ? `CPU: ${m ? fmtPct(m.cpu) : '—'}` : undefined,
+          );
+        case 'mem':
+          return mr(
+            'mem',
+            lbl('Mem', 'Memory'),
+            m ? fmtPct(m.mem) : '—',
+            m ? bar(m.mem) : null,
+            t.mem,
+            isL ? `Memory: ${m ? fmtPct(m.mem) : '—'}` : undefined,
+          );
+        case 'disk':
+          return (
+            <div key="disk" style={{ display: 'contents' }}>
+              {mr(
+                'disk-row',
+                lbl('Disk', 'Disk usage'),
+                m ? fmtPct(m.duUsage) : '—',
+                m ? bar(m.duUsage) : null,
+                t.disk,
+                isL ? `Disk: ${m ? fmtPct(m.duUsage) : '—'}` : undefined,
+              )}
+              {m && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ minWidth: labelW }} />
+                  <span style={{ color: t.faint, fontSize: sc.font - 2 }}>
+                    (<BytesDisplay bytes={m.duTotal - m.duFree} /> / <BytesDisplay bytes={m.duTotal} />)
+                  </span>
+                </div>
+              )}
+            </div>
+          );
+        case 'load':
+          return (
+            <div key="load" style={{ display: 'contents' }}>
+              {mr(
+                'load-row',
+                lbl('Load', 'System load'),
+                loadScore !== null ? `${loadScore}%` : '—',
+                loadScore !== null ? bar(loadScore * 100) : null,
+                loadColor,
+                isL ? 'Overall system load score (0–100)' : undefined,
+              )}
+              {m ? (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ color: t.muted, minWidth: labelW, fontSize: sc.font - 2, whiteSpace: 'nowrap' }}>
+                      {lbl('L. avg', 'Load aver.')}
+                    </span>
+                    <LoadArrows trend={trend} color={arrowColor} faint={t.faint} fontSize={sc.font} bg={t.bg} />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ minWidth: labelW }} />
+                    <span style={{ color: t.faint, fontSize: sc.font - 2, fontVariantNumeric: 'tabular-nums' }}>
+                      ({fmtLoad(m.load1)} / {fmtLoad(m.load5)} / {fmtLoad(m.load15)})
+                    </span>
+                  </div>
+                </>
+              ) : (
+                mr('load-avg', lbl('L. avg', 'Load aver.'), '—', null, t.load)
+              )}
+            </div>
+          );
+        case 'proc':
+          return (
+            <div key="proc" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ color: t.muted, minWidth: labelW, fontSize: sc.font - 2, whiteSpace: 'nowrap' }}>
+                {lbl('Proc', 'Processes')}
+              </span>
+              <span style={{ color: t.text, fontSize: sc.font, fontVariantNumeric: 'tabular-nums' }}>
+                {m ? m.nrRunning : '—'}
+              </span>
+              <span style={{ color: t.faint, fontSize: sc.font - 2 }}>/</span>
+              <span style={{ color: t.muted, fontSize: sc.font, fontVariantNumeric: 'tabular-nums' }}>
+                {m ? m.nrTotal : '—'}
+              </span>
+            </div>
+          );
+        case 'net':
+          return (
+            <div key="net" style={{ display: 'contents' }}>
+              {isL ? (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ color: t.muted, minWidth: labelW, fontSize: sc.font - 2, whiteSpace: 'nowrap' }}>
+                      Upload
+                    </span>
+                    <span style={{ fontSize: sc.font }}>
+                      ↑ {m ? <BytesDisplay bytes={m.netTx} color={t.net} perSec /> : '—'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ color: t.muted, minWidth: labelW, fontSize: sc.font - 2, whiteSpace: 'nowrap' }}>
+                      Download
+                    </span>
+                    <span style={{ fontSize: sc.font }}>
+                      ↓ {m ? <BytesDisplay bytes={m.netRx} color={invertColor(t.net, t.mem, t.net)} perSec /> : '—'}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ color: t.muted, minWidth: labelW, fontSize: sc.font - 2, whiteSpace: 'nowrap' }}>
+                    {lbl('Net', 'Network')}
+                  </span>
+                  <span style={{ fontSize: sc.font }}>↑{m ? <BytesDisplay bytes={m.netTx} color={t.net} /> : '—'}</span>
+                  <span style={{ color: t.faint, fontSize: sc.font - 2 }}>/</span>
+                  <span style={{ fontSize: sc.font }}>↓{m ? <BytesDisplay bytes={m.netRx} color={t.mem} /> : '—'}</span>
+                </div>
+              )}
+            </div>
+          );
+        default:
+          return null;
       }
     });
   }
@@ -329,18 +459,20 @@ export function MetricsPanel({
   const footer = sysinfo ? (
     <>
       <div style={s.divider} />
-      {isL && (<>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ ...s.label, minWidth: labelW + 78, fontSize: sc.font - 2 }}>OS</span>
-          <span style={{ color: t.faint, fontSize: sc.font - 1 }}>{sysinfo.osType}</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ ...s.label, minWidth: labelW + 78, fontSize: sc.font - 2 }}>Buffers</span>
-          <span style={{ color: t.faint, fontSize: sc.font - 1 }}>
-            L1:{sysinfo.slotsL1} L2:{sysinfo.slotsL2} L3:{sysinfo.slotsL3}
-          </span>
-        </div>
-      </>)}
+      {isL && (
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ ...s.label, minWidth: labelW + 78, fontSize: sc.font - 2 }}>OS</span>
+            <span style={{ color: t.faint, fontSize: sc.font - 1 }}>{sysinfo.osType}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ ...s.label, minWidth: labelW + 78, fontSize: sc.font - 2 }}>Buffers</span>
+            <span style={{ color: t.faint, fontSize: sc.font - 1 }}>
+              L1:{sysinfo.slotsL1} L2:{sysinfo.slotsL2} L3:{sysinfo.slotsL3}
+            </span>
+          </div>
+        </>
+      )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <span style={{ color: t.muted, fontSize: sc.font - 2 }}>{sysinfo.hostname}</span>
         <span style={{ color: t.faint, fontSize: sc.font - 2 }}>·</span>
@@ -356,17 +488,16 @@ export function MetricsPanel({
     const col1 = metrics.slice(0, mid);
     const col2 = metrics.slice(mid);
     return (
-      <div className={className} style={{ ...s.root, fontSize: sc.font, gap: sc.gap, padding: sc.pad, width: 'fit-content', ...style }}>
+      <div
+        className={className}
+        style={{ ...s.root, fontSize: sc.font, gap: sc.gap, padding: sc.pad, width: 'fit-content', ...style }}
+      >
         {header}
         <div style={s.divider} />
         <div style={{ display: 'flex', gap: sc.gap * 3, alignItems: 'flex-start' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: sc.gap }}>
-            {renderMetricRows(col1)}
-          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: sc.gap }}>{renderMetricRows(col1)}</div>
           <div style={{ width: 1, background: t.divider, alignSelf: 'stretch' }} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: sc.gap }}>
-            {renderMetricRows(col2)}
-          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: sc.gap }}>{renderMetricRows(col2)}</div>
         </div>
         {footer}
       </div>
@@ -375,7 +506,10 @@ export function MetricsPanel({
 
   /* ── columns=1 (default) ────────────────────────────────────────────── */
   return (
-    <div className={className} style={{ ...s.root, fontSize: sc.font, gap: sc.gap, padding: sc.pad, width: 'fit-content', ...style }}>
+    <div
+      className={className}
+      style={{ ...s.root, fontSize: sc.font, gap: sc.gap, padding: sc.pad, width: 'fit-content', ...style }}
+    >
       {header}
       <div style={s.divider} />
       {renderMetricRows(metrics)}

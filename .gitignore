@@ -74,5 +74,5 @@ sdk/storybook-static
 # Demo build output
 demo/dist/
 demo/*.tsbuildinfo
-docs/roadmap.md
+docs/roadmap*
 docs/dev-history.md

@@ -13,6 +13,7 @@ import { PageTimeSeriesChart } from './pages/PageTimeSeriesChart.js';
 import { PageTimeline } from './pages/PageTimeline.js';
 import { PageSystemLoad } from './pages/PageSystemLoad.js';
 import { PageMetrics3D } from './pages/PageMetrics3D.js';
+import { PageDiskMap } from './pages/PageDiskMap.js';
 import { PageRawPackets } from './pages/PageRawPackets.js';
 
 const WS_URL = import.meta.env.VITE_WS_URL ?? `ws://${window.location.host}`;
@@ -30,6 +31,7 @@ function PageContent({ route }: { route: Route }) {
     case 'Timeline':        return <PageTimeline />;
     case 'SystemLoad':      return <PageSystemLoad />;
     case 'Metrics3D':       return <PageMetrics3D />;
+    case 'DiskMap':         return <PageDiskMap />;
     case 'RawPackets':      return <PageRawPackets />;
   }
 }
