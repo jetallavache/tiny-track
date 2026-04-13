@@ -81,14 +81,8 @@ git clone https://github.com/jetallavache/tiny-track.git
 cd tiny-track/server
 ./bootstrap.sh && ./configure && make
 sudo make install
-```
 
-### Start
-
-```bash
-sudo systemctl enable tinytd tinytrack
-sudo systemctl start tinytd tinytrack
-systemctl status tinytd tinytrack
+# Auto-start
 ```
 
 ### User Access

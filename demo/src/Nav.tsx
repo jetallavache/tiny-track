@@ -142,7 +142,7 @@ export function Nav({ route, onRoute, preset, onPreset, presets }: NavProps) {
 
       <div style={{ height: 1, background: t.divider, margin: '12px 0' }} />
       <a
-        href="https://github.com/jetallavache/tiny-track"
+        href="https://github.com/jetallavache/tinytrack"
         target="_blank"
         rel="noreferrer"
         style={{ fontSize: 11, color: t.faint, textDecoration: 'none', fontFamily: t.font }}
