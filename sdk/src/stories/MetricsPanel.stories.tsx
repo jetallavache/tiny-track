@@ -1,10 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { MetricsPanel } from '../react/components/MetricsPanel/index.js';
-import { MockTinyTrackProvider } from './MockProvider.js';
-
-const wrap = (children: React.ReactNode) => (
-  <div style={{ padding: 16 }}>{children}</div>
-);
+import { MockTinyTrackProvider, mockData } from './MockProvider.js';
 
 const meta: Meta<typeof MetricsPanel> = {
   title: 'Components/MetricsPanel',
@@ -12,7 +8,9 @@ const meta: Meta<typeof MetricsPanel> = {
   decorators: [
     (Story) => (
       <MockTinyTrackProvider>
-        {wrap(<Story />)}
+        <div style={{ padding: 24 }}>
+          <Story />
+        </div>
       </MockTinyTrackProvider>
     ),
   ],
@@ -31,59 +29,60 @@ export const Small: Story = { args: { size: 's' } };
 export const Large: Story = { args: { size: 'l' } };
 
 export const TwoColumns: Story = {
-  name: 'columns={2}',
+  name: 'Two columns',
   args: { columns: 2 },
 };
 
 export const TwoColumnsLarge: Story = {
-  name: 'columns={2} size="l"',
-  args: { columns: 2, size: 'l' },
+  name: 'Two columns — large',
+  args: { columns: 2, size: 'l', metrics: ['cpu', 'mem', 'net', 'disk', 'load'] },
 };
 
 export const CustomOrder: Story = {
   name: 'Custom metric order',
-  args: { metrics: ['load', 'cpu', 'net', 'mem', 'disk'] },
-};
-
-export const LoadOnly: Story = {
-  name: 'Load avg arrows',
-  args: { metrics: ['load'] },
-};
-
-export const CpuMemOnly: Story = {
-  args: { metrics: ['cpu', 'mem'] },
-  name: 'CPU + Mem only',
+  args: { metrics: ['load', 'cpu', 'net'] },
 };
 
 export const HighLoad: Story = {
-  name: 'High load (rising arrows)',
+  name: 'High load',
   decorators: [
     (Story) => (
-      <MockTinyTrackProvider overrides={{ cpu: 9200, mem: 8800, load1: 1200, load5: 800, load15: 400 }}>
-        {wrap(<Story />)}
+      <MockTinyTrackProvider overrides={mockData.highLoad}>
+        <div style={{ padding: 24 }}>
+          <Story />
+        </div>
       </MockTinyTrackProvider>
     ),
   ],
 };
 
-export const FallingLoad: Story = {
-  name: 'Falling load (green arrows)',
+export const Idle: Story = {
   decorators: [
     (Story) => (
-      <MockTinyTrackProvider overrides={{ load1: 100, load5: 400, load15: 900 }}>
-        {wrap(<Story />)}
+      <MockTinyTrackProvider animate={false} overrides={mockData.idle}>
+        <div style={{ padding: 24 }}>
+          <Story />
+        </div>
       </MockTinyTrackProvider>
     ),
   ],
-  args: { metrics: ['load'] },
 };
 
-export const Static: Story = {
+export const DiskFull: Story = {
+  name: 'Disk full',
   decorators: [
     (Story) => (
-      <MockTinyTrackProvider animate={false} overrides={{ cpu: 2500, mem: 4000 }}>
-        {wrap(<Story />)}
+      <MockTinyTrackProvider animate={false} overrides={mockData.diskFull}>
+        <div style={{ padding: 24 }}>
+          <Story />
+        </div>
       </MockTinyTrackProvider>
     ),
   ],
+};
+
+export const Mobile: Story = {
+  name: 'Mobile viewport',
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+  args: { size: 's', style: { width: '100%' } },
 };

@@ -1,12 +1,17 @@
 /**
  * MockTinyTrackProvider — injects animated mock metrics into TinyTrackContext.
  * Used exclusively in Storybook stories. No WebSocket connection is made.
+ *
+ * Also exports `mockData` — a collection of preset metric snapshots for
+ * quickly constructing realistic story scenarios without manual overrides.
  */
 import { useEffect, useState, useRef, useMemo, ReactNode } from 'react';
 import { TinyTrackContext, useMetrics } from '../react/TinyTrackProvider.js';
 import { TtMetrics, TtConfig, TtStats, TtSysInfo } from '../client.js';
 
 export { useMetrics }; // re-export so stories import from one place
+
+/* ─── Mock data generator ────────────────────────────────────────────────── */
 
 function makeSysInfo(): TtSysInfo {
   return {
@@ -42,6 +47,65 @@ function makeMetrics(t = 0, overrides: Partial<TtMetrics> = {}): TtMetrics {
   };
 }
 
+/**
+ * Preset metric snapshots for story scenarios.
+ *
+ * Usage:
+ *   <MockTinyTrackProvider overrides={mockData.highLoad}>
+ *
+ * Available presets:
+ *   idle       — minimal activity, all metrics low
+ *   normal     — typical workload
+ *   highLoad   — CPU/mem/load near critical
+ *   diskFull   — disk usage at 92%
+ *   netSaturated — network near saturation
+ *   critical   — everything at critical levels
+ */
+export const mockData = {
+  idle: {
+    cpu: 300, mem: 2500, load1: 10, load5: 12, load15: 15,
+    nrRunning: 1, nrTotal: 180,
+    netRx: 1000, netTx: 500,
+    duUsage: 4500, duTotal: 500_000_000_000, duFree: 275_000_000_000,
+  } satisfies Partial<TtMetrics>,
+
+  normal: {
+    cpu: 3500, mem: 5500, load1: 120, load5: 100, load15: 90,
+    nrRunning: 4, nrTotal: 320,
+    netRx: 2_000_000, netTx: 800_000,
+    duUsage: 6800, duTotal: 500_000_000_000, duFree: 160_000_000_000,
+  } satisfies Partial<TtMetrics>,
+
+  highLoad: {
+    cpu: 9200, mem: 8800, load1: 1800, load5: 1500, load15: 1200,
+    nrRunning: 24, nrTotal: 512,
+    netRx: 30_000_000, netTx: 15_000_000,
+    duUsage: 7500, duTotal: 500_000_000_000, duFree: 125_000_000_000,
+  } satisfies Partial<TtMetrics>,
+
+  diskFull: {
+    cpu: 2500, mem: 4000, load1: 80, load5: 75, load15: 70,
+    nrRunning: 3, nrTotal: 290,
+    duUsage: 9200, duTotal: 500_000_000_000, duFree: 40_000_000_000,
+  } satisfies Partial<TtMetrics>,
+
+  netSaturated: {
+    cpu: 4500, mem: 5000, load1: 200, load5: 180, load15: 160,
+    nrRunning: 6, nrTotal: 350,
+    netRx: 180_000_000, netTx: 90_000_000,
+    duUsage: 6000, duTotal: 500_000_000_000, duFree: 200_000_000_000,
+  } satisfies Partial<TtMetrics>,
+
+  critical: {
+    cpu: 9800, mem: 9500, load1: 2400, load5: 2000, load15: 1800,
+    nrRunning: 48, nrTotal: 512,
+    netRx: 220_000_000, netTx: 110_000_000,
+    duUsage: 9600, duTotal: 500_000_000_000, duFree: 20_000_000_000,
+  } satisfies Partial<TtMetrics>,
+} as const;
+
+/* ─── Provider ───────────────────────────────────────────────────────────── */
+
 export interface MockProviderProps {
   children: ReactNode;
   animate?: boolean;
@@ -67,22 +131,18 @@ export function MockTinyTrackProvider({ children, animate = true, overrides, his
   const history = useMemo(() => {
     if (!historySize) return null;
     const now = Date.now();
-    // L1: last historySize seconds
     const l1 = Array.from({ length: historySize }, (_, i) =>
       makeMetrics(i, { timestamp: now - (historySize - i) * 1000 }),
     );
-    // L2: last historySize minutes
     const l2 = Array.from({ length: historySize }, (_, i) =>
       makeMetrics(i * 3, { timestamp: now - (historySize - i) * 60_000 }),
     );
-    // L3: last historySize hours
     const l3 = Array.from({ length: Math.min(historySize, 168) }, (_, i) =>
       makeMetrics(i * 10, { timestamp: now - (historySize - i) * 3_600_000 }),
     );
     return { l1, l2, l3 };
   }, [historySize]);
 
-  // We inject a fake client that satisfies the interface components need
   const fakeClient = useRef({
     setInterval: () => {},
     getHistory: () => {},
@@ -130,7 +190,6 @@ function MetricsInjector({
   const listenersRef = useRef<Map<string, Set<Function>>>(new Map());
   const historyFiredRef = useRef(false);
 
-  // Patch the fake client to support on/off/emit
   useEffect(() => {
     if (!client) return;
     const listeners = listenersRef.current;
@@ -143,7 +202,6 @@ function MetricsInjector({
     };
   }, [client]);
 
-  // Fire history once after listeners are registered
   useEffect(() => {
     if (!history || historyFiredRef.current) return;
     const id = setTimeout(() => {
@@ -157,7 +215,6 @@ function MetricsInjector({
     return () => clearTimeout(id);
   }, [history]);
 
-  // Emit metrics on every tick
   useEffect(() => {
     listenersRef.current.get('metrics')?.forEach((fn) => fn(metrics));
   }, [metrics]);

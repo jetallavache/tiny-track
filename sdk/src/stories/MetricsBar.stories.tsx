@@ -57,6 +57,51 @@ export const AlertsOnly: Story = {
   args: { metrics: [], size: 'l', style: { width: '100%' } },
 };
 
+export const AlertsPopup: Story = {
+  name: 'Alert lamps — popup (high load)',
+  args: { metrics: [], size: 'l', style: { width: '100%' } },
+  decorators: [
+    (Story) => (
+      <MockTinyTrackProvider overrides={{ cpu: 9200, mem: 9100, load1: 1800, load15: 400 }}>
+        <div style={{ paddingBottom: 160 }}>
+          <Story />
+          <p style={{ marginTop: 8, fontSize: 11, opacity: 0.5 }}>↑ Click the alert lamps to open the popup</p>
+        </div>
+      </MockTinyTrackProvider>
+    ),
+  ],
+};
+
+export const MetricPopups: Story = {
+  name: 'Metric badge popups',
+  args: { size: 'l', style: { width: '100%' } },
+  decorators: [
+    (Story) => (
+      <MockTinyTrackProvider>
+        <div style={{ paddingBottom: 160 }}>
+          <Story />
+          <p style={{ marginTop: 8, fontSize: 11, opacity: 0.5 }}>↑ Click any badge to open its detail popup</p>
+        </div>
+      </MockTinyTrackProvider>
+    ),
+  ],
+};
+
+export const SysInfoPopups: Story = {
+  name: 'sysInfo badge popups',
+  args: { metrics: [], sysInfo: ['hostname', 'os-type', 'uptime', 'ringbufInfo'], size: 'l' },
+  decorators: [
+    (Story) => (
+      <MockTinyTrackProvider>
+        <div style={{ paddingBottom: 180 }}>
+          <Story />
+          <p style={{ marginTop: 8, fontSize: 11, opacity: 0.5 }}>↑ Click any sysInfo badge to see details</p>
+        </div>
+      </MockTinyTrackProvider>
+    ),
+  ],
+};
+
 export const HighLoad: Story = {
   decorators: [
     (Story) => (
