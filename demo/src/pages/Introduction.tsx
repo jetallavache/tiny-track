@@ -7,7 +7,7 @@ export function Introduction() {
     <div>
       <PageTitle
         title="TinyTrack SDK"
-        badge="v0.4.0"
+        badge="v0.5.0"
         desc="Lightweight WebSocket client + React components for real-time Linux system metrics. Connect to a TinyTrack gateway and get live CPU, memory, disk, network and load data in your app."
       />
 
