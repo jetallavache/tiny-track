@@ -23,6 +23,18 @@ export function fmtBytes(bytes: number): string {
 }
 
 /**
+ * Split a byte count into numeric value string and unit string.
+ * Used for styled rendering where the unit is visually de-emphasised.
+ * @example splitBytes(1_500_000) → { value: "1.4", unit: "MB" }
+ */
+export function splitBytes(bytes: number): { value: string; unit: string } {
+  if (bytes < 1024) return { value: String(bytes), unit: 'B' };
+  if (bytes < 1024 * 1024) return { value: (bytes / 1024).toFixed(0), unit: 'KB' };
+  if (bytes < 1024 * 1024 * 1024) return { value: (bytes / (1024 * 1024)).toFixed(1), unit: 'MB' };
+  return { value: (bytes / (1024 * 1024 * 1024)).toFixed(1), unit: 'GB' };
+}
+
+/**
  * Format a load average value stored as integer*100.
  * @example fmtLoad(125) → "1.25"
  */
