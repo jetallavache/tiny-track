@@ -1,50 +1,185 @@
-<div align="center">
+# TinyTrack — Linux System Metrics Daemon
 
-<img src="docs/assets/logo.svg" alt="TinyTrack" width="480" />
+<img src="docs/assets/logo.svg" width="42" height="42" align="left" style="float:left; margin-right:16px;" />
 
-<br/>
+TinyTrack is a lightweight Linux system metrics daemon with real-time WebSocket streaming.
+It collects CPU, memory, network, disk, and load average — and streams them live to any
+browser, dashboard, or custom app. The only server-side dependencies are libc and libssl.
 
-![Version](https://img.shields.io/badge/version-0.3.0-4A90D9?style=flat-square)
-![License](https://img.shields.io/badge/license-MIT-27AE60?style=flat-square)
-![Platform](https://img.shields.io/badge/platform-Linux-E67E22?style=flat-square)
-![Language](https://img.shields.io/badge/language-C11-8E44AD?style=flat-square)
-![Docker](https://img.shields.io/badge/docker-ready-2496ED?style=flat-square&logo=docker&logoColor=white)
-![WebSocket](https://img.shields.io/badge/protocol-WebSocket%20%2B%20TLS-16A085?style=flat-square)
+Runs on any Linux VPS. Consumes less than 1% CPU and under 10 MB of RAM.
 
-**Lightweight Linux system metrics daemon with WebSocket streaming**
+[![Build Status](https://github.com/jetallavache/tinytrack/actions/workflows/sdk-publish.yml/badge.svg)](https://github.com/jetallavache/tinytrack/actions/workflows/sdk-publish.yml)
+[![Build Status](https://github.com/jetallavache/tinytrack/actions/workflows/server.yml/badge.svg)](https://github.com/jetallavache/tinytrack/actions/workflows/server.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-27AE60.svg)](LICENSE)
+[![Docker](https://img.shields.io/badge/docker-hub-2496ED.svg?logo=docker&logoColor=white)](https://hub.docker.com/r/jetallavache/tinytrack)
+[![Platform: Linux](https://img.shields.io/badge/platform-Linux-E67E22.svg)](https://kernel.org/)
 
-[Документация (RU)](docs/ru/) · [Documentation (EN)](docs/en/) · [Quick Start](#quick-start)
+[![npm](https://nodei.co/npm/tinytsdk.png)](https://www.npmjs.com/package/tinytsdk)
 
-</div>
+## Deploy the server
+
+Pick the method that fits your setup.
+
+### Option A — one-line install on a host
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/jetallavache/tinytrack/main/install.sh | bash
+```
+
+That's it. The script builds from source, installs binaries, and starts `tinytd` + `tinytrack`
+as systemd services. Supports Debian/Ubuntu, Fedora/RHEL, and Arch.
+
+### Option B — Docker
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/jetallavache/tinytrack/main/install.sh | TINYTRACK_DOCKER=1 bash
+```
+
+Or pull and run directly:
+
+```bash
+docker run -d --name tinytrack \
+  -p 25015:25015 \
+  -v /proc:/host/proc:ro \
+  -v /:/host/rootfs:ro \
+  -v /dev/shm:/dev/shm \
+  -e TT_PROC_ROOT=/host/proc \
+  -e TT_ROOTFS_PATH=/host/rootfs \
+  jetallavache/tinytrack:latest
+```
+
+### Option C — Docker Compose
+
+```yaml
+services:
+  tinytrack:
+    image: jetallavache/tinytrack:latest
+    ports:
+      - "25015:25015"
+    volumes:
+      - /proc:/host/proc:ro
+      - /:/host/rootfs:ro
+      - /dev/shm:/dev/shm
+    environment:
+      TT_PROC_ROOT: /host/proc
+      TT_ROOTFS_PATH: /host/rootfs
+    restart: unless-stopped
+```
+
+### Option D — Kubernetes
+
+```yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: tinytrack
+spec:
+  selector:
+    matchLabels:
+      app: tinytrack
+  template:
+    metadata:
+      labels:
+        app: tinytrack
+    spec:
+      containers:
+        - name: tinytrack
+          image: jetallavache/tinytrack:latest
+          ports:
+            - containerPort: 25015
+          env:
+            - name: TT_PROC_ROOT
+              value: /host/proc
+            - name: TT_ROOTFS_PATH
+              value: /host/rootfs
+          volumeMounts:
+            - name: proc
+              mountPath: /host/proc
+              readOnly: true
+            - name: rootfs
+              mountPath: /host/rootfs
+              readOnly: true
+      volumes:
+        - name: proc
+          hostPath:
+            path: /proc
+        - name: rootfs
+          hostPath:
+            path: /
+```
+
+Once running, the server is available at `ws://your-host:25015/websocket`.
 
 ---
 
-## Quick Start
+## Add metrics to your website
+
+Install the SDK:
 
 ```bash
-# One-line install (Linux)
-curl -fsSL https://raw.githubusercontent.com/jetallavache/tiny-track/main/install.sh | bash
-
-# Or via Docker
-curl -fsSL https://raw.githubusercontent.com/jetallavache/tiny-track/main/install.sh | TINYTRACK_DOCKER=1 bash
-
-# Manual build
-./bootstrap.sh && ./configure && make
-sudo make install
-sudo systemctl start tinytd tinytrack
+npm install tinytsdk
 ```
 
-Connect to `ws://localhost:25015/websocket`
+### Vanilla JS / any framework
+
+```js
+import { TinyTrackClient } from 'tinytsdk';
+
+const client = new TinyTrackClient('ws://your-host:25015');
+client.on('metrics', (m) => {
+  console.log(`CPU: ${m.cpu / 100}%  RAM: ${m.mem / 100}%`);
+});
+client.connect();
+```
+
+### React / Next.js
 
 ```bash
-# CLI
-tiny-cli status
-tiny-cli metrics
-tiny-cli history l1
-tiny-cli dashboard
+npm install tinytsdk
+```
 
-# Inside Docker container
-docker compose exec tinytrack tiny-cli dashboard
+```jsx
+import { TinyTrackProvider, MetricsBar } from 'tinytsdk/react';
+
+export default function App() {
+  return (
+    <TinyTrackProvider url="ws://your-host:25015">
+      <MetricsBar />
+    </TinyTrackProvider>
+  );
+}
+```
+
+Available React components: `MetricsBar`, `MetricsPanel`, `Dashboard`, `TimeSeriesChart`,
+`Timeline`, `SystemLoad`, `Metrics3D`, `DiskMap`, `Sparkline`.
+
+### CDN (plain HTML, no build step)
+
+```html
+<script type="module">
+  import { TinyTrackClient } from 'https://cdn.jsdelivr.net/npm/tinytsdk/dist/index.esm.js';
+
+  const client = new TinyTrackClient('ws://your-host:25015');
+  client.on('metrics', (m) => {
+    document.getElementById('cpu').textContent = (m.cpu / 100).toFixed(1) + '%';
+  });
+  client.connect();
+</script>
+
+<span id="cpu">—</span>
+```
+
+---
+
+## CLI
+
+```bash
+tiny-cli status           # daemon status
+tiny-cli metrics          # current snapshot
+tiny-cli history l1       # last hour  (1 s resolution)
+tiny-cli history l2       # last 24 h  (1 min resolution)
+tiny-cli history l3       # last 30 days (1 hr resolution)
+tiny-cli dashboard        # live ncurses dashboard
 ```
 
 ---
@@ -52,15 +187,17 @@ docker compose exec tinytrack tiny-cli dashboard
 ## Documentation
 
 | | Русский | English |
-|---|---|---|
-| Обзор / Overview | [docs/ru/overview.md](docs/ru/overview.md) | [docs/en/overview.md](docs/en/overview.md) |
-| Установка / Install | [docs/ru/install.md](docs/ru/install.md) | [docs/en/install.md](docs/en/install.md) |
+| :--- | :--- | :--- |
+| Overview | [docs/ru/overview.md](docs/ru/overview.md) | [docs/en/overview.md](docs/en/overview.md) |
+| Install | [docs/ru/install.md](docs/ru/install.md) | [docs/en/install.md](docs/en/install.md) |
 | Docker | [docs/ru/docker.md](docs/ru/docker.md) | [docs/en/docker.md](docs/en/docker.md) |
-| Конфигурация / Configuration | [docs/ru/configuration.md](docs/ru/configuration.md) | [docs/en/configuration.md](docs/en/configuration.md) |
-| Архитектура / Architecture | [docs/ru/architecture.md](docs/ru/architecture.md) | [docs/en/architecture.md](docs/en/architecture.md) |
-| Устранение неполадок / Troubleshooting | [docs/ru/troubleshooting.md](docs/ru/troubleshooting.md) | [docs/en/troubleshooting.md](docs/en/troubleshooting.md) |
+| Configuration | [docs/ru/configuration.md](docs/ru/configuration.md) | [docs/en/configuration.md](docs/en/configuration.md) |
+| Architecture | [docs/ru/architecture.md](docs/ru/architecture.md) | [docs/en/architecture.md](docs/en/architecture.md) |
+| Troubleshooting | [docs/ru/troubleshooting.md](docs/ru/troubleshooting.md) | [docs/en/troubleshooting.md](docs/en/troubleshooting.md) |
 
----
+## Contributing
+
+Pull requests are welcome. Please keep each PR focused on a single issue and include a clear description of the change.
 
 ## License
 
