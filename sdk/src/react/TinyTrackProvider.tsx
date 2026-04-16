@@ -50,6 +50,12 @@ export function TinyTrackProvider({ url, token, children, reconnect, reconnectDe
       if (cancelled) return;
       setConnected(true);
       setStreamingState(true);
+      /* Don't send commands here — wait for PKT_CONFIG which arrives
+       * only after auth completes. Commands sent before auth are rejected. */
+    };
+    const onConfig = () => {
+      if (cancelled) return;
+      /* Auth complete (or no auth) — safe to send commands now */
       client.getSysInfo();
       client.getSnapshot();
     };
@@ -58,15 +64,16 @@ export function TinyTrackProvider({ url, token, children, reconnect, reconnectDe
       setSysinfo(null);
     };
     client.on('ready', onOpen);
+    client.on('config', onConfig);
     client.on('close', onClose);
     client.on('sysinfo', setSysinfo);
     client.connect().catch(() => { /* reconnect handles retries */ });
     return () => {
       cancelled = true;
       client.off('ready', onOpen);
+      client.off('config', onConfig);
       client.off('close', onClose);
       client.off('sysinfo', setSysinfo);
-      /* Synchronous close — avoids React StrictMode double-invoke issues */
       client.disconnect();
     };
   }, [client]);
