@@ -316,14 +316,6 @@ document.getElementById('postResume').addEventListener('click', async () => {
     addLog(`✓ POST /v1/stream/resume → ${r.status}`);
   } catch (e) { addLog(`✗ ${e.message}`); }
 });
-    const r = await fetch(url);
-    const d = await r.json();
-    metricsDiv.innerHTML = `<pre>${JSON.stringify(d, null, 2)}</pre>`;
-    addLog('✓ HTTP /api/metrics/live fetched');
-  } catch (e) {
-    addLog(`✗ HTTP error: ${e.message}`);
-  }
-});
 
 document.getElementById('fetchPrometheus').addEventListener('click', async () => {
   const base = document.getElementById('apiUrl').value;

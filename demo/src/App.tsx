@@ -17,8 +17,8 @@ import { PageMetrics3D } from './pages/PageMetrics3D.js';
 import { PageDiskMap } from './pages/PageDiskMap.js';
 import { PageRawPackets } from './pages/PageRawPackets.js';
 
-const WS_URL   = import.meta.env.VITE_WS_URL   ?? 'ws://localhost:25015';
-const WS_TOKEN = import.meta.env.VITE_WS_TOKEN ?? '';
+const WS_URL   = import.meta.env.VITE_WS_URL   ?? 'ws://localhost:14020';
+const WS_TOKEN = import.meta.env.VITE_WS_TOKEN ?? 'qwerty';
 const PRESETS: ThemePreset[] = ['terminal', 'dark', 'light', 'material', 'dracula', 'heroui'];
 
 function PageContent({ route }: { route: Route }) {

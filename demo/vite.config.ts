@@ -6,10 +6,10 @@ export default defineConfig({
   server: {
     port: 5173,
     /* Uncomment and set target to your tinytrack gateway for local dev:
-    proxy: {
-      '/v1': { target: 'http://localhost:25015', ws: true },
-      '/websocket': { target: 'http://localhost:25015', ws: true },
-    },
     */
+    proxy: {
+      '/v1': { target: 'http://localhost:14020', ws: true },
+      '/websocket': { target: 'http://localhost:14020', ws: true },
+    },
   },
 });
