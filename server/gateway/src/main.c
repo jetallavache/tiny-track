@@ -236,8 +236,15 @@ int main(int argc, char** argv) {
   tt_log_info("WebSocket  %s/websocket", cfg.listen);
   tt_log_info("HTTP API   %s/api/metrics/live", cfg.listen);
   tt_log_info("Prometheus %s/metrics", cfg.listen);
-  if (cfg.auth_token[0])
-    tt_log_info("Auth       enabled (Bearer / CMD_AUTH)");
+  tt_log_info("TLS        %s", cfg.tls ? "enabled" : "disabled");
+  tt_log_info("Auth       %s", cfg.auth_token[0] ? "enabled (Bearer / CMD_AUTH)" : "disabled");
+  if (cfg.cors_origins[0])
+    tt_log_info("CORS       %s",
+                strcmp(cfg.cors_origins, "*") == 0
+                    ? "* (all origins, dev mode)"
+                    : cfg.cors_origins);
+  else
+    tt_log_info("CORS       disabled");
 
   ttg_http_listen(&mgr, cfg.listen, ttg_session_event_fn, NULL);
 
