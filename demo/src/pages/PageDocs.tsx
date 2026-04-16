@@ -58,6 +58,10 @@ const TOC = [
   { id: 'config-auth',       label: 'Authentication' },
   { id: 'config-cors',       label: 'CORS' },
   { id: 'config-tls',        label: 'TLS' },
+  { id: 'api',               label: 'REST API v1' },
+  { id: 'api-endpoints',     label: '↳ Endpoints' },
+  { id: 'api-formats',       label: '↳ Content negotiation' },
+  { id: 'api-auth',          label: '↳ API authentication' },
   { id: 'troubleshooting',   label: 'Troubleshooting' },
   { id: 'no-mmap',           label: '↳ Cannot open shared memory' },
   { id: 'stale-mmap',        label: '↳ Stale mmap / tinytd not running' },
@@ -286,6 +290,85 @@ tls      = true
 tls_cert = /etc/tinytrack/server.crt
 tls_key  = /etc/tinytrack/server.key
 # tls_ca = /etc/tinytrack/ca.crt   # optional, for client cert auth`} />
+      </PageSection>
+
+      <Divider />
+
+      {/* ── REST API v1 ────────────────────────────────────────────── */}
+      <Anchor id="api" />
+      <PageSection title="REST API v1">
+        <p style={p}>
+          All HTTP endpoints are versioned under <code style={{ fontFamily: 'monospace', color: t.cpu }}>/v1/</code>.
+          TLS, authentication, and CORS apply uniformly to all connections.
+        </p>
+
+        <Anchor id="api-endpoints" />
+        <h3 style={h3}>Endpoints</h3>
+        <div style={{ overflowX: 'auto', borderRadius: t.radius, border: `1px solid ${t.border}` }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: t.font, fontSize: 12 }}>
+            <thead>
+              <tr style={{ background: t.surface }}>
+                {['Method', 'URL', 'Auth', 'Description'].map(h => (
+                  <th key={h} style={{ padding: '6px 12px', textAlign: 'left', color: t.muted, borderBottom: `1px solid ${t.border}` }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ['WS', '/v1/stream', '✓', 'Binary protocol v1/v2, real-time streaming'],
+                ['WS', '/websocket', '✓', 'Legacy alias'],
+                ['GET', '/v1/metrics', '✓', 'Metrics snapshot (json/csv/xml/prometheus)'],
+                ['GET', '/v1/sysinfo', '✓', 'System info: hostname, OS, uptime, ring config'],
+                ['GET', '/v1/status', '—', 'Health check — public, no auth'],
+                ['POST', '/v1/stream/pause', '✓', 'Pause metrics push to all WS clients'],
+                ['POST', '/v1/stream/resume', '✓', 'Resume metrics push'],
+              ].map(([m, url, auth, desc]) => (
+                <tr key={url}>
+                  <td style={{ padding: '5px 12px', borderBottom: `1px solid ${t.divider}` }}>
+                    <code style={{ fontFamily: 'monospace', color: t.cpu, fontSize: 11 }}>{m}</code>
+                  </td>
+                  <td style={{ padding: '5px 12px', borderBottom: `1px solid ${t.divider}` }}>
+                    <code style={{ fontFamily: 'monospace', color: t.text, fontSize: 11 }}>{url}</code>
+                  </td>
+                  <td style={{ padding: '5px 12px', borderBottom: `1px solid ${t.divider}`, color: auth === '✓' ? t.cpu : t.muted }}>{auth}</td>
+                  <td style={{ padding: '5px 12px', borderBottom: `1px solid ${t.divider}`, color: t.muted }}>{desc}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <Anchor id="api-formats" />
+        <h3 style={h3}>Content negotiation</h3>
+        <CodeBlock code={`# JSON (default)
+curl http://host:25015/v1/metrics
+
+# CSV / XML / Prometheus
+curl "http://host:25015/v1/metrics?format=csv"
+curl "http://host:25015/v1/metrics?format=xml"
+curl "http://host:25015/v1/metrics?format=prometheus"
+
+# Via Accept header
+curl -H "Accept: text/plain" http://host:25015/v1/metrics`} />
+
+        <Anchor id="api-auth" />
+        <h3 style={h3}>API authentication</h3>
+        <p style={p}>
+          When <code style={{ fontFamily: 'monospace', color: t.cpu }}>auth_token</code> is configured,
+          all <code style={{ fontFamily: 'monospace', color: t.cpu }}>/v1/*</code> endpoints except{' '}
+          <code style={{ fontFamily: 'monospace', color: t.cpu }}>/v1/status</code> require a Bearer token.
+        </p>
+        <CodeBlock code={`curl -H "Authorization: Bearer your-token" http://host:25015/v1/metrics
+
+# Prometheus scrape with auth
+scrape_configs:
+  - job_name: tinytrack
+    metrics_path: /v1/metrics
+    params: { format: [prometheus] }
+    static_configs:
+      - targets: ['host:25015']
+    authorization:
+      credentials: your-token`} />
       </PageSection>
 
       <Divider />

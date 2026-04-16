@@ -17,7 +17,8 @@ import { PageMetrics3D } from './pages/PageMetrics3D.js';
 import { PageDiskMap } from './pages/PageDiskMap.js';
 import { PageRawPackets } from './pages/PageRawPackets.js';
 
-const WS_URL = import.meta.env.VITE_WS_URL ?? `ws://${window.location.host}`;
+const WS_URL   = import.meta.env.VITE_WS_URL   ?? `ws://${window.location.host}`;
+const WS_TOKEN = import.meta.env.VITE_WS_TOKEN ?? '';
 const PRESETS: ThemePreset[] = ['terminal', 'dark', 'light', 'material', 'dracula', 'heroui'];
 
 function PageContent({ route }: { route: Route }) {
@@ -56,7 +57,7 @@ export default function App() {
   };
 
   return (
-    <TinyTrackProvider url={WS_URL}>
+    <TinyTrackProvider url={WS_URL} token={WS_TOKEN || undefined}>
       <ThemeProvider preset={preset}>
         <div style={{ display: 'flex', minHeight: '100vh', background: theme.bg }}>
           <Nav route={route} onRoute={handleRoute} preset={preset} onPreset={setPreset} presets={PRESETS} />

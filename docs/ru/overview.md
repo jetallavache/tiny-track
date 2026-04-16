@@ -107,7 +107,7 @@ curl http://host:25015/v1/metrics?format=csv
 curl -H "Accept: text/plain" http://host:25015/v1/metrics
 
 # С авторизацией
-curl -H "Authorization: Bearer mytoken" http://host:25015/v1/metrics
+curl -H "Authorization: Bearer <token>" http://host:25015/v1/metrics
 ```
 
 ### Версионирование API
