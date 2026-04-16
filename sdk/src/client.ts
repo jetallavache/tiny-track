@@ -97,7 +97,7 @@ export class TinyTrackClient {
       reconnect: opts.reconnect ?? true,
       reconnectDelay: opts.reconnectDelay ?? 2000,
       maxRetries: opts.maxRetries ?? 0,
-      path: opts.path ?? '/websocket',
+      path: opts.path ?? '/v1/stream',
       token: opts.token ?? '',
     };
   }

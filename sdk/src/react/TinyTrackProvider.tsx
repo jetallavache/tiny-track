@@ -22,14 +22,15 @@ export { TinyTrackContext };
 
 export interface TinyTrackProviderProps {
   url: string;
+  token?: string;
   children: ReactNode;
   reconnect?: boolean;
   reconnectDelay?: number;
 }
 
-export function TinyTrackProvider({ url, children, reconnect, reconnectDelay }: TinyTrackProviderProps) {
+export function TinyTrackProvider({ url, token, children, reconnect, reconnectDelay }: TinyTrackProviderProps) {
   // Client is created once and never recreated
-  const [client] = useState(() => new TinyTrackClient(url, { reconnect, reconnectDelay }));
+  const [client] = useState(() => new TinyTrackClient(url, { reconnect, reconnectDelay, token }));
   const [connected, setConnected] = useState(false);
   const [sysinfo, setSysinfo] = useState<TtSysInfo | null>(null);
   const [streaming, setStreamingState] = useState(true);
