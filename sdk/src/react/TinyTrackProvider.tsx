@@ -45,9 +45,11 @@ export function TinyTrackProvider({ url, token, children, reconnect, reconnectDe
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     const onOpen = () => {
+      if (cancelled) return;
       setConnected(true);
-      setStreamingState(true); // new session always starts streaming
+      setStreamingState(true);
       client.getSysInfo();
       client.getSnapshot();
     };
@@ -55,11 +57,18 @@ export function TinyTrackProvider({ url, token, children, reconnect, reconnectDe
       setConnected(false);
       setSysinfo(null);
     };
-    client.on('ready', onOpen);  /* 'open' is kept as alias */
+    client.on('ready', onOpen);
     client.on('close', onClose);
     client.on('sysinfo', setSysinfo);
     client.connect().catch(() => { /* reconnect handles retries */ });
-    return () => { client.disconnect(); };
+    return () => {
+      cancelled = true;
+      client.off('ready', onOpen);
+      client.off('close', onClose);
+      client.off('sysinfo', setSysinfo);
+      /* Synchronous close — avoids React StrictMode double-invoke issues */
+      client.disconnect();
+    };
   }, [client]);
 
   return (

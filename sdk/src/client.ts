@@ -160,13 +160,15 @@ export class TinyTrackClient {
   disconnect(): Promise<void> {
     this._closed = true;
     this._clearConnectTimer();
+    this._readyResolve = null;
+    this._readyReject = null;
+    if (!this.ws || this.ws.readyState === WebSocket.CLOSED) {
+      return Promise.resolve();
+    }
     return new Promise<void>((resolve) => {
-      if (!this.ws || this.ws.readyState === WebSocket.CLOSED) {
-        resolve();
-        return;
-      }
-      this.ws.onclose = () => { this._emit('disconnect'); resolve(); };
-      this.ws.close();
+      const ws = this.ws!;
+      ws.onclose = () => { this._emit('disconnect'); resolve(); };
+      ws.close();
       this.ws = null;
     });
   }
