@@ -5,8 +5,11 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    /* Uncomment and set target to your tinytrack gateway for local dev:
     proxy: {
-      '/websocket': { target: 'http://0.0.0.0:14014', ws: true },
+      '/v1': { target: 'http://localhost:25015', ws: true },
+      '/websocket': { target: 'http://localhost:25015', ws: true },
     },
+    */
   },
 });
