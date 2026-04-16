@@ -300,6 +300,15 @@ static void on_ws_open(struct ttg_conn* c, struct ttg_http_message* hm) {
 }
 
 static void on_http(struct ttg_conn* c, struct ttg_http_message* hm) {
+  /* CORS header for all HTTP responses — allows browser clients from any origin */
+#define CORS "Access-Control-Allow-Origin: *\r\nAccess-Control-Allow-Headers: Authorization\r\n"
+
+  /* Handle CORS preflight */
+  if (ttg_str_casecmp(hm->method, str("OPTIONS")) == 0) {
+    ttg_http_reply(c, 204, CORS "Access-Control-Allow-Methods: GET, OPTIONS\r\n", "");
+    return;
+  }
+
   if (ttg_str_match(hm->uri, str("/websocket"), NULL)) {
     ttg_ws_upgrade(c, hm, NULL);
     return;
@@ -312,9 +321,9 @@ static void on_http(struct ttg_conn* c, struct ttg_http_message* hm) {
       snprintf(buf, sizeof(buf),
                "{\"cpu\":%u,\"mem\":%u,\"load1\":%u,\"rx\":%u,\"tx\":%u}",
                m.cpu_usage, m.mem_usage, m.load_1min, m.net_rx, m.net_tx);
-      ttg_http_reply(c, 200, "Content-Type: application/json\r\n", "%s", buf);
+      ttg_http_reply(c, 200, "Content-Type: application/json\r\n" CORS, "%s", buf);
     } else {
-      ttg_http_reply(c, 503, "", "{\"error\":\"No data available\"}");
+      ttg_http_reply(c, 503, CORS, "{\"error\":\"No data available\"}");
     }
     return;
   }
@@ -341,15 +350,17 @@ static void on_http(struct ttg_conn* c, struct ttg_http_message* hm) {
                "tinytrack_net_tx_bytes_per_sec %u\n",
                m.cpu_usage / 100.0, m.mem_usage / 100.0, m.load_1min / 100.0,
                m.net_rx, m.net_tx);
-      ttg_http_reply(c, 200, "Content-Type: text/plain; version=0.0.4\r\n",
+      ttg_http_reply(c, 200, "Content-Type: text/plain; version=0.0.4\r\n" CORS,
                      "%s", buf);
     } else {
-      ttg_http_reply(c, 503, "", "# No data available\n");
+      ttg_http_reply(c, 503, CORS, "# No data available\n");
     }
     return;
   }
 
-  ttg_http_reply(c, 404, "", "Not Found\n");
+  ttg_http_reply(c, 404, CORS, "Not Found\n");
+
+#undef CORS
 }
 
 void ttg_session_event_fn(struct ttg_conn* c, int ev, void* ev_data) {
