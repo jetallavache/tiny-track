@@ -193,7 +193,11 @@ int main(int argc, char** argv) {
     tt_log_err("  Is tinytd running?  See https://tinytrack.dev/docs/troubleshooting#no-mmap");
     return 1;
   }
-  tt_log_info("Storage    mmap=%s  daemon=running", cfg.shm_path);
+  tt_log_info("Storage    mmap=%s", cfg.shm_path);
+
+  /* Non-fatal liveness check: warn if tinytd appears dead */
+  if (ttg_reader_check_liveness(&reader) != 0)
+    tt_log_warning("Storage    gateway will serve stale data until tinytd restarts");
 
   if (write_pid_file(cfg.pid_file) < 0)
     tt_log_warning("PID file   cannot write %s (non-fatal)", cfg.pid_file);

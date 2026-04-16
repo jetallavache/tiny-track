@@ -2,9 +2,11 @@
 
 #include <arpa/inet.h>
 #include <errno.h>
+#include <signal.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/utsname.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "common/log/log.h"
@@ -59,6 +61,61 @@ int ttg_reader_get_stats(struct ttg_reader* ctx, uint8_t level,
 
 void ttg_reader_close(struct ttg_reader* ctx) {
   ttr_reader_close(&ctx->ring);
+}
+
+/*
+ * Check if tinytd is alive by inspecting the mmap header.
+ *
+ * Strategy:
+ *   1. Check writer_pid — if non-zero, verify the process exists via kill(pid,0)
+ *   2. Check last_update_ts — if older than 3 * interval_ms, daemon is stale
+ *
+ * Returns:
+ *   0  — daemon is alive and writing
+ *  -1  — mmap exists but daemon appears dead (stale or pid gone)
+ */
+int ttg_reader_check_liveness(struct ttg_reader* ctx) {
+  const struct ttr_header* hdr = (const struct ttr_header*)ctx->ring.addr;
+  if (!hdr)
+    return -1;
+
+  /* Check writer PID */
+  if (hdr->writer_pid > 0) {
+    if (kill((pid_t)hdr->writer_pid, 0) == 0) {
+      tt_log_debug("liveness: tinytd pid=%u alive", hdr->writer_pid);
+      return 0; /* process exists */
+    }
+    tt_log_warning("Daemon     tinytd pid=%u not found — mmap may be stale",
+                   hdr->writer_pid);
+    tt_log_warning("           See https://tinytrack.dev/docs/troubleshooting#stale-mmap");
+  }
+
+  /* Fallback: check last_update_ts freshness */
+  if (hdr->last_update_ts > 0) {
+    uint64_t now_ms = (uint64_t)time(NULL) * 1000;
+    uint32_t interval = hdr->interval_ms > 0 ? hdr->interval_ms : 1000;
+    uint64_t age_ms = now_ms > hdr->last_update_ts
+                          ? now_ms - hdr->last_update_ts
+                          : 0;
+    uint64_t threshold_ms = (uint64_t)interval * 3;
+
+    if (age_ms < threshold_ms) {
+      tt_log_debug("liveness: last_update_ts age=%llums < threshold=%llums",
+                   (unsigned long long)age_ms,
+                   (unsigned long long)threshold_ms);
+      return 0; /* recently updated */
+    }
+    tt_log_warning("Daemon     tinytd last update %llu ms ago (threshold %llu ms) — may be dead",
+                   (unsigned long long)age_ms,
+                   (unsigned long long)threshold_ms);
+    tt_log_warning("           See https://tinytrack.dev/docs/troubleshooting#stale-mmap");
+    return -1;
+  }
+
+  /* No timestamp at all — brand new or corrupt file */
+  tt_log_warning("Daemon     mmap has no update timestamp — tinytd may not be running");
+  tt_log_warning("           See https://tinytrack.dev/docs/troubleshooting#stale-mmap");
+  return -1;
 }
 
 /* Read a single trimmed line from path into buf[size]. Returns 0 on success. */
