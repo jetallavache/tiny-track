@@ -26,15 +26,17 @@ enable_crc   = false
 auto_recover = true
 
 [gateway]
-log_level       = debug
-log_backend     = stderr
-listen          = ws://0.0.0.0:14029
-update_interval = 1000
-max_connections = 128
-header_timeout_ms = 5000
-idle_timeout_ms = 0
-max_uri_size = 8192
-max_headers_size = 16384
-# auth_token      = changeme
-# auth_timeout_ms = 5000
+log_level           = debug
+log_backend         = stderr
+hostname            = 0.0.0.0
+port                = 14017
+update_interval     = 1000
+max_connections     = 2
+header_timeout_ms   = 5000
+idle_timeout_ms     = 0
+max_uri_size        = 8192
+max_headers_size    = 16384
+cors_origins        = *
+auth_token          = qwerty
+auth_timeout_ms     = 5000
 
