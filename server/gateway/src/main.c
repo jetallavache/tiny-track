@@ -99,31 +99,30 @@ static int drop_privileges(const char* user, const char* group) {
 
 int main(int argc, char** argv) {
   const char* config_path = NULL;
-  const char* listen_override = NULL;
+  const char* hostname_override = NULL;
   const char* shm_override = NULL;
-  static char listen_buf[64];
+  uint16_t port_override = 0;
   int do_daemonize = 1;
 
   static const struct option long_opts[] = {
-      {"config", required_argument, NULL, 'c'},
-      {"port", required_argument, NULL, 'p'},
-      {"listen", required_argument, NULL, 'l'},
-      {"shm", required_argument, NULL, 's'},
-      {"daemon", no_argument, NULL, 'd'},
-      {"no-daemon", no_argument, NULL, 'n'},
-      {"help", no_argument, NULL, 'h'},
+      {"config",    required_argument, NULL, 'c'},
+      {"port",      required_argument, NULL, 'p'},
+      {"hostname",  required_argument, NULL, 'H'},
+      {"shm",       required_argument, NULL, 's'},
+      {"daemon",    no_argument,       NULL, 'd'},
+      {"no-daemon", no_argument,       NULL, 'n'},
+      {"help",      no_argument,       NULL, 'h'},
       {NULL, 0, NULL, 0},
   };
 
   int opt;
-  while ((opt = getopt_long(argc, argv, "c:p:l:s:dnh", long_opts, NULL)) !=
-         -1) {
+  while ((opt = getopt_long(argc, argv, "c:p:H:s:dnh", long_opts, NULL)) != -1) {
     switch (opt) {
       case 'c':
         config_path = optarg;
         break;
-      case 'l':
-        listen_override = optarg;
+      case 'H':
+        hostname_override = optarg;
         break;
       case 's':
         shm_override = optarg;
@@ -134,22 +133,23 @@ int main(int argc, char** argv) {
       case 'n':
         do_daemonize = 0;
         break;
-      case 'p':
-        snprintf(listen_buf, sizeof(listen_buf), "ws://0.0.0.0:%s", optarg);
-        listen_override = listen_buf;
+      case 'p': {
+        int p = atoi(optarg);
+        if (p > 0 && p < 65536)
+          port_override = (uint16_t)p;
         break;
+      }
       case 'h':
         printf(
-            "Usage: tinytrack [-d] [-c CONFIG] [-p PORT] "
-            "[-l ws://HOST:PORT] [-s SHM_PATH]\n\n"
+            "Usage: tinytrack [-d] [-c CONFIG] [-p PORT] [-H HOST] [-s SHM_PATH]\n\n"
             "Options:\n"
-            "  -d, --daemon      Run as daemon (background, default)\n"
-            "  -n, --no-daemon   Run in foreground\n"
-            "  -c, --config CONFIG  Path to configuration file\n"
-            "  -p, --port PORT   Listen port (shorthand for -l)\n"
-            "  -l, --listen ws://H:P  Listen address\n"
-            "  -s, --shm PATH    Path to tinytd live mmap file\n"
-            "  -h, --help        Show this help and exit\n\n"
+            "  -d, --daemon        Run as daemon (background, default)\n"
+            "  -n, --no-daemon     Run in foreground\n"
+            "  -c, --config FILE   Path to configuration file\n"
+            "  -p, --port PORT     Listen port (overrides config gateway.port)\n"
+            "  -H, --hostname HOST Bind address (overrides config gateway.hostname)\n"
+            "  -s, --shm PATH      Path to tinytd live mmap file\n"
+            "  -h, --help          Show this help and exit\n\n"
             "Signals:\n"
             "  SIGTERM/SIGINT  Graceful shutdown\n");
         return 0;
@@ -161,7 +161,7 @@ int main(int argc, char** argv) {
 
   struct ttg_config cfg;
   memset(&cfg, 0, sizeof(cfg));
-  ttg_config_load(&cfg, config_path, listen_override, shm_override);
+  ttg_config_load(&cfg, config_path, hostname_override, port_override, shm_override);
 
   /* Daemonize before tt_log_init (closes all fds) */
   if (do_daemonize)
@@ -204,6 +204,8 @@ int main(int argc, char** argv) {
   }
 
   ttg_session_init(&reader);
+  ttg_session_set_auth(cfg.auth_token[0] ? cfg.auth_token : NULL,
+                       cfg.auth_timeout_ms);
 
   bool use_tls = ((ttg_url_is_ssl(cfg.listen)) != 0);
   if (use_tls && (cfg.tls_cert[0] == '\0' || cfg.tls_key[0] == '\0')) {
@@ -230,8 +232,11 @@ int main(int argc, char** argv) {
 
   ttg_net_timer_add(&mgr, 500, TIMER_REPEAT, ttg_session_timer_fn, &mgr);
 
-  tt_log_info("WS listener on %s/websocket", cfg.listen);
-  tt_log_info("HTTP API on %s/api/metrics/live", cfg.listen);
+  tt_log_info("WebSocket  %s/websocket", cfg.listen);
+  tt_log_info("HTTP API   %s/api/metrics/live", cfg.listen);
+  tt_log_info("Prometheus %s/metrics", cfg.listen);
+  if (cfg.auth_token[0])
+    tt_log_info("Auth       enabled (Bearer / CMD_AUTH)");
 
   ttg_http_listen(&mgr, cfg.listen, ttg_session_event_fn, NULL);
 

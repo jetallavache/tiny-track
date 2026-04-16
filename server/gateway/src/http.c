@@ -37,6 +37,9 @@ int ttg_http_get_request_len(const unsigned char* buf, size_t buf_len) {
   return 0;
 }
 
+/* Дублирующиеся заголовки: политика "первый побеждает" — возвращается первое
+ * вхождение. Это соответствует поведению большинства HTTP-серверов и RFC 7230
+ * §3.2.2 для заголовков, не допускающих объединения. */
 struct ttg_str* ttg_http_get_header(struct ttg_http_message* h,
                                     const char* name) {
   size_t i, n = strlen(name), max = sizeof(h->headers) / sizeof(h->headers[0]);
@@ -70,11 +73,14 @@ static size_t clen(const char* s, const char* end) {
 }
 
 /* Skip to a new line. Return the extended letter "s" or NULL in case of an
- * error. */
+ * error. Rejects null bytes and non-printable control characters in values. */
 static const char* skiptorn(const char* s, const char* end, struct ttg_str* v) {
   v->buf = (char*)s;
-  while (s < end && s[0] != '\n' && s[0] != '\r')
+  while (s < end && s[0] != '\n' && s[0] != '\r') {
+    if ((unsigned char)s[0] < ' ' && s[0] != '\t')
+      return NULL; /* null byte or control char in header value */
     s++, v->len++; /* To newline */
+  }
   if (s >= end || (s[0] == '\r' && s[1] != '\n'))
     return NULL; /* Stray \r */
   if (s[0] == '\r')

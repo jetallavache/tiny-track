@@ -79,6 +79,8 @@ struct ttg_conn {
 
   uint32_t update_interval_ms; /* Per-connection interval (1000, 5000, 10000) */
   time_t last_update_time;     /* Last update time */
+  time_t accept_time;          /* Time of accept(); 0 for outgoing connections */
+  time_t auth_deadline;        /* Deadline for CMD_AUTH (0 = no deadline) */
   uint8_t sub_level; /* Ring level subscription: RING_LEVEL_L1/L2/L3 */
 
   unsigned is_listening : 1;     /* Listening for connections */
@@ -95,6 +97,7 @@ struct ttg_conn {
   unsigned is_resp : 1;          /* Response is still being generated */
   unsigned is_readable : 1;      /* Connection ready for reading */
   unsigned is_writable : 1;      /* Connection ready for writing*/
+  unsigned is_authed : 1;        /* Authentication passed (or not required) */
 
   unsigned is_hexdumping : 1; /* Hexdump in/out traffic */
   unsigned is_draining : 1;   /* Send remaining data, then close and

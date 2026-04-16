@@ -18,7 +18,10 @@ services:
     environment:
       TT_PROC_ROOT: /host/proc
       TT_ROOTFS_PATH: /host/rootfs
-      # TT_LISTEN: wss://0.0.0.0:25015
+      # TT_HOSTNAME: 0.0.0.0
+      # TT_PORT: 25015
+      # TT_AUTH_TOKEN: changeme
+      # TT_TLS: true
       # TT_TLS_CERT: /etc/tinytrack/certs/server.crt
       # TT_TLS_KEY:  /etc/tinytrack/certs/server.key
       # TT_LOG_LEVEL: info

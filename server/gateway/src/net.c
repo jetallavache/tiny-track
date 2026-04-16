@@ -178,6 +178,12 @@ void ttg_net_mgr_poll(struct ttg_mgr* mgr, int ms) {
 
     if (c->is_draining && c->send.len == 0)
       c->is_closing = 1;
+    /* Header receive timeout: close accepted non-WS connections idle > 10s */
+    if (!c->is_closing && c->is_accepted && !c->is_websocket &&
+        c->accept_time > 0 && (time(NULL) - c->accept_time) > 10) {
+      tt_log_info("%lu header timeout, closing", c->id);
+      c->is_closing = 1;
+    }
     if (c->is_closing)
       ttg_sock_close_conn(c);
   }

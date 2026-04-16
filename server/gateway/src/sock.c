@@ -177,6 +177,7 @@ void ttg_sock_accept_conn(struct ttg_mgr* mgr, struct ttg_conn* lsn) {
     ttg_sock_set_nonblocking(FD(c));
     setsockopts(c);
     c->is_accepted = 1;
+    c->accept_time = time(NULL);
     c->is_hexdumping = lsn->is_hexdumping;
     c->local = lsn->local;
     c->pfn = lsn->pfn;

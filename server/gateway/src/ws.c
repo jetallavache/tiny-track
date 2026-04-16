@@ -74,7 +74,10 @@ static uint32_t be32(const uint8_t* p) {
          (((uint32_t)p[1]) << 16) | (((uint32_t)p[0]) << 24);
 }
 
-static size_t ws_process(uint8_t* buf, size_t len, struct ws_msg* msg) {
+/* Returns frame size on success, 0 if incomplete, -1 on protocol error.
+ * server_side: if true, client MUST mask frames (RFC 6455 §5.3). */
+static int ws_process(uint8_t* buf, size_t len, struct ws_msg* msg,
+                      bool server_side) {
   size_t i, mask_len = 0;
   memset(msg, 0, sizeof(*msg));
   if (len >= 2) {
@@ -92,11 +95,12 @@ static size_t ws_process(uint8_t* buf, size_t len, struct ws_msg* msg) {
       msg->data_len = (size_t)(((uint64_t)be32(buf + 2) << 32) + be32(buf + 6));
     }
   }
-  /* Sanity check, and integer overflow protection for the boundary check below
-   */
-  /* data_len should not be larger than 1 Gb */
+  /* RFC 6455 §5.3: server MUST close if client sends unmasked frame */
+  if (server_side && mask_len == 0 && msg->header_len > 0)
+    return -1;
+  /* data_len > 1 GiB is a protocol error: close the connection */
   if (msg->data_len > 1024 * 1024 * 1024)
-    return 0;
+    return -1;
   if (msg->header_len + msg->data_len > len)
     return 0;
   if (mask_len > 0) {
@@ -104,7 +108,7 @@ static size_t ws_process(uint8_t* buf, size_t len, struct ws_msg* msg) {
     for (i = 0; i < msg->data_len; i++)
       p[i] ^= m[i & 3];
   }
-  return msg->header_len + msg->data_len;
+  return (int)(msg->header_len + msg->data_len);
 }
 
 static size_t mkhdr(size_t len, int op, bool is_client, uint8_t* buf) {
@@ -182,13 +186,17 @@ static bool ttg_ws_client_handshake(struct ttg_conn* c) {
 static void ttg_ws_cb(struct ttg_conn* c, int ev, void* ev_data) {
   struct ws_msg msg;
   size_t ofs = (size_t)c->pfn_data;
+  /* Max total size of a fragmented message (16 MiB) */
+  static const size_t TTG_WS_MAX_FRAG_SIZE = 16 * 1024 * 1024;
 
   /*   assert(ofs < c->recv.len); */
   if (ev == TTG_EVENT_READ) {
     if (c->is_client && !c->is_websocket && ttg_ws_client_handshake(c))
       return;
 
-    while (ws_process(c->recv.buf + ofs, c->recv.len - ofs, &msg) > 0) {
+    int rc = 0;
+    while ((rc = ws_process(c->recv.buf + ofs, c->recv.len - ofs, &msg,
+                            !c->is_client)) > 0) {
       char* s = (char*)c->recv.buf + ofs + msg.header_len;
       struct ttg_ws_message m = {{s, msg.data_len}, msg.flags};
       size_t len = msg.header_len + msg.data_len;
@@ -220,10 +228,14 @@ static void ttg_ws_cb(struct ttg_conn* c, int ev, void* ev_data) {
           ttg_ws_send(c, m.data.buf, m.data.len, TTG_WS_OP_CLOSE);
           c->is_draining = 1;
           break;
-        default:
-          /* Per RFC6455, close conn when an unknown op is recvd */
-          ttg_event_error(c, "unknown WS op %d", op);
+        default: {
+          /* RFC 6455 §7.4.1: close with 1008 Policy Violation */
+          uint8_t close_payload[2] = {0x03, 0xF0}; /* 1008 in big-endian */
+          ttg_ws_send(c, close_payload, sizeof(close_payload), TTG_WS_OP_CLOSE);
+          c->is_draining = 1;
+          tt_log_err("%lu unknown WS op %d", c->id, op);
           break;
+        }
       }
 
       /* Handle fragmented frames: strip header, keep in c->recv */
@@ -233,6 +245,11 @@ static void ttg_ws_cb(struct ttg_conn* c, int ev, void* ev_data) {
         ttg_iobuf_del(&c->recv, ofs, msg.header_len); /* Strip header */
         len -= msg.header_len;
         ofs += len;
+        /* Enforce fragmented message size limit */
+        if (ofs > TTG_WS_MAX_FRAG_SIZE) {
+          ttg_event_error(c, "WS fragmented message too large");
+          return;
+        }
         c->pfn_data = (void*)ofs;
         /* tt_log_info("FRAG %d [%.*s]", (int) ofs, (int) ofs, c->recv.buf); */
       }
@@ -249,6 +266,9 @@ static void ttg_ws_cb(struct ttg_conn* c, int ev, void* ev_data) {
         c->pfn_data = NULL;
       }
     }
+    /* rc == -1: protocol error (unmasked frame or oversized payload) */
+    if (rc < 0)
+      ttg_event_error(c, "WS protocol error");
   }
   (void)ev_data;
 }
