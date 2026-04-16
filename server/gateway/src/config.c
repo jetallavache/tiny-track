@@ -67,6 +67,10 @@ void ttg_config_load(struct ttg_config* cfg, const char* config_path,
   cfg->auth_timeout_ms =
       (uint32_t)tt_config_read_int(config_path, "gateway.auth_timeout_ms", 5000);
 
+  /* CORS (optional) */
+  tt_config_read_str(config_path, "gateway.cors_origins", cfg->cors_origins,
+                     sizeof(cfg->cors_origins), "");
+
   /* CLI overrides take priority */
   if (hostname_override)
     snprintf(cfg->hostname, sizeof(cfg->hostname), "%s", hostname_override);

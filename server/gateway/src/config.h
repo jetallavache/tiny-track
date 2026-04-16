@@ -31,6 +31,9 @@ struct ttg_config {
   char auth_token[128];      /* Shared secret; empty = no auth       */
   uint32_t auth_timeout_ms;  /* Max ms to wait for CMD_AUTH (default 5000) */
 
+  /* CORS (optional) */
+  char cors_origins[512];    /* Comma-separated allowed origins, or "*", or "" = disabled */
+
   /* Safety limits */
   uint32_t max_connections;   /* Max simultaneous accepted conns (0 = 128) */
   uint32_t header_timeout_ms; /* Close if headers not received within N ms */

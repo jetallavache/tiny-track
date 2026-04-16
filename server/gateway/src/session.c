@@ -18,6 +18,7 @@
 static struct ttg_reader* g_reader;
 static char g_auth_token[128]; /* empty = auth disabled */
 static uint32_t g_auth_timeout_ms;
+static char g_cors_origins[512]; /* empty = CORS disabled */
 
 void ttg_session_init(struct ttg_reader* reader) {
   g_reader = reader;
@@ -26,6 +27,61 @@ void ttg_session_init(struct ttg_reader* reader) {
 void ttg_session_set_auth(const char* token, uint32_t timeout_ms) {
   snprintf(g_auth_token, sizeof(g_auth_token), "%s", token ? token : "");
   g_auth_timeout_ms = timeout_ms > 0 ? timeout_ms : 5000;
+}
+
+void ttg_session_set_cors(const char* origins) {
+  snprintf(g_cors_origins, sizeof(g_cors_origins), "%s", origins ? origins : "");
+}
+
+/*
+ * Build CORS headers for a given request Origin.
+ * Rules:
+ *   - cors_origins empty → no CORS headers (disabled)
+ *   - cors_origins == "*" → allow all (wildcard, no credentials)
+ *   - otherwise → check if request Origin is in the comma-separated whitelist;
+ *     if yes → reflect it back with Vary: Origin
+ *
+ * out must be at least 256 bytes.
+ */
+static void cors_headers_for(const char* req_origin, char* out, size_t out_size) {
+  out[0] = '\0';
+  if (g_cors_origins[0] == '\0' || req_origin == NULL || req_origin[0] == '\0')
+    return;
+
+  if (strcmp(g_cors_origins, "*") == 0) {
+    /* Wildcard: no credentials, no Authorization reflection */
+    snprintf(out, out_size,
+             "Access-Control-Allow-Origin: *\r\n"
+             "Access-Control-Allow-Headers: Authorization\r\n");
+    return;
+  }
+
+  /* Check whitelist: iterate comma-separated origins */
+  char list[512];
+  snprintf(list, sizeof(list), "%s", g_cors_origins);
+  char* tok = list;
+  char* end;
+  while (tok && *tok) {
+    /* trim leading spaces */
+    while (*tok == ' ') tok++;
+    end = strchr(tok, ',');
+    if (end) *end = '\0';
+    /* trim trailing spaces */
+    size_t len = strlen(tok);
+    while (len > 0 && tok[len - 1] == ' ') tok[--len] = '\0';
+
+    if (strcmp(tok, req_origin) == 0) {
+      snprintf(out, out_size,
+               "Access-Control-Allow-Origin: %s\r\n"
+               "Access-Control-Allow-Headers: Authorization\r\n"
+               "Access-Control-Allow-Credentials: true\r\n"
+               "Vary: Origin\r\n",
+               req_origin);
+      return;
+    }
+    tok = end ? end + 1 : NULL;
+  }
+  /* Origin not in whitelist — no CORS headers → browser blocks the request */
 }
 
 static void send_metrics(struct ttg_conn* c) {
@@ -300,12 +356,23 @@ static void on_ws_open(struct ttg_conn* c, struct ttg_http_message* hm) {
 }
 
 static void on_http(struct ttg_conn* c, struct ttg_http_message* hm) {
-  /* CORS header for all HTTP responses — allows browser clients from any origin */
-#define CORS "Access-Control-Allow-Origin: *\r\nAccess-Control-Allow-Headers: Authorization\r\n"
+  /* Build CORS headers based on request Origin and configured whitelist */
+  char cors[256] = "";
+  struct ttg_str* origin_hdr = ttg_http_get_header(hm, "Origin");
+  char origin_buf[256] = "";
+  if (origin_hdr && origin_hdr->len < sizeof(origin_buf)) {
+    memcpy(origin_buf, origin_hdr->buf, origin_hdr->len);
+    origin_buf[origin_hdr->len] = '\0';
+  }
+  cors_headers_for(origin_buf, cors, sizeof(cors));
 
   /* Handle CORS preflight */
   if (ttg_str_casecmp(hm->method, str("OPTIONS")) == 0) {
-    ttg_http_reply(c, 204, CORS "Access-Control-Allow-Methods: GET, OPTIONS\r\n", "");
+    if (cors[0])
+      ttg_http_reply(c, 204,
+                     "Access-Control-Allow-Methods: GET, OPTIONS\r\n", "%s", cors);
+    else
+      ttg_http_reply(c, 204, "", "");
     return;
   }
 
@@ -321,9 +388,11 @@ static void on_http(struct ttg_conn* c, struct ttg_http_message* hm) {
       snprintf(buf, sizeof(buf),
                "{\"cpu\":%u,\"mem\":%u,\"load1\":%u,\"rx\":%u,\"tx\":%u}",
                m.cpu_usage, m.mem_usage, m.load_1min, m.net_rx, m.net_tx);
-      ttg_http_reply(c, 200, "Content-Type: application/json\r\n" CORS, "%s", buf);
+      char hdrs[320];
+      snprintf(hdrs, sizeof(hdrs), "Content-Type: application/json\r\n%s", cors);
+      ttg_http_reply(c, 200, hdrs, "%s", buf);
     } else {
-      ttg_http_reply(c, 503, CORS, "{\"error\":\"No data available\"}");
+      ttg_http_reply(c, 503, cors, "{\"error\":\"No data available\"}");
     }
     return;
   }
@@ -350,17 +419,17 @@ static void on_http(struct ttg_conn* c, struct ttg_http_message* hm) {
                "tinytrack_net_tx_bytes_per_sec %u\n",
                m.cpu_usage / 100.0, m.mem_usage / 100.0, m.load_1min / 100.0,
                m.net_rx, m.net_tx);
-      ttg_http_reply(c, 200, "Content-Type: text/plain; version=0.0.4\r\n" CORS,
-                     "%s", buf);
+      char hdrs[320];
+      snprintf(hdrs, sizeof(hdrs),
+               "Content-Type: text/plain; version=0.0.4\r\n%s", cors);
+      ttg_http_reply(c, 200, hdrs, "%s", buf);
     } else {
-      ttg_http_reply(c, 503, CORS, "# No data available\n");
+      ttg_http_reply(c, 503, cors, "# No data available\n");
     }
     return;
   }
 
-  ttg_http_reply(c, 404, CORS, "Not Found\n");
-
-#undef CORS
+  ttg_http_reply(c, 404, cors, "Not Found\n");
 }
 
 void ttg_session_event_fn(struct ttg_conn* c, int ev, void* ev_data) {

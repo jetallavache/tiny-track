@@ -17,6 +17,9 @@ void ttg_session_init(struct ttg_reader* reader);
  * timeout_ms: max time for client to send CMD_AUTH (default 5000). */
 void ttg_session_set_auth(const char* token, uint32_t timeout_ms);
 
+/* Configure CORS. origins: comma-separated list, "*", or NULL/""=disabled. */
+void ttg_session_set_cors(const char* origins);
+
 void ttg_session_event_fn(struct ttg_conn* c, int ev, void* ev_data);
 void ttg_session_timer_fn(void* arg);
 

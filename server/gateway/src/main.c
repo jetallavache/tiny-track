@@ -206,6 +206,7 @@ int main(int argc, char** argv) {
   ttg_session_init(&reader);
   ttg_session_set_auth(cfg.auth_token[0] ? cfg.auth_token : NULL,
                        cfg.auth_timeout_ms);
+  ttg_session_set_cors(cfg.cors_origins[0] ? cfg.cors_origins : NULL);
 
   bool use_tls = ((ttg_url_is_ssl(cfg.listen)) != 0);
   if (use_tls && (cfg.tls_cert[0] == '\0' || cfg.tls_key[0] == '\0')) {
