@@ -5,6 +5,7 @@ import type { ThemePreset } from 'tinytsdk/react';
 export type Route =
   | 'introduction'
   | 'installation'
+  | 'docs'
   | 'themes'
   | 'MetricsBar'
   | 'MetricsPanel'
@@ -19,6 +20,7 @@ export type Route =
 const NAV: { label: string; route: Route; group?: string }[] = [
   { label: 'Introduction', route: 'introduction' },
   { label: 'Installation', route: 'installation' },
+  { label: 'Server Docs & Troubleshooting', route: 'docs' },
   { label: 'Themes', route: 'themes' },
   { label: 'MetricsBar', route: 'MetricsBar', group: 'Components' },
   { label: 'MetricsPanel', route: 'MetricsPanel', group: 'Components' },

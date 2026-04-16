@@ -5,6 +5,7 @@ import { Nav } from './Nav.js';
 import type { Route } from './Nav.js';
 import { Introduction } from './pages/Introduction.js';
 import { Installation } from './pages/Installation.js';
+import { PageDocs } from './pages/PageDocs.js';
 import { Themes } from './pages/Themes.js';
 import { PageMetricsBar } from './pages/PageMetricsBar.js';
 import { PageMetricsPanel } from './pages/PageMetricsPanel.js';
@@ -23,6 +24,7 @@ function PageContent({ route }: { route: Route }) {
   switch (route) {
     case 'introduction':    return <Introduction />;
     case 'installation':    return <Installation />;
+    case 'docs':            return <PageDocs />;
     case 'themes':          return <Themes />;
     case 'MetricsBar':      return <PageMetricsBar />;
     case 'MetricsPanel':    return <PageMetricsPanel />;
