@@ -28,13 +28,18 @@ export {
   CMD_GET_SYS_INFO,
   CMD_START,
   CMD_STOP,
+  CMD_AUTH,
+  /* Packet types (auth) */
+  PKT_AUTH_REQ,
   /* ACK status codes */
   ACK_OK,
   ACK_ERROR,
+  ACK_AUTH_FAIL,
   /* Builders */
   buildCmd,
   buildHistoryReq,
   buildSubscribe,
+  buildAuth,
   /* Parsers */
   parseHeader,
   parseMetrics,

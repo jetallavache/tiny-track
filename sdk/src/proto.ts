@@ -38,9 +38,18 @@ export const CMD_GET_RING_STATS = 0x10;
 export const CMD_GET_SYS_INFO = 0x11;
 export const CMD_START = 0x12;
 export const CMD_STOP = 0x13;
+export const CMD_AUTH = 0x14;
+
+export const PKT_AUTH_REQ = 0x15;
 
 export const ACK_OK = 0x00;
 export const ACK_ERROR = 0x01;
+export const ACK_AUTH_FAIL = 0x02;
+
+/* Protocol v3 — PLANNED, not yet implemented by server */
+export const PKT_ALERTS_RESP = 0x20;
+export const CMD_GET_ALERTS   = 0x20;
+export const CMD_CLEAR_ALERTS = 0x21;
 
 export interface TtMetrics {
   timestamp: number; // ms since epoch
@@ -254,6 +263,32 @@ export function buildSubscribe(level: number, intervalMs = 0): ArrayBuffer {
   h.setUint8(10, level);
   h.setUint32(11, intervalMs, false);
   h.setUint8(15, 0);
+  return buf;
+}
+
+/**
+ * Build a CMD_AUTH frame.
+ * Sent in response to PKT_AUTH_REQ, or proactively on connect.
+ * token must be ≤ 63 bytes (null-terminated in 64-byte field).
+ */
+export function buildAuth(token: string): ArrayBuffer {
+  /* payload: cmd_type(1) + tt_proto_auth.token(64) = 65 bytes */
+  const PAYLOAD_SIZE = 65;
+  const buf = new ArrayBuffer(HEADER_SIZE + PAYLOAD_SIZE);
+  const h = new DataView(buf);
+  const ts = Math.floor(Date.now() / 1000);
+  h.setUint8(0, PROTO_MAGIC);
+  h.setUint8(1, 0x02); /* v2 */
+  h.setUint8(2, PKT_CMD);
+  h.setUint16(3, PAYLOAD_SIZE, false);
+  h.setUint32(5, ts, false);
+  h.setUint8(9, calcChecksum(h));
+  h.setUint8(10, CMD_AUTH);
+  /* Write token as null-terminated UTF-8 into bytes 11..74 */
+  const enc = new TextEncoder();
+  const tokenBytes = enc.encode(token.slice(0, 63));
+  const view = new Uint8Array(buf, 11, 64);
+  view.set(tokenBytes);
   return buf;
 }
 

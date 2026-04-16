@@ -18,12 +18,14 @@ import {
   buildCmd,
   buildHistoryReq,
   buildSubscribe,
+  buildAuth,
   PKT_METRICS,
   PKT_CONFIG,
   PKT_ACK,
   PKT_RING_STATS,
   PKT_HISTORY_RESP,
   PKT_SYS_INFO,
+  PKT_AUTH_REQ,
   CMD_GET_SNAPSHOT,
   CMD_GET_RING_STATS,
   CMD_GET_SYS_INFO,
@@ -54,6 +56,8 @@ export type ClientEventMap = {
   stats: [s: TtStats];
   history: [r: TtHistoryResp];
   sysinfo: [s: TtSysInfo];
+  /** Fired when server requests authentication and no token is configured */
+  auth_required: [];
   /** Raw packet: fired for every incoming binary message before parsing */
   packet: [pktType: number, payload: DataView];
 };
@@ -69,6 +73,13 @@ export interface TinyTrackClientOptions {
   maxRetries?: number;
   /** WebSocket path. Default: '/websocket' */
   path?: string;
+  /**
+   * Shared secret for authentication.
+   * When set, the client automatically responds to PKT_AUTH_REQ with CMD_AUTH.
+   * For server-side clients that can set HTTP headers, pass the token via
+   * the Authorization header instead: `Authorization: Bearer <token>`.
+   */
+  token?: string;
 }
 
 export class TinyTrackClient {
@@ -87,6 +98,7 @@ export class TinyTrackClient {
       reconnectDelay: opts.reconnectDelay ?? 2000,
       maxRetries: opts.maxRetries ?? 0,
       path: opts.path ?? '/websocket',
+      token: opts.token ?? '',
     };
   }
 
@@ -195,6 +207,13 @@ export class TinyTrackClient {
       // Emit raw packet before parsing — for useRawPackets()
       this._emit('packet', frame.type, frame.payload);
       switch (frame.type) {
+        case PKT_AUTH_REQ:
+          if (this.opts.token) {
+            this._send(buildAuth(this.opts.token));
+          } else {
+            this._emit('auth_required');
+          }
+          break;
         case PKT_METRICS:
           this._emit('metrics', parseMetrics(frame.payload));
           break;
