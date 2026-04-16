@@ -8,7 +8,7 @@ import { useState, useEffect, useCallback, CSSProperties } from 'react';
 import { useTinyTrack } from '../../TinyTrackProvider.js';
 import { useTheme, TtTheme, themeStyles } from '../../theme.js';
 import { TtMetrics, TtHistoryResp } from '../../../client.js';
-import { RING_L1, RING_L2, RING_L3 } from '../../../proto.js';
+import { RING_L1, RING_L2, RING_L3, historyToMetrics } from '../../../proto.js';
 import {
   MetricType, AggregationType, SizeType, SIZE_SCALE,
   extractMetricValue, METRIC_LABEL, METRIC_COLOR_KEY,
@@ -85,7 +85,7 @@ export function TimeSeriesChart({
     if (!connected || !client) return;
     client.subscribe(level, 0);
     client.getHistory(level, maxSamples);
-    const onHistory = (r: TtHistoryResp) => { if (r.level === level) addSamples(r.samples); };
+    const onHistory = (r: TtHistoryResp) => { if (r.level === level) addSamples(historyToMetrics(r)); };
     const onMetrics = (m: TtMetrics) => addSamples([m]);
     client.on('history', onHistory);
     client.on('metrics', onMetrics);

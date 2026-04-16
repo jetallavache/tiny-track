@@ -40,6 +40,7 @@ export {
   buildHistoryReq,
   buildSubscribe,
   buildAuth,
+  historyToMetrics,
   /* Parsers */
   parseHeader,
   parseMetrics,
@@ -49,4 +50,4 @@ export {
   parseHistoryResp,
   parseSysInfo,
 } from './proto.js';
-export type { TtFrame, TtRingStat } from './proto.js';
+export type { TtFrame, TtRingStat, TtAggMetrics } from './proto.js';

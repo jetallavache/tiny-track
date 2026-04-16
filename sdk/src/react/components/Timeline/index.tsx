@@ -9,7 +9,7 @@ import { useState, useEffect, useCallback, CSSProperties } from 'react';
 import { useTinyTrack } from '../../TinyTrackProvider.js';
 import { useTheme, TtTheme, themeStyles } from '../../theme.js';
 import { TtMetrics, TtHistoryResp } from '../../../client.js';
-import { RING_L1, RING_L2, RING_L3 } from '../../../proto.js';
+import { RING_L1, RING_L2, RING_L3, historyToMetrics } from '../../../proto.js';
 import { MetricType, AggregationType, SizeType, SIZE_SCALE, METRIC_LABEL, METRIC_COLOR_KEY } from '../../utils/metrics.js';
 import { TimelineRow } from './TimelineRow.js';
 
@@ -88,7 +88,7 @@ export function Timeline({
     client.getHistory(RING_L1, 3600);
     client.getHistory(RING_L2, 1440);
     client.getHistory(RING_L3, 168);
-    const onHistory = (r: TtHistoryResp) => addSamples(r.level, r.samples);
+    const onHistory = (r: TtHistoryResp) => addSamples(r.level, historyToMetrics(r));
     const onMetrics  = (m: TtMetrics)    => addSamples(RING_L1, [m]);
     client.on('history', onHistory);
     client.on('metrics', onMetrics);

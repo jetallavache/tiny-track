@@ -59,4 +59,26 @@ void tt_metrics_aggregate_min(const void* samples, uint32_t count,
 /* Alias kept for backward compatibility — resolves to aggregate_avg. */
 #define tt_metrics_aggregate tt_metrics_aggregate_avg
 
+/*
+ * tt_agg_metrics — aggregated metrics for L2/L3 ring levels.
+ * Stores min/max/avg per window so peaks are not lost.
+ * L1 continues to use tt_metrics (raw samples).
+ *
+ * Wire size: 3 * sizeof(tt_metrics) = 156 bytes.
+ * The `is_aggregated` flag in PKT_HISTORY_RESP distinguishes L1 vs L2/L3.
+ */
+#pragma pack(push, 1)
+struct tt_agg_metrics {
+  struct tt_metrics avg; /* Average over the aggregation window */
+  struct tt_metrics min; /* Per-field minimum */
+  struct tt_metrics max; /* Per-field maximum */
+}; /* 156 bytes */
+#pragma pack(pop)
+
+/*
+ * Compute tt_agg_metrics (avg+min+max) from N tt_metrics samples.
+ */
+void tt_metrics_aggregate_agg(const void* samples, uint32_t count,
+                              size_t cell_size, struct tt_agg_metrics* out);
+
 #endif /* TT_METRICS_H */

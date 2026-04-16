@@ -72,8 +72,58 @@ Buffer lives in `/dev/shm` (tmpfs) — zero-copy mmap access. Periodically synce
 
 ## Endpoints
 
-| Протокол | Адрес | Описание |
-|----------|-------|----------|
-| WebSocket | `ws://host:25015/websocket` | Binary protocol v1/v2 |
+| Protocol | URL | Description |
+|----------|-----|-------------|
+| WebSocket | `ws://host:25015/websocket` | Binary protocol v1/v2, real-time streaming |
 | WebSocket TLS | `wss://host:25015/websocket` | Encrypted connection |
-| HTTP | `GET http://host:25015/api/metrics/live` | JSON metrics snapshot |
+| HTTP | `GET http://host:25015/api/metrics/live` | JSON snapshot of current metrics |
+| HTTP | `GET http://host:25015/metrics` | Prometheus/OpenMetrics text format |
+
+### Prometheus / Grafana
+
+The `/metrics` endpoint exposes all collected metrics in OpenMetrics format, compatible with Prometheus scraping and Grafana datasources.
+
+**Prometheus `scrape_config`:**
+
+```yaml
+scrape_configs:
+  - job_name: tinytrack
+    static_configs:
+      - targets: ['host:25015']
+    metrics_path: /metrics
+```
+
+**Grafana — Prometheus datasource:**
+
+Add a Prometheus datasource pointing to your Prometheus instance, then use PromQL:
+
+```promql
+tinytrack_cpu_usage_ratio * 100
+tinytrack_memory_usage_ratio * 100
+tinytrack_load_average{interval="1m"}
+tinytrack_network_receive_bytes_total
+```
+
+**Grafana — Infinity datasource (no Prometheus):**
+
+Install the [Infinity plugin](https://grafana.com/grafana/plugins/yesoreyeram-infinity-datasource/), add a datasource of type `Infinity`, then create a panel:
+
+- Type: `UQL`
+- URL: `http://host:25015/metrics`
+- Parser: `Backend` → `Prometheus`
+
+**Available metrics:**
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `tinytrack_cpu_usage_ratio` | gauge | CPU usage 0..1 |
+| `tinytrack_memory_usage_ratio` | gauge | Memory usage 0..1 |
+| `tinytrack_disk_usage_ratio` | gauge | Disk usage 0..1 |
+| `tinytrack_disk_total_bytes` | gauge | Total disk space |
+| `tinytrack_disk_free_bytes` | gauge | Free disk space |
+| `tinytrack_load_average{interval="1m\|5m\|15m"}` | gauge | Load average |
+| `tinytrack_processes_running` | gauge | Running processes |
+| `tinytrack_processes_total` | gauge | Total processes |
+| `tinytrack_network_receive_bytes_total` | counter | Network RX bytes/s |
+| `tinytrack_network_transmit_bytes_total` | counter | Network TX bytes/s |
+| `tinytrack_scrape_timestamp_ms` | gauge | Timestamp of last sample |

@@ -98,6 +98,7 @@ struct tt_proto_history_req {
 #define TT_HISTORY_BATCH_MAX 60u /* Max samples per response frame  */
 
 #define HISTORY_FLAG_LAST 0x01u /* Set on the final frame of a batch */
+#define HISTORY_FLAG_AGG  0x02u /* Set when payload contains tt_agg_metrics (L2/L3) */
 
 #pragma pack(push, 1)
 struct tt_proto_history_resp {

@@ -74,6 +74,56 @@ flowchart LR
 
 | Протокол | Адрес | Описание |
 |----------|-------|----------|
-| WebSocket | `ws://host:25015/websocket` | Бинарный протокол v1/v2 |
+| WebSocket | `ws://host:25015/websocket` | Бинарный протокол v1/v2, real-time стриминг |
 | WebSocket TLS | `wss://host:25015/websocket` | Зашифрованное соединение |
-| HTTP | `GET http://host:25015/api/metrics/live` | JSON-снимок метрик |
+| HTTP | `GET http://host:25015/api/metrics/live` | JSON-снимок текущих метрик |
+| HTTP | `GET http://host:25015/metrics` | Prometheus/OpenMetrics текстовый формат |
+
+### Prometheus / Grafana
+
+Эндпоинт `/metrics` отдаёт все метрики в формате OpenMetrics, совместимом с Prometheus и Grafana.
+
+**Prometheus `scrape_config`:**
+
+```yaml
+scrape_configs:
+  - job_name: tinytrack
+    static_configs:
+      - targets: ['host:25015']
+    metrics_path: /metrics
+```
+
+**Grafana — datasource Prometheus:**
+
+Добавьте datasource типа Prometheus, укажите адрес вашего Prometheus. Примеры PromQL:
+
+```promql
+tinytrack_cpu_usage_ratio * 100
+tinytrack_memory_usage_ratio * 100
+tinytrack_load_average{interval="1m"}
+tinytrack_network_receive_bytes_total
+```
+
+**Grafana — Infinity datasource (без Prometheus):**
+
+Установите [плагин Infinity](https://grafana.com/grafana/plugins/yesoreyeram-infinity-datasource/), добавьте datasource типа `Infinity`:
+
+- Type: `UQL`
+- URL: `http://host:25015/metrics`
+- Parser: `Backend` → `Prometheus`
+
+**Доступные метрики:**
+
+| Метрика | Тип | Описание |
+|---------|-----|----------|
+| `tinytrack_cpu_usage_ratio` | gauge | Загрузка CPU 0..1 |
+| `tinytrack_memory_usage_ratio` | gauge | Использование памяти 0..1 |
+| `tinytrack_disk_usage_ratio` | gauge | Использование диска 0..1 |
+| `tinytrack_disk_total_bytes` | gauge | Общий объём диска |
+| `tinytrack_disk_free_bytes` | gauge | Свободное место на диске |
+| `tinytrack_load_average{interval="1m\|5m\|15m"}` | gauge | Средняя нагрузка |
+| `tinytrack_processes_running` | gauge | Запущенные процессы |
+| `tinytrack_processes_total` | gauge | Всего процессов |
+| `tinytrack_network_receive_bytes_total` | counter | Входящий трафик байт/с |
+| `tinytrack_network_transmit_bytes_total` | counter | Исходящий трафик байт/с |
+| `tinytrack_scrape_timestamp_ms` | gauge | Timestamp последнего сэмпла |

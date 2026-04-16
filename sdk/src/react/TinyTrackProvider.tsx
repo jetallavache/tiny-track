@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useRef, useCallback, ReactNode } from 'react';
 import { TinyTrackClient, TtMetrics, TtConfig, TtStats, TtHistoryResp, TtSysInfo } from '../client.js';
+import { historyToMetrics } from '../proto.js';
 
 interface TinyTrackContextValue {
   client: TinyTrackClient | null;
@@ -115,7 +116,7 @@ export function useHistory(maxSamples = 3600) {
   useEffect(() => {
     if (!client) return;
     const onHistory = (r: TtHistoryResp) => {
-      buf.current = [...buf.current, ...r.samples].slice(-maxSamples);
+      buf.current = [...buf.current, ...historyToMetrics(r)].slice(-maxSamples);
       setSamples([...buf.current]);
     };
     client.on('history', onHistory);

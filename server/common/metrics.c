@@ -114,3 +114,12 @@ void tt_metrics_aggregate_min(const void* samples, uint32_t count,
 #undef MIN_FIELD
   }
 }
+
+void tt_metrics_aggregate_agg(const void* samples, uint32_t count,
+                              size_t cell_size, struct tt_agg_metrics* out) {
+  if (!samples || !out || count == 0)
+    return;
+  tt_metrics_aggregate_avg(samples, count, cell_size, &out->avg);
+  tt_metrics_aggregate_min(samples, count, cell_size, &out->min);
+  tt_metrics_aggregate_max(samples, count, cell_size, &out->max);
+}

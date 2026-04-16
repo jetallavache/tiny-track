@@ -30,6 +30,10 @@ export const RING_L1 = 0x01;
 export const RING_L2 = 0x02;
 export const RING_L3 = 0x03;
 
+// History flags
+export const HISTORY_FLAG_LAST = 0x01;
+export const HISTORY_FLAG_AGG  = 0x02; /* L2/L3: payload is tt_agg_metrics */
+
 // Commands
 export const CMD_SET_INTERVAL = 0x01;
 export const CMD_SET_ALERTS = 0x02;
@@ -108,7 +112,15 @@ export interface TtHistoryResp {
   level: number;
   count: number;
   last: boolean;
-  samples: TtMetrics[];
+  aggregated: boolean; /* true for L2/L3: samples are TtAggMetrics */
+  samples: TtMetrics[] | TtAggMetrics[];
+}
+
+/** Aggregated metrics for L2/L3 — min/max/avg per window (156 bytes). */
+export interface TtAggMetrics {
+  avg: TtMetrics;
+  min: TtMetrics;
+  max: TtMetrics;
 }
 
 export interface TtFrame {
@@ -181,17 +193,43 @@ export function parseStats(p: DataView): TtStats {
   };
 }
 
-/** Parse PKT_HISTORY_RESP payload. */
+/** Extract TtMetrics[] from a history response.
+ * For L2/L3 (aggregated), returns the avg field of each TtAggMetrics. */
+export function historyToMetrics(r: TtHistoryResp): TtMetrics[] {
+  if (r.aggregated) {
+    return (r.samples as TtAggMetrics[]).map((s) => s.avg);
+  }
+  return r.samples as TtMetrics[];
+}
+
+/** If HISTORY_FLAG_AGG is set (L2/L3), samples are TtAggMetrics (156 bytes each).
+ * Otherwise (L1), samples are TtMetrics (52 bytes each). */
 export function parseHistoryResp(p: DataView): TtHistoryResp {
   const level = p.getUint8(0);
   const count = p.getUint16(1, false);
   const flags = p.getUint8(3);
+  const last = (flags & HISTORY_FLAG_LAST) !== 0;
+  const aggregated = (flags & HISTORY_FLAG_AGG) !== 0;
+
+  if (aggregated) {
+    const samples: TtAggMetrics[] = [];
+    for (let i = 0; i < count; i++) {
+      const off = 4 + i * 156;
+      samples.push({
+        avg: parseMetrics(new DataView(p.buffer, p.byteOffset + off,      52)),
+        min: parseMetrics(new DataView(p.buffer, p.byteOffset + off + 52, 52)),
+        max: parseMetrics(new DataView(p.buffer, p.byteOffset + off + 104, 52)),
+      });
+    }
+    return { level, count, last, aggregated, samples };
+  }
+
   const samples: TtMetrics[] = [];
   for (let i = 0; i < count; i++) {
     const off = 4 + i * 52;
     samples.push(parseMetrics(new DataView(p.buffer, p.byteOffset + off, 52)));
   }
-  return { level, count, last: (flags & 0x01) !== 0, samples };
+  return { level, count, last, aggregated, samples };
 }
 
 /** Parse PKT_SYS_INFO payload (168 bytes). */

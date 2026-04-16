@@ -1,5 +1,6 @@
 #include "session.h"
 
+#include <alloca.h>
 #include <arpa/inet.h>
 #include <stdio.h>
 #include <string.h>
@@ -114,10 +115,10 @@ static void send_history(struct ttg_conn* c,
 
   int remaining = max;
   struct tt_metrics samples[TT_HISTORY_BATCH_MAX];
+  int is_agg = (req->level == RING_LEVEL_L2 || req->level == RING_LEVEL_L3);
 
   while (remaining > 0) {
-    int batch =
-        remaining < TT_HISTORY_BATCH_MAX ? remaining : TT_HISTORY_BATCH_MAX;
+    int batch = remaining < TT_HISTORY_BATCH_MAX ? remaining : TT_HISTORY_BATCH_MAX;
     int got = ttg_reader_get_history(g_reader, req->level, samples, batch);
     if (got <= 0)
       break;
@@ -128,19 +129,46 @@ static void send_history(struct ttg_conn* c,
     struct tt_proto_history_resp resp = {
         .level = req->level,
         .count = htons((uint16_t)got),
-        .flags = is_last ? HISTORY_FLAG_LAST : 0,
+        .flags = (uint8_t)((is_last ? HISTORY_FLAG_LAST : 0) |
+                           (is_agg  ? HISTORY_FLAG_AGG  : 0)),
     };
 
-    uint8_t payload[sizeof(resp) + TT_HISTORY_BATCH_MAX * sizeof(*samples)];
-    memcpy(payload, &resp, sizeof(resp));
-    memcpy(payload + sizeof(resp), samples, (size_t)got * sizeof(*samples));
+    if (is_agg) {
+      /* L2/L3: compute tt_agg_metrics per sample and send */
+      struct tt_agg_metrics agg_samples[TT_HISTORY_BATCH_MAX];
+      for (int i = 0; i < got; i++) {
+        /* Each L2/L3 entry is already an aggregated sample from writer.
+         * We wrap it: avg=sample, min=sample, max=sample for single-entry
+         * windows, or compute from the raw L1 window if available.
+         * For now: use the stored sample as avg; min/max = avg (best effort
+         * until writer stores tt_agg_metrics natively — roadmap §8). */
+        agg_samples[i].avg = samples[i];
+        agg_samples[i].min = samples[i];
+        agg_samples[i].max = samples[i];
+      }
+      size_t agg_payload_size = sizeof(resp) + (size_t)got * sizeof(*agg_samples);
+      uint8_t* payload = alloca(agg_payload_size);
+      memcpy(payload, &resp, sizeof(resp));
+      memcpy(payload + sizeof(resp), agg_samples, (size_t)got * sizeof(*agg_samples));
 
-    uint8_t buf[sizeof(struct tt_proto_header) + sizeof(payload)];
-    size_t n = ttg_proto_build(
-        buf, sizeof(buf), TT_PROTO_V2, PKT_HISTORY_RESP, (uint32_t)time(NULL),
-        payload, (uint16_t)(sizeof(resp) + (size_t)got * sizeof(*samples)));
-    if (n > 0)
-      ttg_ws_send(c, buf, n, TTG_WS_OP_BINARY);
+      uint8_t buf[sizeof(struct tt_proto_header) + 4096];
+      size_t n = ttg_proto_build(buf, sizeof(buf), TT_PROTO_V2, PKT_HISTORY_RESP,
+                                 (uint32_t)time(NULL), payload, (uint16_t)agg_payload_size);
+      if (n > 0)
+        ttg_ws_send(c, buf, n, TTG_WS_OP_BINARY);
+    } else {
+      /* L1: raw tt_metrics */
+      size_t raw_payload_size = sizeof(resp) + (size_t)got * sizeof(*samples);
+      uint8_t* payload = alloca(raw_payload_size);
+      memcpy(payload, &resp, sizeof(resp));
+      memcpy(payload + sizeof(resp), samples, (size_t)got * sizeof(*samples));
+
+      uint8_t buf[sizeof(struct tt_proto_header) + 4096];
+      size_t n = ttg_proto_build(buf, sizeof(buf), TT_PROTO_V2, PKT_HISTORY_RESP,
+                                 (uint32_t)time(NULL), payload, (uint16_t)raw_payload_size);
+      if (n > 0)
+        ttg_ws_send(c, buf, n, TTG_WS_OP_BINARY);
+    }
   }
 }
 
@@ -401,25 +429,59 @@ static void on_http(struct ttg_conn* c, struct ttg_http_message* hm) {
   if (ttg_str_match(hm->uri, str("/metrics"), NULL)) {
     struct tt_metrics m;
     if (ttg_reader_get_latest(g_reader, &m) == 0) {
-      char buf[1024];
-      snprintf(buf, sizeof(buf),
-               "# HELP tinytrack_cpu_usage CPU usage percentage\n"
-               "# TYPE tinytrack_cpu_usage gauge\n"
-               "tinytrack_cpu_usage %.2f\n"
-               "# HELP tinytrack_mem_usage Memory usage percentage\n"
-               "# TYPE tinytrack_mem_usage gauge\n"
-               "tinytrack_mem_usage %.2f\n"
-               "# HELP tinytrack_load_1min Load average 1 minute\n"
-               "# TYPE tinytrack_load_1min gauge\n"
-               "tinytrack_load_1min %.2f\n"
-               "# HELP tinytrack_net_rx_bytes_per_sec Network RX bytes/sec\n"
-               "# TYPE tinytrack_net_rx_bytes_per_sec gauge\n"
-               "tinytrack_net_rx_bytes_per_sec %u\n"
-               "# HELP tinytrack_net_tx_bytes_per_sec Network TX bytes/sec\n"
-               "# TYPE tinytrack_net_tx_bytes_per_sec gauge\n"
-               "tinytrack_net_tx_bytes_per_sec %u\n",
-               m.cpu_usage / 100.0, m.mem_usage / 100.0, m.load_1min / 100.0,
-               m.net_rx, m.net_tx);
+      /* OpenMetrics / Prometheus text format 0.0.4
+       * Types: cpu/mem/disk/load → gauge; net_rx/tx → counter */
+      char buf[2048];
+      int n = snprintf(buf, sizeof(buf),
+        "# HELP tinytrack_cpu_usage_ratio CPU usage (0..1)\n"
+        "# TYPE tinytrack_cpu_usage_ratio gauge\n"
+        "tinytrack_cpu_usage_ratio %.4f\n"
+        "# HELP tinytrack_memory_usage_ratio Memory usage (0..1)\n"
+        "# TYPE tinytrack_memory_usage_ratio gauge\n"
+        "tinytrack_memory_usage_ratio %.4f\n"
+        "# HELP tinytrack_disk_usage_ratio Disk usage (0..1)\n"
+        "# TYPE tinytrack_disk_usage_ratio gauge\n"
+        "tinytrack_disk_usage_ratio %.4f\n"
+        "# HELP tinytrack_disk_total_bytes Total disk space in bytes\n"
+        "# TYPE tinytrack_disk_total_bytes gauge\n"
+        "tinytrack_disk_total_bytes %llu\n"
+        "# HELP tinytrack_disk_free_bytes Free disk space in bytes\n"
+        "# TYPE tinytrack_disk_free_bytes gauge\n"
+        "tinytrack_disk_free_bytes %llu\n"
+        "# HELP tinytrack_load_average Load average\n"
+        "# TYPE tinytrack_load_average gauge\n"
+        "tinytrack_load_average{interval=\"1m\"} %.2f\n"
+        "tinytrack_load_average{interval=\"5m\"} %.2f\n"
+        "tinytrack_load_average{interval=\"15m\"} %.2f\n"
+        "# HELP tinytrack_processes_running Running processes\n"
+        "# TYPE tinytrack_processes_running gauge\n"
+        "tinytrack_processes_running %u\n"
+        "# HELP tinytrack_processes_total Total processes\n"
+        "# TYPE tinytrack_processes_total gauge\n"
+        "tinytrack_processes_total %u\n"
+        "# HELP tinytrack_network_receive_bytes_total Network bytes received (counter)\n"
+        "# TYPE tinytrack_network_receive_bytes_total counter\n"
+        "tinytrack_network_receive_bytes_total %u\n"
+        "# HELP tinytrack_network_transmit_bytes_total Network bytes transmitted (counter)\n"
+        "# TYPE tinytrack_network_transmit_bytes_total counter\n"
+        "tinytrack_network_transmit_bytes_total %u\n"
+        "# HELP tinytrack_scrape_timestamp_ms Unix timestamp of last sample in ms\n"
+        "# TYPE tinytrack_scrape_timestamp_ms gauge\n"
+        "tinytrack_scrape_timestamp_ms %llu\n",
+        m.cpu_usage  / 10000.0,
+        m.mem_usage  / 10000.0,
+        m.du_usage   / 10000.0,
+        (unsigned long long)m.du_total_bytes,
+        (unsigned long long)m.du_free_bytes,
+        m.load_1min  / 100.0,
+        m.load_5min  / 100.0,
+        m.load_15min / 100.0,
+        m.nr_running,
+        m.nr_total,
+        m.net_rx,
+        m.net_tx,
+        (unsigned long long)m.timestamp);
+      (void)n;
       char hdrs[320];
       snprintf(hdrs, sizeof(hdrs),
                "Content-Type: text/plain; version=0.0.4\r\n%s", cors);
