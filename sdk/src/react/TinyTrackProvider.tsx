@@ -55,11 +55,11 @@ export function TinyTrackProvider({ url, token, children, reconnect, reconnectDe
       setConnected(false);
       setSysinfo(null);
     };
-    client.on('open', onOpen);
+    client.on('ready', onOpen);  /* 'open' is kept as alias */
     client.on('close', onClose);
     client.on('sysinfo', setSysinfo);
-    client.connect();
-    return () => client.disconnect();
+    client.connect().catch(() => { /* reconnect handles retries */ });
+    return () => { client.disconnect(); };
   }, [client]);
 
   return (

@@ -1,5 +1,5 @@
-export { TinyTrackClient } from './client.js';
-export type { TinyTrackClientOptions, ClientEventMap } from './client.js';
+export { TinyTrackClient, createClient } from './client.js';
+export type { TinyTrackClientOptions, CreateClientOptions, ClientEventMap, ReconnectStrategy } from './client.js';
 export type { TtMetrics, TtConfig, TtAck, TtStats, TtHistoryResp, TtSysInfo } from './client.js';
 export {
   /* Protocol constants */
