@@ -13,6 +13,9 @@ import time
 
 import pytest
 
+# Honour WS_TIMEOUT env var so valgrind runs can use a larger timeout
+_DEFAULT_TIMEOUT = float(os.environ.get("WS_TIMEOUT", "5.0"))
+
 # ---------------------------------------------------------------------------
 # Minimal WebSocket client
 # ---------------------------------------------------------------------------
@@ -26,7 +29,9 @@ OP_PONG   = 0xA
 
 
 class WSClient:
-    def __init__(self, host, port, path="/websocket", timeout=5.0, ssl_ctx=None):
+    def __init__(self, host, port, path="/websocket", timeout=None, ssl_ctx=None):
+        if timeout is None:
+            timeout = _DEFAULT_TIMEOUT
         self._sock = socket.create_connection((host, port), timeout=timeout)
         if ssl_ctx:
             self._sock = ssl_ctx.wrap_socket(self._sock, server_hostname=host)
@@ -164,8 +169,10 @@ def parse_frame(data: bytes):
     return {"type": pkt_type, "version": version, "payload": payload, "timestamp": timestamp}
 
 
-def recv_until(ws, pkt_type, timeout=6.0):
+def recv_until(ws, pkt_type, timeout=None):
     """Receive frames until one with pkt_type is found or timeout."""
+    if timeout is None:
+        timeout = _DEFAULT_TIMEOUT
     deadline = time.time() + timeout
     while time.time() < deadline:
         remaining = deadline - time.time()
@@ -277,3 +284,167 @@ def test_ws_push_arrives(gateway):
     frame = recv_until(ws, PKT_METRICS, timeout=3.0)
     assert frame is not None, "no pushed PKT_METRICS within 3s"
     ws.close()
+
+
+# ---------------------------------------------------------------------------
+# Block D: protocol edge cases
+# ---------------------------------------------------------------------------
+
+CMD_SET_ALERTS   = 0x02
+CMD_GET_STATS    = 0x10
+CMD_GET_SYS_INFO = 0x11
+CMD_START        = 0x12
+CMD_STOP         = 0x13
+PKT_SYS_INFO     = 0x14
+RING_L3          = 0x03
+
+
+def build_cmd_interval(interval_ms):
+    payload = struct.pack("!BI4x", CMD_SET_INTERVAL, interval_ms)
+    return build_header(PROTO_V1, PKT_CMD, int(time.time()), len(payload)) + payload
+
+
+def build_cmd_raw(cmd_type):
+    payload = struct.pack("!B8x", cmd_type)
+    return build_header(PROTO_V1, PKT_CMD, int(time.time()), len(payload)) + payload
+
+
+def build_bad_magic():
+    payload = struct.pack("!B8x", CMD_GET_SNAPSHOT)
+    hdr = struct.pack("!BBBHIB", 0x00, PROTO_V1, PKT_CMD,
+                      len(payload), int(time.time()), 0)
+    return hdr[:9] + bytes([0]) + payload
+
+
+def build_bad_checksum():
+    payload = struct.pack("!B8x", CMD_GET_SNAPSHOT)
+    frame = build_header(PROTO_V1, PKT_CMD, int(time.time()), len(payload)) + payload
+    # flip checksum byte (index 9)
+    return frame[:9] + bytes([frame[9] ^ 0xFF]) + frame[10:]
+
+
+def build_subscribe_level(level):
+    payload = struct.pack("!BIB", level, 1000, 0)
+    return build_header(PROTO_V2, PKT_SUBSCRIBE, int(time.time()), len(payload)) + payload
+
+
+def test_ws_invalid_proto_magic(gateway):
+    """Frame with magic=0x00 must be silently ignored; connection stays alive."""
+    ws = WSClient(gateway["host"], gateway["port"])
+    recv_until(ws, PKT_METRICS)
+    ws.send(build_bad_magic())
+    # Send a valid snapshot right after — should still get a response
+    ws.send(build_cmd(CMD_GET_SNAPSHOT))
+    frame = recv_until(ws, PKT_METRICS, timeout=4.0)
+    ws.close()
+    assert frame is not None, "connection died after bad-magic frame"
+
+
+def test_ws_bad_checksum(gateway):
+    """Frame with wrong checksum must be silently ignored."""
+    ws = WSClient(gateway["host"], gateway["port"])
+    recv_until(ws, PKT_METRICS)
+    ws.send(build_bad_checksum())
+    ws.send(build_cmd(CMD_GET_SNAPSHOT))
+    frame = recv_until(ws, PKT_METRICS, timeout=4.0)
+    ws.close()
+    assert frame is not None, "connection died after bad-checksum frame"
+
+
+def test_ws_cmd_unknown(gateway):
+    """Unknown cmd_type must return ACK_ERROR."""
+    ws = WSClient(gateway["host"], gateway["port"])
+    recv_until(ws, PKT_METRICS)
+    ws.send(build_cmd_raw(0xFF))
+    frame = recv_until(ws, PKT_ACK, timeout=4.0)
+    ws.close()
+    assert frame is not None, "no ACK for unknown cmd"
+    status = struct.unpack_from("BB", frame["payload"])[1]
+    assert status != ACK_OK, f"expected ACK_ERROR for unknown cmd, got {status}"
+
+
+def test_ws_subscribe_invalid_level(gateway):
+    """Subscribe with level=0xFF must return ACK_ERROR."""
+    ws = WSClient(gateway["host"], gateway["port"])
+    recv_until(ws, PKT_METRICS)
+    ws.send(build_subscribe_level(0xFF))
+    frame = recv_until(ws, PKT_ACK, timeout=4.0)
+    ws.close()
+    assert frame is not None, "no ACK for invalid subscribe level"
+    status = struct.unpack_from("BB", frame["payload"])[1]
+    assert status != ACK_OK, f"expected ACK_ERROR for level=0xFF, got {status}"
+
+
+def test_ws_set_interval_too_low(gateway):
+    """interval_ms=100 is below minimum (1000) → ACK_ERROR."""
+    ws = WSClient(gateway["host"], gateway["port"])
+    recv_until(ws, PKT_METRICS)
+    ws.send(build_cmd_interval(100))
+    frame = recv_until(ws, PKT_ACK, timeout=4.0)
+    ws.close()
+    assert frame is not None, "no ACK for interval=100"
+    status = struct.unpack_from("BB", frame["payload"])[1]
+    assert status != ACK_OK, f"expected ACK_ERROR for interval=100, got {status}"
+
+
+def test_ws_set_interval_too_high(gateway):
+    """interval_ms=999999 is above maximum (60000) → ACK_ERROR."""
+    ws = WSClient(gateway["host"], gateway["port"])
+    recv_until(ws, PKT_METRICS)
+    ws.send(build_cmd_interval(999999))
+    frame = recv_until(ws, PKT_ACK, timeout=4.0)
+    ws.close()
+    assert frame is not None, "no ACK for interval=999999"
+    status = struct.unpack_from("BB", frame["payload"])[1]
+    assert status != ACK_OK, f"expected ACK_ERROR for interval=999999, got {status}"
+
+
+def test_ws_history_l2(gateway):
+    """L2 history request — server must respond (possibly empty) without crashing."""
+    ws = WSClient(gateway["host"], gateway["port"])
+    recv_until(ws, PKT_METRICS)
+    ws.send(build_history_req(RING_L2, 10))
+    # L2 may be empty on a fresh server; accept either a response or silence
+    frame = recv_until(ws, PKT_HISTORY_RESP, timeout=4.0)
+    ws.close()
+    if frame is not None:
+        assert frame["payload"][0] == RING_L2
+
+
+def test_ws_history_l3(gateway):
+    """L3 history request — server must respond (possibly empty) without crashing."""
+    ws = WSClient(gateway["host"], gateway["port"])
+    recv_until(ws, PKT_METRICS)
+    ws.send(build_history_req(RING_L3, 10))
+    frame = recv_until(ws, PKT_HISTORY_RESP, timeout=4.0)
+    ws.close()
+    if frame is not None:
+        assert frame["payload"][0] == RING_L3
+
+
+def test_ws_cmd_stop_start(gateway):
+    """CMD_STOP pauses pushes; CMD_START resumes them."""
+    ws = WSClient(gateway["host"], gateway["port"])
+    recv_until(ws, PKT_METRICS)
+
+    ws.send(build_cmd_raw(CMD_STOP))
+    # After STOP, no metrics should arrive for 2s
+    frame = recv_until(ws, PKT_METRICS, timeout=2.0)
+    assert frame is None, "received PKT_METRICS after CMD_STOP"
+
+    ws.send(build_cmd_raw(CMD_START))
+    frame = recv_until(ws, PKT_METRICS, timeout=4.0)
+    ws.close()
+    assert frame is not None, "no PKT_METRICS after CMD_START"
+
+
+def test_ws_get_sysinfo(gateway):
+    ws = WSClient(gateway["host"], gateway["port"])
+    recv_until(ws, PKT_METRICS)
+    ws.send(build_cmd_raw(CMD_GET_SYS_INFO))
+    frame = recv_until(ws, PKT_SYS_INFO, timeout=4.0)
+    ws.close()
+    assert frame is not None, "no PKT_SYS_INFO"
+    # hostname is first 64 bytes, must be non-empty
+    hostname = frame["payload"][:64].rstrip(b"\x00")
+    assert len(hostname) > 0, "empty hostname in PKT_SYS_INFO"

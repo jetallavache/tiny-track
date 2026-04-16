@@ -10,6 +10,7 @@ Runs on any Linux VPS. Consumes less than 1% CPU and under 10 MB of RAM.
 
 [![Build Status](https://github.com/jetallavache/tinytrack/actions/workflows/sdk-publish.yml/badge.svg)](https://github.com/jetallavache/tinytrack/actions/workflows/sdk-publish.yml)
 [![Build Status](https://github.com/jetallavache/tinytrack/actions/workflows/server.yml/badge.svg)](https://github.com/jetallavache/tinytrack/actions/workflows/server.yml)
+[![Build Status](https://github.com/jetallavache/tinytrack/actions/workflows/storybook.yml/badge.svg)](https://github.com/jetallavache/tinytrack/actions/workflows/storybook.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-27AE60.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/docker-hub-2496ED.svg?logo=docker&logoColor=white)](https://hub.docker.com/r/jetallavache/tinytrack)
 [![Platform: Linux](https://img.shields.io/badge/platform-Linux-E67E22.svg)](https://kernel.org/)

@@ -54,7 +54,8 @@ int ttd_config_load(const char* path, struct ttd_config* cfg) {
   cfg->l2_capacity = tt_config_read_int(path, "ringbuffer.l2_capacity", 1440);
   cfg->l2_agg_interval_sec =
       tt_config_read_int(path, "ringbuffer.l2_agg_interval_sec", 60);
-  cfg->l3_capacity = tt_config_read_int(path, "ringbuffer.l3_capacity", 168);
+  /* L3: 1 sample/hour × 24h × 31 days = 744 slots */
+  cfg->l3_capacity = tt_config_read_int(path, "ringbuffer.l3_capacity", 744);
   cfg->l3_agg_interval_sec =
       tt_config_read_int(path, "ringbuffer.l3_agg_interval_sec", 3600);
 

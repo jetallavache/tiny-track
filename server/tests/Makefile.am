@@ -19,30 +19,30 @@ COMMON_SRCS = \
     $(top_srcdir)/common/ringbuf/reader.c
 
 check_PROGRAMS = \
-    tinytd/test_ringbuf \
-    tinytd/test_metrics \
-    tinytd/test_config \
-    tinytd/test_shm \
-    tinytd/test_shm_ipc \
-    tinytd/test_shadow_sync \
-    tinytd/test_seqlock
+    tinytd/test_ringbuf.bin \
+    tinytd/test_metrics.bin \
+    tinytd/test_config.bin \
+    tinytd/test_shm.bin \
+    tinytd/test_shm_ipc.bin \
+    tinytd/test_shadow_sync.bin \
+    tinytd/test_seqlock.bin
 
-tinytd_test_ringbuf_SOURCES     = tinytd/test_ringbuf.c     $(COMMON_SRCS)
-tinytd_test_metrics_SOURCES     = tinytd/test_metrics.c     $(COMMON_SRCS)
-tinytd_test_config_SOURCES      = tinytd/test_config.c      $(COMMON_SRCS)
-tinytd_test_shm_SOURCES         = tinytd/test_shm.c         $(COMMON_SRCS)
-tinytd_test_shm_ipc_SOURCES     = tinytd/test_shm_ipc.c     $(COMMON_SRCS)
-tinytd_test_shadow_sync_SOURCES = tinytd/test_shadow_sync.c $(COMMON_SRCS)
-tinytd_test_seqlock_SOURCES     = tinytd/test_seqlock.c     $(COMMON_SRCS)
+tinytd_test_ringbuf_bin_SOURCES     = tinytd/test_ringbuf.c     $(COMMON_SRCS)
+tinytd_test_metrics_bin_SOURCES     = tinytd/test_metrics.c     $(COMMON_SRCS)
+tinytd_test_config_bin_SOURCES      = tinytd/test_config.c      $(COMMON_SRCS)
+tinytd_test_shm_bin_SOURCES         = tinytd/test_shm.c         $(COMMON_SRCS)
+tinytd_test_shm_ipc_bin_SOURCES     = tinytd/test_shm_ipc.c     $(COMMON_SRCS)
+tinytd_test_shadow_sync_bin_SOURCES = tinytd/test_shadow_sync.c $(COMMON_SRCS)
+tinytd_test_seqlock_bin_SOURCES     = tinytd/test_seqlock.c     $(COMMON_SRCS)
 
 TESTS = \
-    tinytd/test_ringbuf \
-    tinytd/test_metrics \
-    tinytd/test_config \
-    tinytd/test_shm \
-    tinytd/test_shm_ipc \
-    tinytd/test_shadow_sync \
-    tinytd/test_seqlock
+    tinytd/test_ringbuf.bin \
+    tinytd/test_metrics.bin \
+    tinytd/test_config.bin \
+    tinytd/test_shm.bin \
+    tinytd/test_shm_ipc.bin \
+    tinytd/test_shadow_sync.bin \
+    tinytd/test_seqlock.bin
 
 # ---------------------------------------------------------------------------
 # Test targets (delegate to run_tests.sh)
@@ -73,6 +73,23 @@ test-bench:
 test-all:
 	@$(RUN) all
 
+# check-local runs after the automake C unit tests; adds pytest gateway suite
+# when python3 is available. Failures here do NOT affect `make check` exit code
+# unless GATEWAY_TESTS=1 is set, keeping CI non-blocking by default.
+check-local:
+	@if command -v python3 >/dev/null 2>&1 && \
+	    test -x $(top_builddir)/gateway/tinytrack; then \
+	    echo "--- gateway pytest (make check-local) ---"; \
+	    python3 -m pytest $(srcdir)/gateway/test_ws.py \
+	                      $(srcdir)/gateway/test_http.py \
+	                      $(srcdir)/gateway/test_http_parser.py \
+	                      $(srcdir)/gateway/test_ws_frames.py \
+	                      $(srcdir)/gateway/test_load.py \
+	                      $(srcdir)/gateway/test_sock.py \
+	                      -q --tb=short 2>&1 || \
+	    { [ "$$GATEWAY_TESTS" = "1" ] && exit 1 || true; }; \
+	fi
+
 EXTRA_DIST = \
     README.md \
     tinytrack.conf-test \
@@ -87,6 +104,8 @@ EXTRA_DIST = \
     gateway/conftest.py \
     gateway/test_ws.py \
     gateway/test_http.py \
+    gateway/test_http_parser.py \
+    gateway/test_ws_frames.py \
     gateway/test_tls.py \
     gateway/test_sock.py \
     gateway/test_load.py \

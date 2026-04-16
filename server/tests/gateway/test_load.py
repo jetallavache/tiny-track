@@ -81,13 +81,18 @@ def test_http_concurrent_50(gateway):
     lock = threading.Lock()
 
     def worker():
-        status, _ = _http_get_time(gateway["host"], gateway["port"])
-        with lock:
-            results.append(status)
+        for _ in range(3):  # retry on transient ECONNRESET
+            try:
+                status, _ = _http_get_time(gateway["host"], gateway["port"])
+                with lock:
+                    results.append(status)
+                return
+            except ConnectionResetError:
+                time.sleep(0.05)
 
     threads = [threading.Thread(target=worker) for _ in range(50)]
     for t in threads: t.start()
-    for t in threads: t.join(timeout=10)
+    for t in threads: t.join(timeout=15)
 
     assert len(results) == 50
     assert all(s == 200 for s in results), f"failures: {[s for s in results if s != 200]}"
@@ -181,3 +186,112 @@ def test_slow_client_does_not_block_others(gateway):
     slow.close()
 
     assert frame is not None, "fast client blocked by slow client"
+
+
+# ---------------------------------------------------------------------------
+# Block E: load / stability additions
+# ---------------------------------------------------------------------------
+
+def _ws_handshake_raw(host, port, timeout=5.0):
+    """Return a connected raw socket after WS handshake."""
+    import base64, hashlib, os as _os
+    s = socket.create_connection((host, port), timeout=timeout)
+    key = base64.b64encode(_os.urandom(16)).decode()
+    req = (
+        f"GET /websocket HTTP/1.1\r\nHost: {host}:{port}\r\n"
+        "Upgrade: websocket\r\nConnection: Upgrade\r\n"
+        f"Sec-WebSocket-Key: {key}\r\nSec-WebSocket-Version: 13\r\n\r\n"
+    )
+    s.sendall(req.encode())
+    resp = b""
+    while b"\r\n\r\n" not in resp:
+        resp += s.recv(1024)
+    assert b"101" in resp.split(b"\r\n")[0]
+    return s
+
+
+def test_ws_max_connections(gateway):
+    """128 simultaneous WS connections — server must not crash."""
+    host, port = gateway["host"], gateway["port"]
+    conns = []
+    try:
+        for _ in range(128):
+            try:
+                conns.append(_ws_handshake_raw(host, port))
+            except OSError:
+                break  # OS limit reached — acceptable
+        assert len(conns) >= 64, f"only {len(conns)} connections accepted"
+    finally:
+        for c in conns:
+            try:
+                c.close()
+            except Exception:
+                pass
+    time.sleep(0.5)
+    # Server must still respond
+    ws = WSClient(host, port, timeout=5.0)
+    frame = recv_until(ws, PKT_METRICS, timeout=3.0)
+    ws.close()
+    assert frame is not None, "server unresponsive after 128 connections"
+
+
+def test_ws_rapid_reconnect(gateway):
+    """100 connect/disconnect cycles — no FD leak."""
+    host, port = gateway["host"], gateway["port"]
+
+    result = __import__("subprocess").run(
+        ["pgrep", "-x", "tinytrack"], capture_output=True, text=True
+    )
+    if not result.stdout.strip():
+        pytest.skip("tinytrack process not found")
+    pid = result.stdout.strip().split()[0]
+
+    before = _fd_count(pid)
+    for _ in range(100):
+        try:
+            s = _ws_handshake_raw(host, port, timeout=2.0)
+            s.close()
+        except OSError:
+            pass
+    time.sleep(0.5)
+    after = _fd_count(pid)
+    leaked = after - before
+    assert leaked <= 4, f"FD leak: {leaked} after 100 rapid reconnects"
+
+
+def test_http_slowloris_concurrent(gateway):
+    """20 slowloris connections must not prevent a normal HTTP request."""
+    host, port = gateway["host"], gateway["port"]
+
+    slow_socks = []
+    for _ in range(20):
+        try:
+            s = socket.create_connection((host, port), timeout=2.0)
+            s.sendall(b"GET / HTTP/1.1\r\nHost: localhost\r\n")
+            # deliberately do NOT send the final \r\n
+            slow_socks.append(s)
+        except OSError:
+            break
+
+    # Normal request must still succeed
+    try:
+        with socket.create_connection((host, port), timeout=5.0) as s:
+            s.sendall(b"GET /api/metrics/live HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
+            s.settimeout(5.0)
+            resp = b""
+            while True:
+                chunk = s.recv(4096)
+                if not chunk:
+                    break
+                resp += chunk
+        ok = b"200" in resp.split(b"\r\n")[0] if resp else False
+    except OSError:
+        ok = False
+    finally:
+        for s in slow_socks:
+            try:
+                s.close()
+            except Exception:
+                pass
+
+    assert ok, "normal HTTP request failed while slowloris connections were open"

@@ -41,12 +41,10 @@ void ttd_collector_cleanup(void) {
     close(g_net_fd);
 }
 
-int direct_statvfs(const char* path, struct statvfs* buf) {
-  /* Always use the libc statvfs() wrapper - the raw SYS_statvfs constant
-   * defined in collector.h maps to syscall 137 which is actually statfs()
-   * on x86_64 and writes struct statfs (120 bytes) into a struct statvfs
-   * buffer (112 bytes), overflowing 8 bytes and corrupting the caller's
-   * saved registers on the stack. */
+/* Use the libc statvfs() wrapper. A raw syscall(SYS_statvfs) would write
+ * struct statfs (120 bytes) into a struct statvfs buffer (112 bytes),
+ * overflowing 8 bytes and corrupting the stack. */
+static inline int direct_statvfs(const char* path, struct statvfs* buf) {
   return statvfs(path, buf);
 }
 
@@ -205,8 +203,14 @@ void ttd_collect_net(struct ttd_collector_state* st, unsigned long* rx,
   time_t elapsed = now - st->net_time_prev;
 
   if (elapsed > 0 && st->net_time_prev > 0) {
-    *rx = (curr.rx_bytes - st->net_prev.rx_bytes) / elapsed;
-    *tx = (curr.tx_bytes - st->net_prev.tx_bytes) / elapsed;
+    if (curr.rx_bytes >= st->net_prev.rx_bytes)
+      *rx = (curr.rx_bytes - st->net_prev.rx_bytes) / elapsed;
+    else
+      *rx = 0; /* counter reset / wrap */
+    if (curr.tx_bytes >= st->net_prev.tx_bytes)
+      *tx = (curr.tx_bytes - st->net_prev.tx_bytes) / elapsed;
+    else
+      *tx = 0;
   } else {
     *rx = *tx = 0;
   }

@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <fcntl.h>
 #include <getopt.h>
 #include <grp.h>
@@ -5,6 +6,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -79,7 +81,8 @@ static int drop_privileges(const char* user, const char* group) {
     tt_log_err("setgid failed");
     return -1;
   }
-  setgroups(0, NULL); /* drop supplementary groups inherited from root */
+  if (setgroups(0, NULL) < 0)
+    tt_log_warning("setgroups failed: %s", strerror(errno));
 
   struct passwd* pw = getpwnam(user);
   if (!pw) {

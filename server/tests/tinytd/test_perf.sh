@@ -52,7 +52,7 @@ if [ ! -x "$TINYTD" ]; then
 fi
 
 rm -f "$LIVE" "$SHADOW"
-$TINYTD -c "$CONF" >/dev/null 2>&1 &
+$TINYTD -n -c "$CONF" >/dev/null 2>&1 &
 pid=$!
 sleep 0.5
 

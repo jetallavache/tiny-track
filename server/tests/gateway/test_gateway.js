@@ -116,8 +116,8 @@ async function runTests() {
            `got ${m.mem_usage}`);
         ok('metrics.timestamp > 0', m.timestamp > 0, `got ${m.timestamp}`);
 
-        /* Send CMD_GET_STATS (v2) */
-        ws.send(proto.buildCmd(P.CMD_GET_STATS));
+        /* Send CMD_GET_RING_STATS (v2) */
+        ws.send(proto.buildCmd(P.CMD_GET_RING_STATS));
 
         /* Request L1 history */
         ws.send(proto.buildHistoryReq(P.RING_L1, 10, 0, 0));
@@ -143,7 +143,7 @@ async function runTests() {
         ok('history count >= 0', count >= 0, `got ${count}`);
       }
 
-      if (frame.type === P.PKT_STATS && !gotStats) {
+      if (frame.type === P.PKT_RING_STATS && !gotStats) {
         gotStats = true;
         ok('PKT_STATS received', true);
         ok('PKT_STATS size >= 75', frame.payload.byteLength >= 75,

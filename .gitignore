@@ -58,6 +58,12 @@ valgrind-*.core.*
 /tmp/tinytd-test-live.dat
 /tmp/tinytd-test-shadow.dat
 
+# Automake test output
+server/tests/test-suite.log
+server/tests/tinytd/*.log
+server/tests/tinytd/*.trs
+server/tests/tinytd/*.bin
+
 # Node.js
 node_modules/
 
@@ -74,6 +80,5 @@ sdk/storybook-static
 # Demo build output
 demo/dist/
 demo/*.tsbuildinfo
-docs/roadmap.md
-docs/roadmap-2.md
+docs/roadmap-*.md
 docs/dev-history.md

@@ -42,14 +42,15 @@ fi
 cleanup() { rm -f "$LIVE" "$SHADOW"; }
 
 start_daemon() {
-    $TINYTD -c "$CONF" >/dev/null 2>&1 &
-    echo $!
+    $TINYTD -n -c "$CONF" >/dev/null 2>&1 &
+    _daemon_pid=$!
 }
 
 # --- SIGTERM: graceful shutdown -------------------------------------------
 printf '\n[SIGTERM]\n'
 cleanup
-pid=$(start_daemon)
+start_daemon
+pid=$_daemon_pid
 sleep 0.5
 
 if kill -0 "$pid" 2>/dev/null; then
@@ -70,7 +71,8 @@ cleanup
 # --- SIGHUP: reload without crash -----------------------------------------
 printf '\n[SIGHUP]\n'
 cleanup
-pid=$(start_daemon)
+start_daemon
+pid=$_daemon_pid
 sleep 0.5
 
 if kill -0 "$pid" 2>/dev/null; then
@@ -91,7 +93,8 @@ cleanup
 # --- SIGKILL + recovery ---------------------------------------------------
 printf '\n[SIGKILL + recovery]\n'
 cleanup
-pid=$(start_daemon)
+start_daemon
+pid=$_daemon_pid
 sleep 1
 
 if kill -0 "$pid" 2>/dev/null; then
@@ -101,7 +104,8 @@ if kill -0 "$pid" 2>/dev/null; then
     wait "$pid" 2>/dev/null
 
     if [ $shadow_exists -eq 1 ]; then
-        pid2=$(start_daemon)
+        start_daemon
+        pid2=$_daemon_pid
         sleep 0.5
         if kill -0 "$pid2" 2>/dev/null; then
             check "recovery: daemon restarts after SIGKILL" 0

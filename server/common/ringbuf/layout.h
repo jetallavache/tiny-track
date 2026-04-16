@@ -19,7 +19,7 @@
 struct ttr_header {
   uint32_t magic;               /* TTR_MAGIC */
   uint32_t version;             /* TTR_VERSION */
-  uint32_t crc32;               /* CRC32 of the entire file */
+  uint32_t checksum;            /* Adler32 of the entire shadow file (0 = disabled) */
   uint64_t last_update_ts;      /* Timestamp of last update (heartbeat) */
   uint64_t last_shadow_sync_ts; /* Timestamp of last shadow sync */
   uint32_t writer_pid;          /* PID of the writer process */
@@ -50,8 +50,9 @@ struct ttr_consumer_table {
 /* Ring buffer metadata - 64 bytes */
 struct ttr_meta {
   _Atomic uint32_t seq;  /* Sequence counter for seqlock */
-  _Atomic uint32_t head; /* Write position */
-  _Atomic uint32_t tail; /* Read position (for single consumer) */
+  _Atomic uint32_t head; /* Write position (next slot to write) */
+  uint32_t _reserved;    /* Reserved; always 0. Writer uses head-based indexing;
+                            no per-consumer read cursor is maintained. */
   uint32_t capacity;     /* Capacity in elements */
   uint32_t cell_size;    /* Size of one element */
   uint64_t first_ts;     /* Timestamp of the first element */
