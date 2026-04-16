@@ -60,10 +60,14 @@
     <!-- WebSocket -->
     <div class="section">
       <b>WebSocket</b><br />
-      <input id="wsUrl" type="text" value="ws://localhost:25015/websocket" style="width: 360px" />
+      <input id="wsUrl" type="text" value="http://localhost:25015/websocket" style="width: 360px" />
       <button id="wsConnect">Connect</button>
       <button id="wsDisconnect">Disconnect</button>
       <span id="wsStatus" style="margin-left: 10px; color: red">Disconnected</span>
+      <br /><br />
+      Auth Token (optional):
+      <input id="authToken" type="text" placeholder="leave empty if auth disabled" style="width: 260px" />
+      <button id="sendAuth">Send Auth</button>
     </div>
 
     <!-- Commands -->
@@ -123,9 +127,14 @@
 
     <!-- HTTP REST -->
     <div class="section">
-      <b>HTTP REST</b><br />
-      <input id="apiUrl" type="text" value="http://localhost:4026/api/metrics/live" style="width: 360px" />
-      <button id="fetchMetrics">Fetch</button>
+      <b>HTTP Endpoints</b><br />
+      Base URL: <input id="apiUrl" type="text" value="http://localhost:25015/api/metrics/live" style="width: 360px" />
+      <br /><br />
+      <button id="fetchMetrics">GET /api/metrics/live</button>
+      — JSON snapshot (REST)<br /><br />
+      <button id="fetchPrometheus">GET /metrics</button>
+      — Prometheus/OpenMetrics format (for Grafana)<br />
+      <pre id="prometheusOut" style="background:#f0f0f0;padding:8px;max-height:200px;overflow-y:auto;font-size:0.8em"></pre>
     </div>
 
     <!-- Log -->
