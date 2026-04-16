@@ -50,7 +50,11 @@ struct ttg_mgr {
   void* tls_ctx;           /* struct ttg_tls_ctx*, NULL if TLS disabled */
   struct tt_timer* timers; /* Active timers */
   TTG_SOCK_TYPE pipe;
-  uint32_t max_connections; /* 0 = unlimited */
+  uint32_t max_connections;  /* 0 = unlimited */
+  uint32_t header_timeout_ms; /* Close if headers not received within N ms (0=10000) */
+  uint32_t idle_timeout_ms;   /* Close idle WS conn after N ms (0=disabled) */
+  uint32_t max_uri_size;      /* Max URI length in bytes (0=8192) */
+  uint32_t max_headers_size;  /* Max total headers size in bytes (0=16384) */
 };
 
 /* Connection */
@@ -82,6 +86,7 @@ struct ttg_conn {
   time_t last_update_time;     /* Last update time */
   time_t accept_time;          /* Time of accept(); 0 for outgoing connections */
   time_t auth_deadline;        /* Deadline for CMD_AUTH (0 = no deadline) */
+  time_t last_recv_time;       /* Last time data was received (for idle timeout) */
   uint8_t sub_level; /* Ring level subscription: RING_LEVEL_L1/L2/L3 */
 
   unsigned is_listening : 1;     /* Listening for connections */

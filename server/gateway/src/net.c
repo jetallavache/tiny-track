@@ -179,11 +179,22 @@ void ttg_net_mgr_poll(struct ttg_mgr* mgr, int ms) {
 
     if (c->is_draining && c->send.len == 0)
       c->is_closing = 1;
-    /* Header receive timeout: close accepted non-WS connections idle > 10s */
+    /* Header receive timeout */
     if (!c->is_closing && c->is_accepted && !c->is_websocket &&
-        c->accept_time > 0 && (time(NULL) - c->accept_time) > 10) {
-      tt_log_info("%lu header timeout, closing", c->id);
-      c->is_closing = 1;
+        c->accept_time > 0) {
+      uint32_t hto_ms = mgr->header_timeout_ms ? mgr->header_timeout_ms : 10000;
+      if (now - (uint64_t)c->accept_time * 1000 > hto_ms) {
+        tt_log_info("%lu header timeout (%u ms), closing", c->id, hto_ms);
+        c->is_closing = 1;
+      }
+    }
+    /* Idle timeout for WS connections */
+    if (!c->is_closing && c->is_websocket && mgr->idle_timeout_ms > 0 &&
+        c->last_recv_time > 0) {
+      if (now - (uint64_t)c->last_recv_time * 1000 > mgr->idle_timeout_ms) {
+        tt_log_info("%lu idle timeout (%u ms), closing", c->id, mgr->idle_timeout_ms);
+        c->is_closing = 1;
+      }
     }
     if (c->is_closing)
       ttg_sock_close_conn(c);

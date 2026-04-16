@@ -291,6 +291,7 @@ static void iolog(struct ttg_conn* c, char* buf, long n, bool r) {
     }
     if (r) {
       c->recv.len += (size_t)n;
+      c->last_recv_time = time(NULL);
       ttg_event_call(c, TTG_EVENT_READ, &n);
     } else {
       ttg_iobuf_del(&c->send, 0, (size_t)n);

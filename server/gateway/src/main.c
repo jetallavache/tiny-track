@@ -235,7 +235,11 @@ int main(int argc, char** argv) {
 
   struct ttg_mgr mgr;
   ttg_net_mgr_init(&mgr, use_tls ? &tls_cfg : NULL);
-  mgr.max_connections = cfg.max_connections;
+  mgr.max_connections  = cfg.max_connections;
+  mgr.header_timeout_ms = cfg.header_timeout_ms ? cfg.header_timeout_ms : 10000;
+  mgr.idle_timeout_ms  = cfg.idle_timeout_ms;
+  mgr.max_uri_size     = cfg.max_uri_size     ? cfg.max_uri_size     : 8192;
+  mgr.max_headers_size = cfg.max_headers_size ? cfg.max_headers_size : 16384;
   if (use_tls && !mgr.tls_ctx) {
     tt_log_err("TLS        context init failed — check cert/key files");
     tt_log_err("  See https://tinytrack.dev/docs/troubleshooting#tls-init");
