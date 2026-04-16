@@ -1,5 +1,9 @@
 .kiro
 
+# Environment files with secrets
+demo/.env
+demo/.env.local
+
 # Private OpenSSL gen
 server/etc/certs/*.crt
 server/etc/certs/*.key
