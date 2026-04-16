@@ -178,29 +178,35 @@ int main(int argc, char** argv) {
       .async = false,
   };
   tt_log_init(&log_cfg);
-  tt_log_notice("tinytrack gateway starting (config=%s)", config_path);
+
+  /* ── Startup ─────────────────────────────────────────────────────── */
+  tt_log_notice("tinytrack gateway starting (config=%s)",
+                config_path ? config_path : "(default)");
 
   signal(SIGTERM, signal_handler);
   signal(SIGINT, signal_handler);
 
+  /* ── Storage ─────────────────────────────────────────────────────── */
   static struct ttg_reader reader;
   if (ttg_reader_open(&reader, cfg.shm_path) != 0) {
-    tt_log_err("Failed to open mmap: %s", cfg.shm_path);
+    tt_log_err("Cannot open shared memory: %s", cfg.shm_path);
+    tt_log_err("  Is tinytd running?  See https://tinytrack.dev/docs/troubleshooting#no-mmap");
     return 1;
   }
-  tt_log_info("Opened mmap: %s", cfg.shm_path);
+  tt_log_info("Storage    mmap=%s  daemon=running", cfg.shm_path);
 
   if (write_pid_file(cfg.pid_file) < 0)
-    tt_log_warning("Failed to write pid file: %s", cfg.pid_file);
+    tt_log_warning("PID file   cannot write %s (non-fatal)", cfg.pid_file);
 
   if (getuid() == 0) {
     if (drop_privileges(cfg.user, cfg.group) < 0) {
-      tt_log_err("Failed to drop privileges");
+      tt_log_err("Privileges cannot drop to %s:%s", cfg.user, cfg.group);
+      tt_log_err("  See https://tinytrack.dev/docs/troubleshooting#drop-privileges");
       ttg_reader_close(&reader);
       unlink(cfg.pid_file);
       return 1;
     }
-    tt_log_info("Privileges dropped to %s:%s", cfg.user, cfg.group);
+    tt_log_info("Privileges user=%s  group=%s", cfg.user, cfg.group);
   }
 
   ttg_session_init(&reader);
@@ -210,7 +216,8 @@ int main(int argc, char** argv) {
 
   bool use_tls = ((ttg_url_is_ssl(cfg.listen)) != 0);
   if (use_tls && (cfg.tls_cert[0] == '\0' || cfg.tls_key[0] == '\0')) {
-    tt_log_err("wss:// requires gateway.tls_cert and gateway.tls_key");
+    tt_log_err("TLS        cert or key not set (tls=true requires tls_cert + tls_key)");
+    tt_log_err("  See https://tinytrack.dev/docs/troubleshooting#tls-config");
     ttg_reader_close(&reader);
     unlink(cfg.pid_file);
     return 1;
@@ -225,7 +232,8 @@ int main(int argc, char** argv) {
   struct ttg_mgr mgr;
   ttg_net_mgr_init(&mgr, use_tls ? &tls_cfg : NULL);
   if (use_tls && !mgr.tls_ctx) {
-    tt_log_err("TLS initialisation failed");
+    tt_log_err("TLS        context init failed — check cert/key files");
+    tt_log_err("  See https://tinytrack.dev/docs/troubleshooting#tls-init");
     ttg_reader_close(&reader);
     unlink(cfg.pid_file);
     return 1;
@@ -233,18 +241,26 @@ int main(int argc, char** argv) {
 
   ttg_net_timer_add(&mgr, 500, TIMER_REPEAT, ttg_session_timer_fn, &mgr);
 
+  /* ── Endpoints ───────────────────────────────────────────────────── */
   tt_log_info("WebSocket  %s/websocket", cfg.listen);
   tt_log_info("HTTP API   %s/api/metrics/live", cfg.listen);
   tt_log_info("Prometheus %s/metrics", cfg.listen);
-  tt_log_info("TLS        %s", cfg.tls ? "enabled" : "disabled");
-  tt_log_info("Auth       %s", cfg.auth_token[0] ? "enabled (Bearer / CMD_AUTH)" : "disabled");
+
+  /* ── Security ────────────────────────────────────────────────────── */
+  tt_log_info("TLS        %s", use_tls ? "enabled" : "disabled");
+  tt_log_info("Auth       %s", cfg.auth_token[0]
+                  ? "enabled (Bearer header / CMD_AUTH)"
+                  : "disabled");
   if (cfg.cors_origins[0])
-    tt_log_info("CORS       %s",
-                strcmp(cfg.cors_origins, "*") == 0
-                    ? "* (all origins, dev mode)"
+    tt_log_info("CORS       %s", strcmp(cfg.cors_origins, "*") == 0
+                    ? "* (all origins — dev mode only)"
                     : cfg.cors_origins);
   else
     tt_log_info("CORS       disabled");
+
+  /* ── Ready ───────────────────────────────────────────────────────── */
+  tt_log_notice("tinytrack ready  listen=%s  pid=%d",
+                cfg.listen, (int)getpid());
 
   ttg_http_listen(&mgr, cfg.listen, ttg_session_event_fn, NULL);
 

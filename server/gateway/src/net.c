@@ -81,7 +81,8 @@ struct ttg_conn* ttg_net_listen(struct ttg_mgr* mgr, const char* url,
   if ((c = ttg_net_alloc_conn(mgr)) == NULL) {
     tt_log_err("OOM %s", url);
   } else if (!ttg_sock_open_listener(c, url)) {
-    tt_log_err("Failed: %s", url);
+    tt_log_err("Cannot listen on %s — check hostname/port in config", url);
+    tt_log_err("  See https://tinytrack.dev/docs/troubleshooting#port-in-use");
     free(c);
     c = NULL;
   } else {
