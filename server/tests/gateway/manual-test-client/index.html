@@ -127,13 +127,23 @@
 
     <!-- HTTP REST -->
     <div class="section">
-      <b>HTTP Endpoints</b><br />
-      Base URL: <input id="apiUrl" type="text" value="http://localhost:25015/api/metrics/live" style="width: 360px" />
+      <b>HTTP Endpoints (v1 API)</b><br />
+      Base URL: <input id="apiUrl" type="text" value="http://localhost:25015/" style="width: 300px" />
+      Format: <select id="apiFormat">
+        <option value="">json (default)</option>
+        <option value="csv">csv</option>
+        <option value="xml">xml</option>
+        <option value="prometheus">prometheus</option>
+      </select>
       <br /><br />
-      <button id="fetchMetrics">GET /api/metrics/live</button>
-      — JSON snapshot (REST)<br /><br />
-      <button id="fetchPrometheus">GET /metrics</button>
-      — Prometheus/OpenMetrics format (for Grafana)<br />
+      <button id="fetchMetrics">GET /v1/metrics</button>
+      <button id="fetchPrometheus">GET /v1/metrics?format=prometheus</button>
+      <button id="fetchSysinfo">GET /v1/sysinfo</button>
+      <button id="fetchStatus">GET /v1/status</button>
+      <br /><br />
+      <button id="postPause">POST /v1/stream/pause</button>
+      <button id="postResume">POST /v1/stream/resume</button>
+      <br />
       <pre id="prometheusOut" style="background:#f0f0f0;padding:8px;max-height:200px;overflow-y:auto;font-size:0.8em"></pre>
     </div>
 

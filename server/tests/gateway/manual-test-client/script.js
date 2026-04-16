@@ -246,8 +246,76 @@ document.getElementById('getHistory').addEventListener('click', () => {
 });
 
 document.getElementById('fetchMetrics').addEventListener('click', async () => {
-  const url = document.getElementById('apiUrl').value;
+  const base = document.getElementById('apiUrl').value;
+  const fmt = document.getElementById('apiFormat').value;
+  const url = `${base}v1/metrics${fmt ? '?format=' + fmt : ''}`;
+  const token = document.getElementById('authToken').value.trim();
   try {
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+    const r = await fetch(url, { headers });
+    const text = await r.text();
+    document.getElementById('prometheusOut').textContent = text;
+    addLog(`✓ GET ${url} → ${r.status} (${fmt || 'json'})`);
+  } catch (e) {
+    addLog(`✗ HTTP error: ${e.message}`);
+  }
+});
+
+document.getElementById('fetchPrometheus').addEventListener('click', async () => {
+  const base = document.getElementById('apiUrl').value;
+  const url = `${base}v1/metrics?format=prometheus`;
+  const token = document.getElementById('authToken').value.trim();
+  try {
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+    const r = await fetch(url, { headers });
+    const text = await r.text();
+    document.getElementById('prometheusOut').textContent = text;
+    addLog(`✓ GET ${url} — ${text.split('\n').length} lines`);
+  } catch (e) {
+    addLog(`✗ Prometheus fetch error: ${e.message}`);
+  }
+});
+
+document.getElementById('fetchSysinfo').addEventListener('click', async () => {
+  const base = document.getElementById('apiUrl').value;
+  const token = document.getElementById('authToken').value.trim();
+  try {
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+    const r = await fetch(`${base}v1/sysinfo`, { headers });
+    const d = await r.json();
+    document.getElementById('prometheusOut').textContent = JSON.stringify(d, null, 2);
+    addLog(`✓ GET /v1/sysinfo → ${r.status}`);
+  } catch (e) { addLog(`✗ ${e.message}`); }
+});
+
+document.getElementById('fetchStatus').addEventListener('click', async () => {
+  const base = document.getElementById('apiUrl').value;
+  try {
+    const r = await fetch(`${base}v1/status`);
+    const d = await r.json();
+    addLog(`✓ GET /v1/status → ${r.status} ${JSON.stringify(d)}`);
+  } catch (e) { addLog(`✗ ${e.message}`); }
+});
+
+document.getElementById('postPause').addEventListener('click', async () => {
+  const base = document.getElementById('apiUrl').value;
+  const token = document.getElementById('authToken').value.trim();
+  try {
+    const headers = { ...(token ? { 'Authorization': `Bearer ${token}` } : {}) };
+    const r = await fetch(`${base}v1/stream/pause`, { method: 'POST', headers });
+    addLog(`✓ POST /v1/stream/pause → ${r.status}`);
+  } catch (e) { addLog(`✗ ${e.message}`); }
+});
+
+document.getElementById('postResume').addEventListener('click', async () => {
+  const base = document.getElementById('apiUrl').value;
+  const token = document.getElementById('authToken').value.trim();
+  try {
+    const headers = { ...(token ? { 'Authorization': `Bearer ${token}` } : {}) };
+    const r = await fetch(`${base}v1/stream/resume`, { method: 'POST', headers });
+    addLog(`✓ POST /v1/stream/resume → ${r.status}`);
+  } catch (e) { addLog(`✗ ${e.message}`); }
+});
     const r = await fetch(url);
     const d = await r.json();
     metricsDiv.innerHTML = `<pre>${JSON.stringify(d, null, 2)}</pre>`;
@@ -258,8 +326,8 @@ document.getElementById('fetchMetrics').addEventListener('click', async () => {
 });
 
 document.getElementById('fetchPrometheus').addEventListener('click', async () => {
-  const base = document.getElementById('apiUrl').value.replace(/\/api\/metrics\/live.*/, '');
-  const url = base + '/metrics';
+  const base = document.getElementById('apiUrl').value;
+  const url = base + 'metrics';
   try {
     const r = await fetch(url);
     const text = await r.text();
