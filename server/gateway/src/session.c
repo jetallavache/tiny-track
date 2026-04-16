@@ -8,6 +8,7 @@
 #include "common/log/log.h"
 #include "common/proto/v1.h"
 #include "common/proto/v2.h"
+#include "common/ringbuf/layout.h"
 #include "http.h"
 #include "proto.h"
 #include "str.h"
@@ -443,10 +444,70 @@ void ttg_session_event_fn(struct ttg_conn* c, int ev, void* ev_data) {
   }
 }
 
+static void send_alert(struct ttg_conn* c, uint8_t level, const char* msg) {
+  struct tt_proto_alert alert;
+  alert.level = level;
+  snprintf(alert.message, sizeof(alert.message), "%s", msg);
+
+  uint8_t buf[sizeof(struct tt_proto_header) + sizeof(alert)];
+  size_t n = ttg_proto_build(buf, sizeof(buf), TT_PROTO_V1, PKT_ALERT,
+                             (uint32_t)time(NULL), &alert, sizeof(alert));
+  if (n > 0)
+    ttg_ws_send(c, buf, n, TTG_WS_OP_BINARY);
+}
+
 void ttg_session_timer_fn(void* arg) {
   struct ttg_mgr* mgr = (struct ttg_mgr*)arg;
   time_t now = time(NULL);
 
+  /* ── Watchdog: detect tinytd death ─────────────────────────────── */
+  static int daemon_dead = 0;       /* 0=ok, 1=warned, 2=disconnecting */
+  static time_t last_watchdog = 0;
+
+  if (now - last_watchdog >= 2) {   /* check every 2 seconds */
+    last_watchdog = now;
+    const struct ttr_header* hdr =
+        (const struct ttr_header*)g_reader->ring.addr;
+
+    if (hdr && hdr->last_update_ts > 0) {
+      uint64_t now_ms = (uint64_t)now * 1000;
+      uint32_t interval = hdr->interval_ms > 0 ? hdr->interval_ms : 1000;
+      uint64_t age_ms = now_ms > hdr->last_update_ts
+                            ? now_ms - hdr->last_update_ts
+                            : 0;
+
+      if (age_ms > (uint64_t)interval * 10 && daemon_dead < 2) {
+        /* Hard threshold: disconnect all clients */
+        daemon_dead = 2;
+        tt_log_err("Daemon     tinytd stopped — no update for %llums, disconnecting clients",
+                   (unsigned long long)age_ms);
+        tt_log_err("           See https://tinytrack.dev/docs/troubleshooting#daemon-stopped");
+        for (struct ttg_conn* c = mgr->conns; c != NULL; c = c->next) {
+          if (c->data[0] != WS_MARK || !c->is_authed) continue;
+          send_alert(c, ALERT_CRITICAL,
+                     "tinytd daemon stopped — metrics unavailable");
+          c->is_draining = 1;
+        }
+      } else if (age_ms > (uint64_t)interval * 3 && daemon_dead < 1) {
+        /* Soft threshold: warn clients */
+        daemon_dead = 1;
+        tt_log_warning("Daemon     tinytd unresponsive — no update for %llums",
+                       (unsigned long long)age_ms);
+        tt_log_warning("           See https://tinytrack.dev/docs/troubleshooting#daemon-stopped");
+        for (struct ttg_conn* c = mgr->conns; c != NULL; c = c->next) {
+          if (c->data[0] != WS_MARK || !c->is_authed) continue;
+          send_alert(c, ALERT_WARNING,
+                     "tinytd daemon unresponsive — metrics may be stale");
+        }
+      } else if (age_ms <= (uint64_t)interval * 3 && daemon_dead > 0) {
+        /* Daemon recovered */
+        daemon_dead = 0;
+        tt_log_notice("Daemon     tinytd recovered — metrics stream resumed");
+      }
+    }
+  }
+
+  /* ── Per-connection work ─────────────────────────────────────────── */
   for (struct ttg_conn* c = mgr->conns; c != NULL; c = c->next) {
     if (c->data[0] != WS_MARK)
       continue;
