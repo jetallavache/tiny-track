@@ -168,7 +168,23 @@ void ttg_sock_accept_conn(struct ttg_mgr* mgr, struct ttg_conn* lsn) {
   TTG_SOCK_TYPE fd = raccept(FD(lsn), &usa, &sa_len);
   if (fd == TTG_INVALID_SOCKET) {
     tt_log_err("%lu accept failed, errno %d", lsn->id, TTG_SOCK_ERR(-1));
-  } else if ((c = ttg_net_alloc_conn(mgr)) == NULL) {
+    return;
+  }
+
+  /* Enforce max_connections limit */
+  if (mgr->max_connections > 0) {
+    uint32_t active = 0;
+    for (struct ttg_conn* p = mgr->conns; p != NULL; p = p->next)
+      if (!p->is_listening) active++;
+    if (active >= mgr->max_connections) {
+      tt_log_warning("max_connections=%u reached, rejecting connection",
+                     mgr->max_connections);
+      closesocket(fd);
+      return;
+    }
+  }
+
+  if ((c = ttg_net_alloc_conn(mgr)) == NULL) {
     tt_log_err("%lu OOM", lsn->id);
     closesocket(fd);
   } else {

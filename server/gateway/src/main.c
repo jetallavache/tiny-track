@@ -235,6 +235,7 @@ int main(int argc, char** argv) {
 
   struct ttg_mgr mgr;
   ttg_net_mgr_init(&mgr, use_tls ? &tls_cfg : NULL);
+  mgr.max_connections = cfg.max_connections;
   if (use_tls && !mgr.tls_ctx) {
     tt_log_err("TLS        context init failed — check cert/key files");
     tt_log_err("  See https://tinytrack.dev/docs/troubleshooting#tls-init");

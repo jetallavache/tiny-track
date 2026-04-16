@@ -50,6 +50,7 @@ struct ttg_mgr {
   void* tls_ctx;           /* struct ttg_tls_ctx*, NULL if TLS disabled */
   struct tt_timer* timers; /* Active timers */
   TTG_SOCK_TYPE pipe;
+  uint32_t max_connections; /* 0 = unlimited */
 };
 
 /* Connection */
