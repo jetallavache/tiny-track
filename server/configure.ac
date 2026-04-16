@@ -1,4 +1,4 @@
-AC_INIT([tinytrack], [0.6.0], [bugs@example.com])
+AC_INIT([tinytrack], [0.7.0], [bugs@example.com])
 AC_CONFIG_SRCDIR([tinytd/src/main.c])
 AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign subdir-objects])
