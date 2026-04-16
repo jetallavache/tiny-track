@@ -1,6 +1,6 @@
 {
   "name": "tinytsdk",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "type": "module",
   "description": "TinyTrack SDK — WebSocket client + React components for system metrics",
   "main": "dist/index.cjs.js",
