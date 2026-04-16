@@ -72,45 +72,67 @@ Buffer lives in `/dev/shm` (tmpfs) — zero-copy mmap access. Periodically synce
 
 ## Endpoints
 
-| Protocol | URL | Description |
-|----------|-----|-------------|
-| WebSocket | `ws://host:25015/websocket` | Binary protocol v1/v2, real-time streaming |
-| WebSocket TLS | `wss://host:25015/websocket` | Encrypted connection |
-| HTTP | `GET http://host:25015/api/metrics/live` | JSON snapshot of current metrics |
-| HTTP | `GET http://host:25015/metrics` | Prometheus/OpenMetrics text format |
+| Protocol | URL | Auth | Description |
+|----------|-----|------|-------------|
+| WebSocket | `ws://host:25015/v1/stream` | Bearer / CMD_AUTH | Binary protocol v1/v2, real-time streaming |
+| WebSocket | `ws://host:25015/websocket` | Bearer / CMD_AUTH | Legacy alias (kept for compatibility) |
+| HTTP GET | `http://host:25015/v1/metrics` | Bearer | Current metrics snapshot |
+| HTTP GET | `http://host:25015/v1/sysinfo` | Bearer | System info (hostname, OS, uptime, ring config) |
+| HTTP GET | `http://host:25015/v1/status` | — | Health check (public, no auth) |
+| HTTP POST | `http://host:25015/v1/stream/pause` | Bearer | Pause metrics push to all WS clients |
+| HTTP POST | `http://host:25015/v1/stream/resume` | Bearer | Resume metrics push |
+
+### Content negotiation
+
+All `GET /v1/*` endpoints support multiple response formats via:
+- `Accept` header (standard HTTP)
+- `?format=` query parameter (fallback)
+
+| Format | Accept header | ?format= | Content-Type |
+|--------|--------------|----------|--------------|
+| JSON (default) | `application/json` | `json` | `application/json` |
+| CSV | `text/csv` | `csv` | `text/csv` |
+| XML | `application/xml` | `xml` | `application/xml` |
+| Prometheus/OpenMetrics | `text/plain` | `prometheus` | `text/plain; version=0.0.4` |
+
+**Examples:**
+```bash
+# JSON (default)
+curl http://host:25015/v1/metrics
+
+# CSV
+curl http://host:25015/v1/metrics?format=csv
+
+# Prometheus
+curl -H "Accept: text/plain" http://host:25015/v1/metrics
+
+# With auth
+curl -H "Authorization: Bearer mytoken" http://host:25015/v1/metrics
+```
+
+### API versioning
+
+`/v1/` is the HTTP REST API version, independent of the binary WebSocket protocol version (`TT_PROTO_V1`, `TT_PROTO_V2`).
+
+A new `/v2/` will be introduced only on breaking changes (field rename, type change, endpoint removal). Both versions run simultaneously — old clients are not broken. Deprecated versions announce via `Deprecation: true` and `Sunset:` response headers.
 
 ### Prometheus / Grafana
 
-The `/metrics` endpoint exposes all collected metrics in OpenMetrics format, compatible with Prometheus scraping and Grafana datasources.
+```bash
+# Prometheus scrape
+curl http://host:25015/v1/metrics?format=prometheus
+```
 
 **Prometheus `scrape_config`:**
-
 ```yaml
 scrape_configs:
   - job_name: tinytrack
     static_configs:
       - targets: ['host:25015']
-    metrics_path: /metrics
+    metrics_path: /v1/metrics
+    params:
+      format: [prometheus]
 ```
-
-**Grafana — Prometheus datasource:**
-
-Add a Prometheus datasource pointing to your Prometheus instance, then use PromQL:
-
-```promql
-tinytrack_cpu_usage_ratio * 100
-tinytrack_memory_usage_ratio * 100
-tinytrack_load_average{interval="1m"}
-tinytrack_network_receive_bytes_total
-```
-
-**Grafana — Infinity datasource (no Prometheus):**
-
-Install the [Infinity plugin](https://grafana.com/grafana/plugins/yesoreyeram-infinity-datasource/), add a datasource of type `Infinity`, then create a panel:
-
-- Type: `UQL`
-- URL: `http://host:25015/metrics`
-- Parser: `Backend` → `Prometheus`
 
 **Available metrics:**
 

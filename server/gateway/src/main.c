@@ -251,9 +251,10 @@ int main(int argc, char** argv) {
   ttg_net_timer_add(&mgr, 500, TIMER_REPEAT, ttg_session_timer_fn, &mgr);
 
   /* ── Endpoints ───────────────────────────────────────────────────── */
-  tt_log_info("WebSocket  %s/websocket", cfg.listen);
-  tt_log_info("HTTP API   %s/api/metrics/live", cfg.listen);
-  tt_log_info("Prometheus %s/metrics", cfg.listen);
+  tt_log_info("WebSocket  %s/v1/stream  (legacy: /websocket)", cfg.listen);
+  tt_log_info("Metrics    %s/v1/metrics  (?format=json|csv|xml|prometheus)", cfg.listen);
+  tt_log_info("Sysinfo    %s/v1/sysinfo  (?format=json|csv|xml)", cfg.listen);
+  tt_log_info("Status     %s/v1/status  (public, no auth)", cfg.listen);
 
   /* ── Security ────────────────────────────────────────────────────── */
   tt_log_info("TLS        %s", use_tls ? "enabled" : "disabled");
