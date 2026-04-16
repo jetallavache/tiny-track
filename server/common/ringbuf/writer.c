@@ -20,6 +20,18 @@ static uint64_t get_timestamp_ms(void) {
   return (uint64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
 }
 
+/* Format Unix ms timestamp as "YYYY-MM-DD HH:MM:SS" into buf[20]. */
+static void fmt_ts_ms(uint64_t ms, char* buf, size_t size) {
+  if (ms == 0) {
+    snprintf(buf, size, "(none)");
+    return;
+  }
+  time_t sec = (time_t)(ms / 1000);
+  struct tm tm;
+  localtime_r(&sec, &tm);
+  strftime(buf, size, "%Y-%m-%d %H:%M:%S", &tm);
+}
+
 /* Adler32 over buf[0..len), skipping the checksum field (bytes 8..11) */
 static uint32_t adler32(const void* buf, size_t len) {
   const uint8_t* p = (const uint8_t*)buf;
@@ -135,8 +147,11 @@ int ttr_writer_recover_from_shadow(struct ttr_writer* ctx) {
   hdr->last_update_ts = get_timestamp_ms();
   ctx->dirty_min = 0;
   ctx->dirty_max = ctx->total_size;
-  tt_log_notice("Recovered %zu bytes from shadow (last_sync_ts=%llu)",
-                ctx->total_size, (unsigned long long)hdr->last_shadow_sync_ts);
+  {
+    char ts_buf[20];
+    fmt_ts_ms(hdr->last_shadow_sync_ts, ts_buf, sizeof(ts_buf));
+    tt_log_notice("Recovered %zu bytes from shadow (last_sync=%s)", ctx->total_size, ts_buf);
+  }
   return 1;
 }
 
@@ -193,9 +208,10 @@ int ttr_writer_init(struct ttr_writer* ctx,
 
   {
     const struct ttr_header* hdr2 = (const struct ttr_header*)ctx->live_addr;
-    tt_log_info("ringbuf ready: size=%zu crc=%s last_sync_ts=%llu",
-                ctx->total_size, cfg->enable_crc ? "on" : "off",
-                (unsigned long long)hdr2->last_shadow_sync_ts);
+    char ts_buf[20];
+    fmt_ts_ms(hdr2->last_shadow_sync_ts, ts_buf, sizeof(ts_buf));
+    tt_log_info("Ring       size=%zu KB  crc=%s  last_sync=%s",
+                ctx->total_size / 1024, cfg->enable_crc ? "on" : "off", ts_buf);
   }
   return TTR_WRITER_OK;
 }

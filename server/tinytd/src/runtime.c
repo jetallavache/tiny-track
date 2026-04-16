@@ -68,14 +68,14 @@ int ttd_runtime_init(struct ttd_runtime* rt, struct ttd_config* cfg,
   /* Create epoll */
   rt->epoll_fd = epoll_create1(EPOLL_CLOEXEC);
   if (rt->epoll_fd < 0) {
-    tt_log_err("Failed to create epoll");
+    tt_log_err("Runtime    epoll_create1 failed: %s", strerror(errno));
     return -1;
   }
 
   /* Create timer */
   rt->timer_fd = tt_timerfd_create(cfg->interval_ms);
   if (rt->timer_fd < 0) {
-    tt_log_err("Failed to create timer");
+    tt_log_err("Runtime    timerfd_create failed: %s", strerror(errno));
     close(rt->epoll_fd);
     return -1;
   }
@@ -83,7 +83,7 @@ int ttd_runtime_init(struct ttd_runtime* rt, struct ttd_config* cfg,
   /* Add timer to epoll */
   struct epoll_event ev = {.events = EPOLLIN, .data.fd = rt->timer_fd};
   if (epoll_ctl(rt->epoll_fd, EPOLL_CTL_ADD, rt->timer_fd, &ev) < 0) {
-    tt_log_err("Failed to add timer to epoll");
+    tt_log_err("Runtime    epoll_ctl failed: %s", strerror(errno));
     close(rt->timer_fd);
     close(rt->epoll_fd);
     return -1;
