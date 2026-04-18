@@ -1,0 +1,69 @@
+# Troubleshooting
+
+## Quick diagnostics
+
+```bash
+systemctl status tinytd tinytrack
+journalctl -u tinytd -u tinytrack -n 50 --no-pager
+ls -lh /dev/shm/tinytd-live.dat
+ss -tlnp | grep 25015
+tiny-cli status
+```
+
+## Common errors
+
+### `Failed to open mmap: /dev/shm/tinytd-live.dat`
+
+tinytrack started before tinytd — the live file does not exist yet.
+
+```bash
+systemctl start tinytd && sleep 2 && systemctl start tinytrack
+```
+
+In Docker the entrypoint waits for the file automatically.
+
+### `setuid failed` / `setgid failed`
+
+User or group does not exist.
+
+```bash
+sudo groupadd --system tinytd
+sudo useradd --system --no-create-home --shell /usr/sbin/nologin --gid tinytd tinytd
+```
+
+### Port already in use
+
+```bash
+ss -tlnp | grep 25015
+fuser -k 25015/tcp
+```
+
+### TLS handshake failed
+
+```bash
+openssl s_client -connect localhost:25015 -brief
+openssl x509 -in server.crt -noout -dates   # check expiry
+```
+
+Make sure `listen` starts with `wss://`.
+
+### Stale processes after tests
+
+```bash
+pkill -f "tinytd|tinytrack"
+rm -f /tmp/tinytd-test*.dat /tmp/tinytd-test.pid /tmp/tinytrack-test.pid
+```
+
+## Debug mode
+
+```bash
+# Host
+./tinytd/tinytd --no-daemon -c etc/tinytrack.conf-debug
+./gateway/tinytrack --no-daemon -c etc/tinytrack.conf-debug
+
+# Docker
+docker run --rm -it \
+  -v /proc:/host/proc:ro -v /:/host/rootfs:ro -v /dev/shm:/dev/shm \
+  -p 25015:25015 -e TT_LOG_LEVEL=debug \
+  jetallavache/tinytrack:latest
+```

@@ -1,0 +1,30 @@
+# tinytrack — Overview
+
+**tinytrack** is the WebSocket gateway. It reads metrics from the shared memory ring buffer
+written by `tinytd` and streams them to connected clients using a compact binary protocol.
+
+## Features
+
+- Binary protocol v2 over WebSocket (10-byte framing)
+- TLS support (`wss://`) via libssl
+- HTTP REST API with JSON, CSV, XML, and Prometheus output
+- Configurable push interval per client (`CMD_SET_INTERVAL`)
+- History requests for L1/L2/L3 ring buffers
+- Token-based authentication (`CMD_AUTH` / `Authorization: Bearer`)
+- epoll-based event loop — handles hundreds of concurrent clients
+
+## Runtime dependencies
+
+`libc` and `libssl` only.
+
+## Default endpoint
+
+```
+ws://host:25015/v1/stream
+```
+
+Legacy alias (kept for compatibility):
+
+```
+ws://host:25015/websocket
+```

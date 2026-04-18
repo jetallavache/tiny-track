@@ -1,0 +1,87 @@
+# React Components
+
+## TinyTrackProvider
+
+Wraps your app and manages the WebSocket connection. All components inside consume
+metrics via context.
+
+```tsx
+import { TinyTrackProvider } from 'tinytsdk/react';
+
+<TinyTrackProvider url="ws://your-host:25015" token="optional">
+  {/* your components */}
+</TinyTrackProvider>
+```
+
+## MetricsBar
+
+Compact horizontal bar showing all metrics at a glance.
+
+```tsx
+import { MetricsBar } from 'tinytsdk/react';
+
+<MetricsBar />
+```
+
+## MetricsPanel
+
+Detailed panel with individual metric rows, history sparklines, and system info.
+
+```tsx
+import { MetricsPanel } from 'tinytsdk/react';
+
+<MetricsPanel />
+```
+
+## Dashboard
+
+Full-featured admin dashboard with gauges, time-series charts, ring buffer status,
+and server controls (start/stop, set interval).
+
+```tsx
+import { Dashboard } from 'tinytsdk/react';
+
+<Dashboard />
+```
+
+## TimeSeriesChart
+
+Line chart for a single metric over time. Supports L1/L2/L3 levels.
+
+```tsx
+import { TimeSeriesChart } from 'tinytsdk/react';
+
+<TimeSeriesChart metric="cpu" level="l1" />
+```
+
+## Timeline
+
+Multi-metric timeline with lazy loading and level switching.
+
+```tsx
+import { Timeline } from 'tinytsdk/react';
+
+<Timeline />
+```
+
+## Hooks
+
+```ts
+import { useMetrics, useHistory, useSysInfo } from 'tinytsdk/react';
+
+const metrics = useMetrics();           // latest TtMetrics frame
+const history = useHistory('l2', 100);  // last 100 L2 entries
+const sysinfo = useSysInfo();           // hostname, OS, uptime
+```
+
+## Theming
+
+```tsx
+import { ThemeProvider, presets } from 'tinytsdk/react';
+
+<ThemeProvider theme={presets.dark}>
+  <Dashboard />
+</ThemeProvider>
+```
+
+Available presets: `dark`, `light`, `terminal`.

@@ -1,0 +1,116 @@
+# API & Endpoints
+
+## HTTP endpoints
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/v1/metrics` | Bearer | Current metrics snapshot |
+| `GET` | `/v1/sysinfo` | Bearer | hostname, OS, uptime, ring config |
+| `GET` | `/v1/status` | — | Health check (public) |
+| `POST` | `/v1/stream/pause` | Bearer | Pause push to all WS clients |
+| `POST` | `/v1/stream/resume` | Bearer | Resume push |
+
+## Content negotiation
+
+All `GET /v1/*` endpoints support multiple formats:
+
+| Format | `Accept` header | `?format=` | Content-Type |
+|--------|----------------|-----------|--------------|
+| JSON (default) | `application/json` | `json` | `application/json` |
+| CSV | `text/csv` | `csv` | `text/csv` |
+| XML | `application/xml` | `xml` | `application/xml` |
+| Prometheus | `text/plain` | `prometheus` | `text/plain; version=0.0.4` |
+
+```bash
+# JSON
+curl http://host:25015/v1/metrics
+
+# Prometheus
+curl http://host:25015/v1/metrics?format=prometheus
+
+# With auth
+curl -H "Authorization: Bearer mytoken" http://host:25015/v1/metrics
+```
+
+## Prometheus metrics
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `tinytrack_cpu_usage_ratio` | gauge | CPU 0..1 |
+| `tinytrack_memory_usage_ratio` | gauge | Memory 0..1 |
+| `tinytrack_disk_usage_ratio` | gauge | Disk 0..1 |
+| `tinytrack_disk_total_bytes` | gauge | Total disk space |
+| `tinytrack_disk_free_bytes` | gauge | Free disk space |
+| `tinytrack_load_average{interval="1m\|5m\|15m"}` | gauge | Load average |
+| `tinytrack_network_receive_bytes_total` | counter | RX bytes/s |
+| `tinytrack_network_transmit_bytes_total` | counter | TX bytes/s |
+
+### Prometheus scrape config
+
+```yaml
+scrape_configs:
+  - job_name: tinytrack
+    static_configs:
+      - targets: ['host:25015']
+    metrics_path: /v1/metrics
+    params:
+      format: [prometheus]
+```
+
+## WebSocket binary protocol
+
+Every frame starts with a 10-byte header:
+
+```
++--------+--------+--------+-----------+-----------+----------+
+| magic  | ver    | type   | length    | timestamp | checksum |
+| 1 byte | 1 byte | 1 byte | 2 bytes   | 4 bytes   | 1 byte   |
++--------+--------+--------+-----------+-----------+----------+
+|                    payload (0..N bytes)                      |
+```
+
+- `magic` = `0xAA`
+- `checksum` = XOR of all header bytes except checksum itself
+
+### Packet types
+
+**Server → Client**
+
+| Packet | Value | Description |
+|--------|-------|-------------|
+| `PKT_METRICS` | `0x01` | Real-time metrics frame |
+| `PKT_CONFIG` | `0x02` | Current gateway config |
+| `PKT_ACK` | `0x05` | Command acknowledgement |
+| `PKT_HISTORY_RESP` | `0x11` | History batch response |
+| `PKT_RING_STATS` | `0x13` | Ring buffer fill levels |
+| `PKT_SYS_INFO` | `0x14` | hostname, OS, uptime, slots |
+
+**Client → Server**
+
+| Packet | Value | Description |
+|--------|-------|-------------|
+| `PKT_CMD` | `0x04` | Command frame |
+| `PKT_HISTORY_REQ` | `0x10` | Request history for a level |
+| `PKT_SUBSCRIBE` | `0x12` | Subscribe to a metric subset |
+
+### Session sequence
+
+```
+Client                          tinytrack
+  │── WebSocket Upgrade ──────────► │
+  │◄── PKT_CONFIG (interval_ms) ───│
+  │◄── PKT_METRICS (every 1s) ─────│
+  │── PKT_CMD CMD_GET_SYS_INFO ───► │
+  │◄── PKT_SYS_INFO ───────────────│
+  │── PKT_HISTORY_REQ (L2, 100) ──► │
+  │◄── PKT_HISTORY_RESP (batch) ───│
+  │── PKT_CMD CMD_SET_INTERVAL 500 ►│
+  │◄── PKT_ACK ────────────────────│
+  │◄── PKT_METRICS (every 500ms) ──│
+```
+
+## API versioning
+
+`/v1/` is the HTTP REST version, independent of the binary WebSocket protocol version.
+A new `/v2/` will be introduced only on breaking changes. Both versions run simultaneously.
+Deprecated versions announce via `Deprecation: true` and `Sunset:` response headers.

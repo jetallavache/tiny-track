@@ -1,0 +1,83 @@
+# Docker
+
+TinyTrack in a container monitors the **host** system via bind-mounted `/proc` and `/`.
+
+## Quick start
+
+```bash
+docker run -d --name tinytrack \
+  -p 25015:25015 \
+  -v /proc:/host/proc:ro \
+  -v /:/host/rootfs:ro \
+  -v /dev/shm:/dev/shm \
+  -e TT_PROC_ROOT=/host/proc \
+  -e TT_ROOTFS_PATH=/host/rootfs \
+  jetallavache/tinytrack:latest
+```
+
+## Docker Compose
+
+```yaml
+services:
+  tinytrack:
+    image: jetallavache/tinytrack:latest
+    ports:
+      - "25015:25015"
+    volumes:
+      - /proc:/host/proc:ro
+      - /:/host/rootfs:ro
+      - /dev/shm:/dev/shm
+    environment:
+      TT_PROC_ROOT: /host/proc
+      TT_ROOTFS_PATH: /host/rootfs
+    restart: unless-stopped
+```
+
+## Configuration via ENV
+
+```bash
+docker run -d \
+  -v /proc:/host/proc:ro -v /:/host/rootfs:ro -v /dev/shm:/dev/shm \
+  -p 25015:25015 \
+  -e TT_INTERVAL_MS=500 \
+  -e TT_L1_CAPACITY=7200 \
+  -e TT_LOG_LEVEL=debug \
+  jetallavache/tinytrack:latest
+```
+
+> ENV variables patch the config even when a custom config file is mounted — ENV always wins.
+
+## TLS
+
+```bash
+openssl req -x509 -newkey rsa:4096 -keyout server.key -out server.crt \
+    -days 365 -nodes -subj '/CN=localhost'
+
+docker run -d \
+  -v /proc:/host/proc:ro -v /:/host/rootfs:ro -v /dev/shm:/dev/shm \
+  -v $(pwd)/certs:/certs:ro \
+  -p 25015:25015 \
+  -e TT_LISTEN=wss://0.0.0.0:25015 \
+  -e TT_TLS_CERT=/certs/server.crt \
+  -e TT_TLS_KEY=/certs/server.key \
+  jetallavache/tinytrack:latest
+```
+
+## tiny-cli inside the container
+
+```bash
+docker exec -it tinytrack tiny-cli status
+docker exec -it tinytrack tiny-cli dashboard
+```
+
+## Limitations
+
+| Parameter | Behaviour |
+|-----------|-----------|
+| `hostname` | Container UTS namespace (not host) |
+| `os_type` | Host kernel via `/host/proc/sys/kernel/ostype` ✓ |
+| `uptime` | Host uptime via `/host/proc/uptime` ✓ |
+| CPU / RAM / Net | Host data via `/host/proc` ✓ |
+| Disk | `statvfs(/host/rootfs)` — host disk ✓ |
+
+> Never mount `/` with write permissions. Always use `:ro`.

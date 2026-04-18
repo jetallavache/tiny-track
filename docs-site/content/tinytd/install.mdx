@@ -1,0 +1,68 @@
+# Installation
+
+## Option A — one-line install (host)
+
+Supports Debian/Ubuntu, Fedora/RHEL, and Arch. Builds from source, installs binaries,
+and starts `tinytd` + `tinytrack` as systemd services.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/jetallavache/tinytrack/main/install.sh | bash
+```
+
+## Option B — Docker
+
+```bash
+docker run -d --name tinytrack \
+  -p 25015:25015 \
+  -v /proc:/host/proc:ro \
+  -v /:/host/rootfs:ro \
+  -v /dev/shm:/dev/shm \
+  -e TT_PROC_ROOT=/host/proc \
+  -e TT_ROOTFS_PATH=/host/rootfs \
+  jetallavache/tinytrack:latest
+```
+
+## Option C — Docker Compose
+
+```yaml
+services:
+  tinytrack:
+    image: jetallavache/tinytrack:latest
+    ports:
+      - "25015:25015"
+    volumes:
+      - /proc:/host/proc:ro
+      - /:/host/rootfs:ro
+      - /dev/shm:/dev/shm
+    environment:
+      TT_PROC_ROOT: /host/proc
+      TT_ROOTFS_PATH: /host/rootfs
+    restart: unless-stopped
+```
+
+## Option D — Build from source
+
+```bash
+git clone https://github.com/jetallavache/tinytrack.git
+cd tinytrack/server
+./bootstrap.sh   # first time only (autoreconf)
+./configure
+make
+sudo make install
+```
+
+Debug build with sanitizers:
+
+```bash
+./configure CFLAGS="-g -O0 -fsanitize=address,undefined"
+make
+```
+
+## Systemd units
+
+After `make install`, two units are available:
+
+```bash
+sudo systemctl enable --now tinytd
+sudo systemctl enable --now tinytrack
+```
