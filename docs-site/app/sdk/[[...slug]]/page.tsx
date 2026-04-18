@@ -1,9 +1,10 @@
 import { notFound, redirect } from 'next/navigation';
 import { DocsLayout } from '@/components/docs-layout';
-import { sdkNav, navItems } from '@/lib/docs';
+import { sdkNavItems } from '@/lib/docs';
 
 const pages = {
   overview: () => import('@/content/sdk/overview.mdx'),
+  'getting-started': () => import('@/content/sdk/getting-started.mdx'),
   react: () => import('@/content/sdk/react.mdx'),
   vanilla: () => import('@/content/sdk/vanilla.mdx'),
   lite: () => import('@/content/sdk/lite.mdx'),
@@ -23,7 +24,7 @@ export default async function SdkPage({ params }: { params: Promise<{ slug?: str
   if (!(key in pages)) notFound();
 
   const { default: Content } = await pages[key]();
-  const items = navItems(sdkNav, 'sdk');
+  const items = sdkNavItems();
 
   return (
     <DocsLayout section="SDK" items={items} activeHref={`/sdk/${key}`}>

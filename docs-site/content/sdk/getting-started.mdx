@@ -1,0 +1,168 @@
+# Getting Started
+
+Before adding components, set up your project and connection.
+
+## Option A — React / Next.js
+
+### 1. Install
+
+```bash
+npm install tinytsdk
+```
+
+### 2. Wrap your app with TinyTrackProvider
+
+```tsx
+// app/layout.tsx  (Next.js App Router)
+import { TinyTrackProvider } from 'tinytsdk/react';
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html>
+      <body>
+        <TinyTrackProvider url="ws://your-host:25015">
+          {children}
+        </TinyTrackProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+For Vite / CRA, wrap at the root of `main.tsx`:
+
+```tsx
+import { TinyTrackProvider } from 'tinytsdk/react';
+import { createRoot } from 'react-dom/client';
+
+createRoot(document.getElementById('root')!).render(
+  <TinyTrackProvider url="ws://your-host:25015">
+    <App />
+  </TinyTrackProvider>
+);
+```
+
+### 3. Add a component
+
+```tsx
+import { MetricsBar } from 'tinytsdk/react';
+
+export default function Page() {
+  return <MetricsBar />;
+}
+```
+
+All components inside `TinyTrackProvider` receive live metrics automatically.
+
+### 4. Authentication (optional)
+
+```tsx
+<TinyTrackProvider url="ws://your-host:25015" token={process.env.NEXT_PUBLIC_WS_TOKEN}>
+  {children}
+</TinyTrackProvider>
+```
+
+---
+
+## Option B — Vanilla JS (CDN, no build step)
+
+### 1. Include the bundle
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/tinytsdk/dist/tinytsdk.min.js"></script>
+```
+
+Or install via npm and import as ESM:
+
+```bash
+npm install tinytsdk-lite
+```
+
+```js
+import { TinyTrackClient } from 'tinytsdk-lite';
+```
+
+### 2. Create a client and connect
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/tinytsdk/dist/tinytsdk.min.js"></script>
+<script>
+  const client = new TinyTrack.TinyTrackClient('ws://your-host:25015');
+
+  client.on('ready', () => {
+    console.log('Connected and streaming');
+  });
+
+  client.on('metrics', (m) => {
+    // m.cpu   — CPU usage, 0..10000 (basis points, divide by 100 for %)
+    // m.mem   — Memory usage, 0..10000
+    // m.disk  — Disk usage, 0..10000
+    // m.net_rx, m.net_tx — bytes/s
+    // m.load_1, m.load_5, m.load_15 — load average × 100
+    console.log('CPU:', (m.cpu / 100).toFixed(1) + '%');
+  });
+
+  client.connect();
+</script>
+```
+
+### 3. Render metrics into the DOM
+
+```html
+<div id="metrics">
+  CPU: <span id="cpu">—</span>
+  RAM: <span id="mem">—</span>
+  Disk: <span id="disk">—</span>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/tinytsdk/dist/tinytsdk.min.js"></script>
+<script>
+  const client = new TinyTrack.TinyTrackClient('ws://your-host:25015');
+
+  client.on('metrics', (m) => {
+    document.getElementById('cpu').textContent  = (m.cpu  / 100).toFixed(1) + '%';
+    document.getElementById('mem').textContent  = (m.mem  / 100).toFixed(1) + '%';
+    document.getElementById('disk').textContent = (m.disk / 100).toFixed(1) + '%';
+  });
+
+  client.connect();
+</script>
+```
+
+### 4. Authentication (optional)
+
+```js
+const client = new TinyTrack.TinyTrackClient('ws://your-host:25015', {
+  password: 'your-token',
+});
+```
+
+### 5. Reconnect strategy (optional)
+
+```js
+const client = TinyTrack.createClient({
+  url: 'ws://your-host:25015',
+  socket: {
+    connectTimeout: 5000,
+    reconnectStrategy: (retries) => Math.min(retries * 500, 10000),
+  },
+});
+```
+
+---
+
+## TypeScript types
+
+```ts
+interface TtMetrics {
+  cpu:    number;  // 0..10000 basis points
+  mem:    number;
+  disk:   number;
+  net_rx: number;  // bytes/s
+  net_tx: number;
+  load_1: number;  // load avg × 100
+  load_5: number;
+  load_15: number;
+  ts:     number;  // Unix timestamp ms
+}
+```

@@ -25,6 +25,7 @@ export const cliNav: DocSection[] = [
 
 export const sdkNav: DocSection[] = [
   { slug: 'overview', label: 'Overview' },
+  { slug: 'getting-started', label: 'Getting Started' },
   { slug: 'react', label: 'React' },
   { slug: 'vanilla', label: 'Vanilla JS / CDN' },
   { slug: 'lite', label: 'tinytsdk-lite' },
@@ -32,4 +33,11 @@ export const sdkNav: DocSection[] = [
 
 export function navItems(sections: DocSection[], base: string) {
   return sections.map((s) => ({ label: s.label, href: `/${base}/${s.slug}` }));
+}
+
+export function sdkNavItems() {
+  return [
+    ...navItems(sdkNav, 'sdk'),
+    { label: 'Components', href: '/sdk/components' },
+  ];
 }
