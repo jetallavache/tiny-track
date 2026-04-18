@@ -1,11 +1,15 @@
 import Link from 'next/link';
+import Image from 'next/image';
 
 export function Footer() {
   return (
     <footer className="border-t border-border/40 bg-background">
       <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-10 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="font-semibold text-sm">TinyTrack</p>
+          <div className="flex items-center gap-2 mb-1">
+            <Image src="/logo.svg" alt="TinyTrack" width={20} height={20} />
+            <p className="font-semibold text-sm">TinyTrack</p>
+          </div>
           <p className="mt-1 text-xs text-muted-foreground max-w-xs">
             Lightweight Linux system metrics daemon with real-time WebSocket streaming.
           </p>

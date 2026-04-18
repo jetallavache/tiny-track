@@ -1,11 +1,9 @@
-'use client';
-
-import { useState } from 'react';
-import { cn } from '@/lib/utils';
+import { codeToHtml } from 'shiki';
+import { CodeTabsClient } from './code-tabs-client';
 
 export interface CodeTab {
   label: string;
-  language?: string;
+  lang?: string;
   code: string;
 }
 
@@ -14,32 +12,22 @@ interface CodeTabsProps {
   className?: string;
 }
 
-export function CodeTabs({ tabs, className }: CodeTabsProps) {
-  const [active, setActive] = useState(0);
+export async function CodeTabs({ tabs, className }: CodeTabsProps) {
+  const rendered = await Promise.all(
+    tabs.map((tab) =>
+      codeToHtml(tab.code.trim(), {
+        lang: tab.lang ?? 'tsx',
+        theme: 'github-dark-default',
+      }),
+    ),
+  );
 
   return (
-    <div className={cn('rounded-xl border border-border overflow-hidden', className)}>
-      {/* Tab bar */}
-      <div className="flex border-b border-border bg-muted/30">
-        {tabs.map((tab, i) => (
-          <button
-            key={tab.label}
-            onClick={() => setActive(i)}
-            className={cn(
-              'px-4 py-2 text-xs font-medium transition-colors border-b-2 -mb-px',
-              i === active
-                ? 'border-primary text-foreground'
-                : 'border-transparent text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-      {/* Code */}
-      <pre className="m-0 p-4 overflow-x-auto bg-muted/20 text-xs font-mono leading-relaxed text-foreground">
-        <code>{tabs[active].code.trim()}</code>
-      </pre>
-    </div>
+    <CodeTabsClient
+      labels={tabs.map((t) => t.label)}
+      codes={tabs.map((t) => t.code.trim())}
+      htmls={rendered}
+      className={className}
+    />
   );
 }

@@ -6,6 +6,7 @@ const pages = {
   overview: () => import('@/content/sdk/overview.mdx'),
   'getting-started': () => import('@/content/sdk/getting-started.mdx'),
   react: () => import('@/content/sdk/react.mdx'),
+  hooks: () => import('@/content/sdk/hooks.mdx'),
   vanilla: () => import('@/content/sdk/vanilla.mdx'),
   lite: () => import('@/content/sdk/lite.mdx'),
 } as const;

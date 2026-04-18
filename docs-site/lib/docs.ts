@@ -27,6 +27,7 @@ export const sdkNav: DocSection[] = [
   { slug: 'overview', label: 'Overview' },
   { slug: 'getting-started', label: 'Getting Started' },
   { slug: 'react', label: 'React' },
+  { slug: 'hooks', label: 'Hooks' },
   { slug: 'vanilla', label: 'Vanilla JS / CDN' },
   { slug: 'lite', label: 'tinytsdk-lite' },
 ];
