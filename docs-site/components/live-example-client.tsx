@@ -11,14 +11,13 @@ interface LiveExampleClientProps {
   description?: string;
   reactCode: string;
   vanillaCode: string;
-  reactHtml: string;
-  vanillaHtml: string;
-  children: React.ReactNode;
+  /** Rendered shiki HTML panels passed as children[0]=react, children[1]=vanilla */
+  children: [React.ReactNode, React.ReactNode, React.ReactNode]; /* preview, react, vanilla */
   center?: boolean;
 }
 
 export function LiveExampleClient({
-  title, description, reactCode, vanillaCode, reactHtml, vanillaHtml, children, center,
+  title, description, reactCode, vanillaCode, children, center,
 }: LiveExampleClientProps) {
   const [tab, setTab] = useState<Tab>('preview');
   const [copied, setCopied] = useState(false);
@@ -36,6 +35,8 @@ export function LiveExampleClient({
     { id: 'react', label: 'React' },
     { id: 'vanilla', label: 'Vanilla JS' },
   ];
+
+  const [previewNode, reactNode, vanillaNode] = children;
 
   return (
     <div className="mb-8 rounded-xl border border-border overflow-hidden">
@@ -74,23 +75,13 @@ export function LiveExampleClient({
         )}
       </div>
 
-      {tab === 'preview' && (
+      <div className={tab === 'preview' ? 'block' : 'hidden'}>
         <div className={cn('p-6 bg-background', center && 'flex justify-center items-start flex-wrap gap-4')}>
-          {children}
+          {previewNode}
         </div>
-      )}
-      {tab === 'react' && (
-        <div
-          className="text-xs [&_pre]:!m-0 [&_pre]:!p-4 [&_pre]:overflow-x-auto [&_pre]:leading-relaxed"
-          dangerouslySetInnerHTML={{ __html: reactHtml }}
-        />
-      )}
-      {tab === 'vanilla' && (
-        <div
-          className="text-xs [&_pre]:!m-0 [&_pre]:!p-4 [&_pre]:overflow-x-auto [&_pre]:leading-relaxed"
-          dangerouslySetInnerHTML={{ __html: vanillaHtml }}
-        />
-      )}
+      </div>
+      <div className={tab === 'react' ? 'block' : 'hidden'}>{reactNode}</div>
+      <div className={tab === 'vanilla' ? 'block' : 'hidden'}>{vanillaNode}</div>
     </div>
   );
 }

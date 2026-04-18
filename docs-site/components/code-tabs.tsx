@@ -13,21 +13,28 @@ interface CodeTabsProps {
 }
 
 export async function CodeTabs({ tabs, className }: CodeTabsProps) {
-  const rendered = await Promise.all(
-    tabs.map((tab) =>
-      codeToHtml(tab.code.trim(), {
+  const panels = await Promise.all(
+    tabs.map(async (tab) => {
+      const html = await codeToHtml(tab.code.trim(), {
         lang: tab.lang ?? 'tsx',
         theme: 'github-dark-default',
-      }),
-    ),
+      });
+      return (
+        <div
+          className="text-xs [&_pre]:!m-0 [&_pre]:!p-4 [&_pre]:overflow-x-auto [&_pre]:leading-relaxed"
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
+      );
+    }),
   );
 
   return (
     <CodeTabsClient
       labels={tabs.map((t) => t.label)}
       codes={tabs.map((t) => t.code.trim())}
-      htmls={rendered}
       className={className}
-    />
+    >
+      {panels}
+    </CodeTabsClient>
   );
 }

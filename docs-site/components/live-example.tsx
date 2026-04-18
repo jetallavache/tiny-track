@@ -16,17 +16,29 @@ export async function LiveExample({ title, description, react, vanilla, children
     codeToHtml(vanilla.trim(), { lang: 'html', theme: 'github-dark-default' }),
   ]);
 
+  const reactPanel = (
+    <div
+      className="text-xs [&_pre]:!m-0 [&_pre]:!p-4 [&_pre]:overflow-x-auto [&_pre]:leading-relaxed"
+      dangerouslySetInnerHTML={{ __html: reactHtml }}
+    />
+  );
+
+  const vanillaPanel = (
+    <div
+      className="text-xs [&_pre]:!m-0 [&_pre]:!p-4 [&_pre]:overflow-x-auto [&_pre]:leading-relaxed"
+      dangerouslySetInnerHTML={{ __html: vanillaHtml }}
+    />
+  );
+
   return (
     <LiveExampleClient
       title={title}
       description={description}
       reactCode={react.trim()}
       vanillaCode={vanilla.trim()}
-      reactHtml={reactHtml}
-      vanillaHtml={vanillaHtml}
       center={center}
     >
-      {children}
+      {[children, reactPanel, vanillaPanel]}
     </LiveExampleClient>
   );
 }

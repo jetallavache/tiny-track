@@ -7,11 +7,11 @@ import { Check, Copy } from 'lucide-react';
 interface CodeTabsClientProps {
   labels: string[];
   codes: string[];
-  htmls: string[];
+  children: React.ReactNode[]; /* one rendered panel per tab */
   className?: string;
 }
 
-export function CodeTabsClient({ labels, codes, htmls, className }: CodeTabsClientProps) {
+export function CodeTabsClient({ labels, codes, children, className }: CodeTabsClientProps) {
   const [active, setActive] = useState(0);
   const [copied, setCopied] = useState(false);
 
@@ -48,10 +48,11 @@ export function CodeTabsClient({ labels, codes, htmls, className }: CodeTabsClie
           {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
         </button>
       </div>
-      <div
-        className="text-xs [&_pre]:!m-0 [&_pre]:!p-4 [&_pre]:overflow-x-auto [&_pre]:leading-relaxed"
-        dangerouslySetInnerHTML={{ __html: htmls[active] }}
-      />
+      {children.map((panel, i) => (
+        <div key={i} className={i === active ? 'block' : 'hidden'}>
+          {panel}
+        </div>
+      ))}
     </div>
   );
 }
