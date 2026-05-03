@@ -1,11 +1,27 @@
 import { describe, it, expect } from 'vitest';
 import {
-  parseHeader, parseMetrics, parseConfig, parseAck, parseStats, parseHistoryResp,
-  buildCmd, buildHistoryReq, buildSubscribe,
-  PROTO_MAGIC, HEADER_SIZE,
-  PKT_METRICS, PKT_CONFIG, PKT_ACK, PKT_RING_STATS, PKT_HISTORY_RESP,
-  CMD_GET_SNAPSHOT, CMD_GET_RING_STATS, CMD_SET_INTERVAL,
-  RING_L1, RING_L2, RING_L3,
+  parseHeader,
+  parseMetrics,
+  parseConfig,
+  parseAck,
+  parseStats,
+  parseHistoryResp,
+  buildCmd,
+  buildHistoryReq,
+  buildSubscribe,
+  PROTO_MAGIC,
+  HEADER_SIZE,
+  PKT_METRICS,
+  PKT_CONFIG,
+  PKT_ACK,
+  PKT_RING_STATS,
+  PKT_HISTORY_RESP,
+  CMD_GET_SNAPSHOT,
+  CMD_GET_RING_STATS,
+  CMD_SET_INTERVAL,
+  RING_L1,
+  RING_L2,
+  RING_L3,
   ACK_OK,
 } from '../src/proto.js';
 
@@ -32,22 +48,22 @@ function makeMetricsPayload(): ArrayBuffer {
   const buf = new ArrayBuffer(52);
   const v = new DataView(buf);
   // timestamp = 1711929600000 ms
-  v.setUint32(0, 0, true);          // lo
+  v.setUint32(0, 0, true); // lo
   v.setUint32(4, 0x18f5e100, true); // hi — gives a large ms value
-  v.setUint16(8,  3456, true);  // cpu 34.56%
-  v.setUint16(10, 6789, true);  // mem 67.89%
-  v.setUint32(12, 1024, true);  // netRx
-  v.setUint32(16, 512,  true);  // netTx
-  v.setUint16(20, 150,  true);  // load1
-  v.setUint16(22, 120,  true);  // load5
-  v.setUint16(24, 100,  true);  // load15
-  v.setUint32(26, 3,    true);  // nrRunning
-  v.setUint32(30, 120,  true);  // nrTotal
-  v.setUint16(34, 2500, true);  // duUsage 25%
-  v.setUint32(36, 0,    true);  // duTotal lo
-  v.setUint32(40, 1,    true);  // duTotal hi → 4GB
-  v.setUint32(44, 0,    true);  // duFree lo
-  v.setUint32(48, 0,    true);  // duFree hi
+  v.setUint16(8, 3456, true); // cpu 34.56%
+  v.setUint16(10, 6789, true); // mem 67.89%
+  v.setUint32(12, 1024, true); // netRx
+  v.setUint32(16, 512, true); // netTx
+  v.setUint16(20, 150, true); // load1
+  v.setUint16(22, 120, true); // load5
+  v.setUint16(24, 100, true); // load15
+  v.setUint32(26, 3, true); // nrRunning
+  v.setUint32(30, 120, true); // nrTotal
+  v.setUint16(34, 2500, true); // duUsage 25%
+  v.setUint32(36, 0, true); // duTotal lo
+  v.setUint32(40, 1, true); // duTotal hi → 4GB
+  v.setUint32(44, 0, true); // duFree lo
+  v.setUint32(48, 0, true); // duFree hi
   return buf;
 }
 
@@ -107,7 +123,9 @@ describe('parseMetrics', () => {
     const payload = makeMetricsPayload();
     // copy payload into frame buffer
     const frame = new Uint8Array(h.buffer);
-    new Uint8Array(payload).forEach((b, i) => { frame[HEADER_SIZE + i] = b; });
+    new Uint8Array(payload).forEach((b, i) => {
+      frame[HEADER_SIZE + i] = b;
+    });
     const parsed = parseHeader(h.buffer);
     expect(parsed).not.toBeNull();
     const m = parseMetrics(parsed!.payload);
@@ -166,8 +184,8 @@ describe('parseStats', () => {
     // L1 at offset 0
     v.setUint8(0, RING_L1);
     v.setUint32(1, 3600, false); // capacity
-    v.setUint32(5, 10,   false); // head
-    v.setUint32(9, 10,   false); // filled
+    v.setUint32(5, 10, false); // head
+    v.setUint32(9, 10, false); // filled
     // firstTs / lastTs = 0 (already zeroed)
     // L2 at offset 29
     v.setUint8(29, RING_L2);

@@ -10,8 +10,13 @@ import { useTheme, TtTheme, themeStyles } from '../../theme.js';
 import { TtMetrics, TtHistoryResp } from '../../../client.js';
 import { RING_L1, RING_L2, RING_L3, historyToMetrics } from '../../../proto.js';
 import {
-  MetricType, AggregationType, SizeType, SIZE_SCALE,
-  extractMetricValue, METRIC_LABEL, METRIC_COLOR_KEY,
+  MetricType,
+  AggregationType,
+  SizeType,
+  SIZE_SCALE,
+  extractMetricValue,
+  METRIC_LABEL,
+  METRIC_COLOR_KEY,
 } from '../../utils/metrics.js';
 import { formatMetricValue } from '../../utils/format.js';
 
@@ -61,9 +66,11 @@ export function TimeSeriesChart({
   height,
   aggregation: aggProp,
   size = 'm',
-  className, style, theme: themeProp,
+  className,
+  style,
+  theme: themeProp,
 }: TimeSeriesChartProps) {
-  const base = useTheme();
+  const { theme: base } = useTheme();
   const t = themeProp ? { ...base, ...themeProp } : base;
   const s = themeStyles(t);
   const sc = SIZE_SCALE[size];
@@ -85,7 +92,9 @@ export function TimeSeriesChart({
     if (!connected || !client) return;
     client.subscribe(level, 0);
     client.getHistory(level, maxSamples);
-    const onHistory = (r: TtHistoryResp) => { if (r.level === level) addSamples(historyToMetrics(r)); };
+    const onHistory = (r: TtHistoryResp) => {
+      if (r.level === level) addSamples(historyToMetrics(r));
+    };
     const onMetrics = (m: TtMetrics) => addSamples([m]);
     client.on('history', onHistory);
     client.on('metrics', onMetrics);
@@ -103,7 +112,15 @@ export function TimeSeriesChart({
         <span style={{ fontSize: sc.font + 1, fontWeight: 600, color: t.text }}>
           {metrics.map((m) => METRIC_LABEL[m]).join(' / ')}
         </span>
-        <span style={{ fontSize: sc.font - 2, padding: '1px 4px', background: t.surface, borderRadius: t.radius, color: t.muted }}>
+        <span
+          style={{
+            fontSize: sc.font - 2,
+            padding: '1px 4px',
+            background: t.surface,
+            borderRadius: t.radius,
+            color: t.muted,
+          }}
+        >
           {LEVEL_LABELS[level]}
         </span>
         <span style={{ flex: 1 }} />
@@ -127,22 +144,30 @@ export function TimeSeriesChart({
             ))}
           </div>
         )}
-        {metrics.map((m) => latest && (
-          <span key={m} style={{ color: t[METRIC_COLOR_KEY[m]], fontWeight: 600, fontSize: sc.font }}>
-            {formatMetricValue(extractMetricValue(latest, m), m)}
-          </span>
-        ))}
+        {metrics.map(
+          (m) =>
+            latest && (
+              <span key={m} style={{ color: t[METRIC_COLOR_KEY[m]], fontWeight: 600, fontSize: sc.font }}>
+                {formatMetricValue(extractMetricValue(latest, m), m)}
+              </span>
+            ),
+        )}
       </div>
 
       <svg width="100%" height={H} viewBox={`0 0 400 ${H}`} preserveAspectRatio="none" style={{ display: 'block' }}>
-        {data.length > 1
-          ? metrics.map((metric) => {
-              const values = data.map((d) => extractMetricValue(d, metric));
-              const maxVal = metric === 'cpu' || metric === 'mem' || metric === 'disk' ? 10000 : Math.max(...values, 1);
-              return <ChartPath key={metric} values={values} maxVal={maxVal} height={H} color={t[METRIC_COLOR_KEY[metric]]} />;
-            })
-          : <text x="200" y={H / 2} textAnchor="middle" fill={t.faint} fontSize="12">waiting for data…</text>
-        }
+        {data.length > 1 ? (
+          metrics.map((metric) => {
+            const values = data.map((d) => extractMetricValue(d, metric));
+            const maxVal = metric === 'cpu' || metric === 'mem' || metric === 'disk' ? 10000 : Math.max(...values, 1);
+            return (
+              <ChartPath key={metric} values={values} maxVal={maxVal} height={H} color={t[METRIC_COLOR_KEY[metric]]} />
+            );
+          })
+        ) : (
+          <text x="200" y={H / 2} textAnchor="middle" fill={t.faint} fontSize="12">
+            waiting for data…
+          </text>
+        )}
       </svg>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: sc.font - 2 }}>
@@ -161,14 +186,23 @@ export function TimeSeriesChart({
  * @param props.height  - SVG viewport height.
  * @param props.color   - Stroke and fill base color.
  */
-function ChartPath({ values, maxVal, height, color }: { values: number[]; maxVal: number; height: number; color: string }) {
+function ChartPath({
+  values,
+  maxVal,
+  height,
+  color,
+}: {
+  values: number[];
+  maxVal: number;
+  height: number;
+  color: string;
+}) {
   const W = 400;
   const PAD = 4;
   const n = values.length;
-  const pts = values.map((v, i) => [
-    (i / (n - 1)) * W,
-    PAD + (1 - v / maxVal) * (height - PAD * 2),
-  ] as [number, number]);
+  const pts = values.map(
+    (v, i) => [(i / (n - 1)) * W, PAD + (1 - v / maxVal) * (height - PAD * 2)] as [number, number],
+  );
   const line = pts.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
   return (
     <>

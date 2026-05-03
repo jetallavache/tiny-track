@@ -1,10 +1,11 @@
-import { createContext, useContext, ReactNode, CSSProperties } from 'react';
+import { createContext, useContext, ReactNode, CSSProperties, useState, useEffect, useCallback, useMemo } from 'react';
 
 // ---------------------------------------------------------------------------
 // Theme token interface
 // ---------------------------------------------------------------------------
 
 export interface TtTheme {
+  themeName: string;
   /** Component background */
   bg: string;
   /** Alternative background (slightly lighter/darker than bg) */
@@ -60,11 +61,12 @@ export interface TtTheme {
 // Built-in presets
 // ---------------------------------------------------------------------------
 
-export type ThemePreset = 'terminal' | 'dark' | 'light' | 'material' | 'dracula' | 'heroui';
+export type ThemePreset = 'terminal' | 'dark' | 'light' | 'material' | 'dracula' | 'heroui' | 'shadcnui';
 
 export const THEMES: Record<ThemePreset, TtTheme> = {
   /** Classic TUI — monospace, green-on-dark */
   terminal: {
+    themeName: 'terminal',
     bg: '#111827',
     bgAlt: '#161f2e',
     bgDeep: '#080d14',
@@ -75,10 +77,10 @@ export const THEMES: Record<ThemePreset, TtTheme> = {
     text: '#f3f4f6',
     muted: '#9ca3af',
     faint: '#4b5563',
-    cpu:  '#38bdf8',
-    mem:  '#a78bfa',
+    cpu: '#38bdf8',
+    mem: '#a78bfa',
     disk: '#e879f9',
-    net:  '#2dd4bf',
+    net: '#2dd4bf',
     load: '#94a3b8',
     accent: '#38bdf8',
     accentMuted: '#38bdf822',
@@ -95,6 +97,7 @@ export const THEMES: Record<ThemePreset, TtTheme> = {
 
   /** Modern dark — VS Code / GitHub Dark style */
   dark: {
+    themeName: 'dark',
     bg: '#1e1e2e',
     bgAlt: '#232336',
     bgDeep: '#13131f',
@@ -105,10 +108,10 @@ export const THEMES: Record<ThemePreset, TtTheme> = {
     text: '#cdd6f4',
     muted: '#a6adc8',
     faint: '#585b70',
-    cpu:  '#7dd3fc',
-    mem:  '#c4b5fd',
+    cpu: '#7dd3fc',
+    mem: '#c4b5fd',
     disk: '#f0abfc',
-    net:  '#5eead4',
+    net: '#5eead4',
     load: '#94a3b8',
     accent: '#7dd3fc',
     accentMuted: '#7dd3fc22',
@@ -125,6 +128,7 @@ export const THEMES: Record<ThemePreset, TtTheme> = {
 
   /** Light — clean minimal */
   light: {
+    themeName: 'light',
     bg: '#ffffff',
     bgAlt: '#f8fafc',
     bgDeep: '#f1f5f9',
@@ -135,10 +139,10 @@ export const THEMES: Record<ThemePreset, TtTheme> = {
     text: '#0f172a',
     muted: '#64748b',
     faint: '#cbd5e1',
-    cpu:  '#0284c7',
-    mem:  '#7c3aed',
+    cpu: '#0284c7',
+    mem: '#7c3aed',
     disk: '#c026d3',
-    net:  '#0d9488',
+    net: '#0d9488',
     load: '#64748b',
     accent: '#0284c7',
     accentMuted: '#0284c718',
@@ -155,6 +159,7 @@ export const THEMES: Record<ThemePreset, TtTheme> = {
 
   /** Material — Google Material Design 3 tones */
   material: {
+    themeName: 'material',
     bg: '#1c1b1f',
     bgAlt: '#211f26',
     bgDeep: '#111014',
@@ -165,10 +170,10 @@ export const THEMES: Record<ThemePreset, TtTheme> = {
     text: '#e6e1e5',
     muted: '#cac4d0',
     faint: '#49454f',
-    cpu:  '#7fcfff',
-    mem:  '#d0bcff',
+    cpu: '#7fcfff',
+    mem: '#d0bcff',
     disk: '#f4b8e4',
-    net:  '#81d4c8',
+    net: '#81d4c8',
     load: '#9e9ea8',
     accent: '#d0bcff',
     accentMuted: '#d0bcff22',
@@ -185,6 +190,7 @@ export const THEMES: Record<ThemePreset, TtTheme> = {
 
   /** Dracula — classic Dracula color scheme */
   dracula: {
+    themeName: 'dracula',
     bg: '#282a36',
     bgAlt: '#2e3040',
     bgDeep: '#1e2029',
@@ -195,10 +201,10 @@ export const THEMES: Record<ThemePreset, TtTheme> = {
     text: '#f8f8f2',
     muted: '#6272a4',
     faint: '#44475a',
-    cpu:  '#8be9fd',
-    mem:  '#bd93f9',
+    cpu: '#8be9fd',
+    mem: '#bd93f9',
     disk: '#ff79c6',
-    net:  '#62d6c4',
+    net: '#62d6c4',
     load: '#6272a4',
     accent: '#bd93f9',
     accentMuted: '#bd93f922',
@@ -217,6 +223,7 @@ export const THEMES: Record<ThemePreset, TtTheme> = {
    * HeroUI — inspired by NextUI/HeroUI design system.
    */
   heroui: {
+    themeName: 'heroui',
     bg: '#0f0f1a',
     bgAlt: '#141428',
     bgDeep: '#08080f',
@@ -227,10 +234,10 @@ export const THEMES: Record<ThemePreset, TtTheme> = {
     text: '#e2e8f0',
     muted: '#94a3b8',
     faint: '#334155',
-    cpu:  '#38bdf8',
-    mem:  '#a78bfa',
+    cpu: '#38bdf8',
+    mem: '#a78bfa',
     disk: '#e879f9',
-    net:  '#2dd4bf',
+    net: '#2dd4bf',
     load: '#64748b',
     accent: '#a78bfa',
     accentMuted: '#a78bfa22',
@@ -246,6 +253,40 @@ export const THEMES: Record<ThemePreset, TtTheme> = {
     glow: '0 0 12px rgba(124,58,237,0.25)',
     transition: 'all 0.2s ease',
   },
+
+  /**
+   * shadcn/ui — maps tokens to shadcn/ui CSS variables.
+   * Requires shadcn/ui CSS variables in the document.
+   */
+  shadcnui: {
+    themeName: 'shadcnui',
+    bg: 'var(--card, hsl(222 47% 11%))',
+    bgAlt: 'var(--muted, hsl(217 33% 17%))',
+    bgDeep: 'var(--background, hsl(222 47% 7%))',
+    surface: 'var(--muted, hsl(217 33% 17%))',
+    border: 'var(--border, hsl(217 33% 22%))',
+    borderWidth: 1,
+    divider: 'var(--border, hsl(217 33% 22%))',
+    text: 'var(--card-foreground, hsl(210 40% 98%))',
+    muted: 'var(--muted-foreground, hsl(215 20% 65%))',
+    faint: 'var(--muted-foreground, hsl(215 20% 40%))',
+    cpu: '#22c55e',
+    mem: '#3b82f6',
+    disk: '#eab308',
+    net: '#8b5cf6',
+    load: '#94a3b8',
+    accent: 'var(--primary, hsl(210 40% 98%))',
+    accentMuted: 'var(--primary, hsl(210 40% 98%) / 0.1)',
+    ok: '#22c55e',
+    warn: '#f59e0b',
+    crit: 'var(--destructive, hsl(0 84% 60%))',
+    btnBg: 'var(--secondary, hsl(217 33% 17%))',
+    btnText: 'var(--secondary-foreground, hsl(210 40% 98%))',
+    font: 'var(--font-geist-mono, "JetBrains Mono", monospace)',
+    radius: 8,
+    shadowColor: 'transparent',
+    shadowBlur: 0,
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -259,18 +300,10 @@ export const THEMES: Record<ThemePreset, TtTheme> = {
 function parseHex(hex: string): [number, number, number] {
   const h = hex.replace('#', '');
   if (h.length === 3) {
-    return [
-      parseInt(h[0] + h[0], 16),
-      parseInt(h[1] + h[1], 16),
-      parseInt(h[2] + h[2], 16),
-    ];
+    return [parseInt(h[0] + h[0], 16), parseInt(h[1] + h[1], 16), parseInt(h[2] + h[2], 16)];
   }
   if (h.length >= 6) {
-    return [
-      parseInt(h.slice(0, 2), 16),
-      parseInt(h.slice(2, 4), 16),
-      parseInt(h.slice(4, 6), 16),
-    ];
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
   }
   return [128, 128, 128];
 }
@@ -307,14 +340,60 @@ export function dimColor(hex: string, bg: string, amount = 0.62): string {
   return `#${toHex(mix(r1, r2))}${toHex(mix(g1, g2))}${toHex(mix(b1, b2))}`;
 }
 
+/**
+ * A deep merge utility
+ */
+function deepMerge<T extends Record<string, any>>(target: T, source: Partial<T>): T {
+  const result = { ...target };
+
+  for (const key in source) {
+    const sourceValue = source[key];
+    const targetValue = result[key];
+
+    if (
+      sourceValue &&
+      typeof sourceValue === 'object' &&
+      !Array.isArray(sourceValue) &&
+      targetValue &&
+      typeof targetValue === 'object' &&
+      !Array.isArray(targetValue)
+    ) {
+      result[key] = deepMerge(targetValue, sourceValue);
+    } else if (sourceValue !== undefined) {
+      // result[key] = sourceValue;
+    }
+  }
+
+  return result;
+}
+
+// Использование
+// const resolved: TtTheme = theme
+//   ? deepMerge(THEMES[_preset], theme)
+//   : THEMES[_preset];
+
 // ---------------------------------------------------------------------------
 // Context
 // ---------------------------------------------------------------------------
 
-const ThemeContext = createContext<TtTheme>(THEMES.terminal);
+export interface ThemeContextValue {
+  theme: TtTheme;
+  preset: ThemePreset;
+  setPreset: (preset: ThemePreset) => void;
+  mounted: boolean;
+}
 
-export function useTheme(): TtTheme {
-  return useContext(ThemeContext);
+const ThemeContext = createContext<ThemeContextValue | undefined>({
+  theme: THEMES.terminal,
+  preset: 'terminal',
+  setPreset: () => {},
+  mounted: false,
+});
+
+export function useTheme(): ThemeContextValue {
+  const context = useContext(ThemeContext);
+  if (!context) throw new Error('useTheme must be used within ThemeProvider');
+  return context;
 }
 
 // ---------------------------------------------------------------------------
@@ -330,8 +409,48 @@ export interface ThemeProviderProps {
 }
 
 export function ThemeProvider({ preset = 'terminal', theme, children }: ThemeProviderProps) {
-  const resolved: TtTheme = theme ? { ...THEMES[preset], ...theme } : THEMES[preset];
-  return <ThemeContext.Provider value={resolved}>{children}</ThemeContext.Provider>;
+  const [mounted, setMounted] = useState<boolean>(false);
+  const [_preset, setPreset] = useState<ThemePreset>(preset);
+
+  useEffect(() => {
+    setMounted(true);
+    try {
+      const savedPreset = localStorage.getItem('themePreset') as ThemePreset | null;
+      if (savedPreset && THEMES[savedPreset]) {
+        setPreset(savedPreset);
+      }
+    } catch (error) {
+      console.error('Failed to load theme from localStorage:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (mounted) {
+      localStorage.setItem('themePreset', _preset);
+    }
+  }, [_preset, mounted]);
+
+  const changePreset = useCallback((_preset: ThemePreset) => {
+    setPreset(_preset);
+  }, []);
+
+  /** Simple merging of a given theme and redefined properties */
+  const resolved: TtTheme = theme ? { ...THEMES[_preset], ...theme } : THEMES[_preset];
+
+  const value = useMemo((): ThemeContextValue => {
+    console.log('ThemeContext value обновлен:', { theme: resolved, preset: _preset });
+
+    return {
+      theme: resolved,
+      preset: _preset,
+      setPreset: changePreset,
+      mounted,
+    };
+  }, [_preset, changePreset, mounted]);
+
+  if (!mounted) return <>{children}</>;
+
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
 // ---------------------------------------------------------------------------

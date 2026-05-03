@@ -54,7 +54,7 @@ export type ClientEventMap = {
   connect: [];
   /** WS handshake complete, streaming active */
   ready: [];
-  open: []; /* alias for ready — kept for compatibility */
+  open: [] /* alias for ready — kept for compatibility */;
   close: [code: number, reason: string];
   /** Reconnect attempt in progress */
   reconnecting: [attempt: number];
@@ -77,8 +77,7 @@ type Listener<K extends keyof ClientEventMap> = (...args: ClientEventMap[K]) => 
 /** Reconnect strategy: return delay ms, or Error to stop reconnecting. */
 export type ReconnectStrategy = (retries: number) => number | Error;
 
-const defaultReconnectStrategy: ReconnectStrategy = (retries) =>
-  Math.min(500 * 2 ** retries, 30_000);
+const defaultReconnectStrategy: ReconnectStrategy = (retries) => Math.min(500 * 2 ** retries, 30_000);
 
 export interface TinyTrackClientOptions {
   /** Auto-reconnect on close. Default: true */
@@ -107,7 +106,7 @@ export interface CreateClientOptions {
   /** WebSocket URL, e.g. 'ws://localhost:25015' */
   url: string;
   /** Auth token — sent automatically on PKT_AUTH_REQ */
-  password?: string;
+  token?: string;
   socket?: {
     connectTimeout?: number;
     reconnectStrategy?: ReconnectStrategy;
@@ -167,7 +166,10 @@ export class TinyTrackClient {
     }
     return new Promise<void>((resolve) => {
       const ws = this.ws!;
-      ws.onclose = () => { this._emit('disconnect'); resolve(); };
+      ws.onclose = () => {
+        this._emit('disconnect');
+        resolve();
+      };
       ws.close();
       this.ws = null;
     });
@@ -181,12 +183,24 @@ export class TinyTrackClient {
   // Commands
   // ---------------------------------------------------------------------------
 
-  getSnapshot(): void { this._send(buildCmd(CMD_GET_SNAPSHOT)); }
-  getStats(): void    { this._send(buildCmd(CMD_GET_RING_STATS)); }
-  getSysInfo(): void  { this._send(buildCmd(CMD_GET_SYS_INFO)); }
-  setInterval(ms: number): void { this._send(buildCmd(CMD_SET_INTERVAL, ms)); }
-  start(): void { this._send(buildCmd(CMD_START)); }
-  stop(): void  { this._send(buildCmd(CMD_STOP)); }
+  getSnapshot(): void {
+    this._send(buildCmd(CMD_GET_SNAPSHOT));
+  }
+  getStats(): void {
+    this._send(buildCmd(CMD_GET_RING_STATS));
+  }
+  getSysInfo(): void {
+    this._send(buildCmd(CMD_GET_SYS_INFO));
+  }
+  setInterval(ms: number): void {
+    this._send(buildCmd(CMD_SET_INTERVAL, ms));
+  }
+  start(): void {
+    this._send(buildCmd(CMD_START));
+  }
+  stop(): void {
+    this._send(buildCmd(CMD_STOP));
+  }
 
   getHistory(level: number, maxCount = 60, fromTs = 0, toTs = 0): void {
     this._send(buildHistoryReq(level, maxCount, fromTs, toTs));
@@ -282,12 +296,24 @@ export class TinyTrackClient {
             this._emit('auth_required');
           }
           break;
-        case PKT_METRICS:   this._emit('metrics', parseMetrics(frame.payload)); break;
-        case PKT_CONFIG:    this._emit('config', parseConfig(frame.payload)); break;
-        case PKT_ACK:       this._emit('ack', parseAck(frame.payload)); break;
-        case PKT_RING_STATS: this._emit('stats', parseStats(frame.payload)); break;
-        case PKT_HISTORY_RESP: this._emit('history', parseHistoryResp(frame.payload)); break;
-        case PKT_SYS_INFO:  this._emit('sysinfo', parseSysInfo(frame.payload)); break;
+        case PKT_METRICS:
+          this._emit('metrics', parseMetrics(frame.payload));
+          break;
+        case PKT_CONFIG:
+          this._emit('config', parseConfig(frame.payload));
+          break;
+        case PKT_ACK:
+          this._emit('ack', parseAck(frame.payload));
+          break;
+        case PKT_RING_STATS:
+          this._emit('stats', parseStats(frame.payload));
+          break;
+        case PKT_HISTORY_RESP:
+          this._emit('history', parseHistoryResp(frame.payload));
+          break;
+        case PKT_SYS_INFO:
+          this._emit('sysinfo', parseSysInfo(frame.payload));
+          break;
       }
     };
   }
@@ -312,13 +338,13 @@ export class TinyTrackClient {
  * createClient — preferred factory function (redis/mongoose style).
  *
  * @example
- * const client = createClient({ url: 'ws://localhost:25015', password: 'secret' });
+ * const client = createClient({ url: 'ws://localhost:25015', token: 'secret' });
  * client.on('metrics', m => console.log(m));
  * await client.connect();
  */
 export function createClient(opts: CreateClientOptions): TinyTrackClient {
   return new TinyTrackClient(opts.url, {
-    token: opts.password,
+    token: opts.token,
     socket: opts.socket,
   });
 }

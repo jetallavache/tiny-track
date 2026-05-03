@@ -28,21 +28,28 @@ function RawPacketLog() {
   useRawPackets(handler);
 
   return (
-    <div style={{
-      fontFamily: '"JetBrains Mono","Fira Code",monospace',
-      fontSize: 11,
-      background: t.surface,
-      border: `1px solid ${t.border}`,
-      borderRadius: t.radius,
-      padding: '10px 14px',
-      minHeight: 200,
-      color: t.text,
-    }}>
+    <div
+      style={{
+        fontFamily: '"JetBrains Mono","Fira Code",monospace',
+        fontSize: 11,
+        background: t.surface,
+        border: `1px solid ${t.border}`,
+        borderRadius: t.radius,
+        padding: '10px 14px',
+        minHeight: 200,
+        color: t.text,
+      }}
+    >
       <div style={{ color: t.muted, marginBottom: 8, fontSize: 10 }}>useRawPackets() — live packet log</div>
-      {log.length === 0
-        ? <span style={{ color: t.faint }}>Waiting for packets…</span>
-        : log.map((l, i) => <div key={i} style={{ color: i === log.length - 1 ? t.ok : t.muted }}>{l}</div>)
-      }
+      {log.length === 0 ? (
+        <span style={{ color: t.faint }}>Waiting for packets…</span>
+      ) : (
+        log.map((l, i) => (
+          <div key={i} style={{ color: i === log.length - 1 ? t.ok : t.muted }}>
+            {l}
+          </div>
+        ))
+      )}
     </div>
   );
 }

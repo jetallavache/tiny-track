@@ -32,7 +32,7 @@ export const RING_L3 = 0x03;
 
 // History flags
 export const HISTORY_FLAG_LAST = 0x01;
-export const HISTORY_FLAG_AGG  = 0x02; /* L2/L3: payload is tt_agg_metrics */
+export const HISTORY_FLAG_AGG = 0x02; /* L2/L3: payload is tt_agg_metrics */
 
 // Commands
 export const CMD_SET_INTERVAL = 0x01;
@@ -52,7 +52,7 @@ export const ACK_AUTH_FAIL = 0x02;
 
 /* Protocol v3 — PLANNED, not yet implemented by server */
 export const PKT_ALERTS_RESP = 0x20;
-export const CMD_GET_ALERTS   = 0x20;
+export const CMD_GET_ALERTS = 0x20;
 export const CMD_CLEAR_ALERTS = 0x21;
 
 export interface TtMetrics {
@@ -112,7 +112,7 @@ export interface TtHistoryResp {
   level: number;
   count: number;
   last: boolean;
-  aggregated: boolean; /* true for L2/L3: samples are TtAggMetrics */
+  aggregated: boolean /* true for L2/L3: samples are TtAggMetrics */;
   samples: TtMetrics[] | TtAggMetrics[];
 }
 
@@ -216,7 +216,7 @@ export function parseHistoryResp(p: DataView): TtHistoryResp {
     for (let i = 0; i < count; i++) {
       const off = 4 + i * 156;
       samples.push({
-        avg: parseMetrics(new DataView(p.buffer, p.byteOffset + off,      52)),
+        avg: parseMetrics(new DataView(p.buffer, p.byteOffset + off, 52)),
         min: parseMetrics(new DataView(p.buffer, p.byteOffset + off + 52, 52)),
         max: parseMetrics(new DataView(p.buffer, p.byteOffset + off + 104, 52)),
       });

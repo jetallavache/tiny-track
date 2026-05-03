@@ -20,7 +20,12 @@ export const ALL_METRICS: MetricType[] = ['cpu', 'mem', 'net', 'disk', 'load', '
 
 /** Human-readable label for each metric. */
 export const METRIC_LABEL: Record<MetricType, string> = {
-  cpu: 'CPU', mem: 'Mem', net: 'Net', disk: 'Disk', load: 'Load', proc: 'Proc',
+  cpu: 'CPU',
+  mem: 'Mem',
+  net: 'Net',
+  disk: 'Disk',
+  load: 'Load',
+  proc: 'Proc',
 };
 
 /**
@@ -28,7 +33,12 @@ export const METRIC_LABEL: Record<MetricType, string> = {
  * Allows `t[METRIC_COLOR_KEY[metric]]` lookups without string casting.
  */
 export const METRIC_COLOR_KEY: Record<MetricType, 'cpu' | 'mem' | 'net' | 'disk' | 'load'> = {
-  cpu: 'cpu', mem: 'mem', net: 'net', disk: 'disk', load: 'load', proc: 'muted' as any,
+  cpu: 'cpu',
+  mem: 'mem',
+  net: 'net',
+  disk: 'disk',
+  load: 'load',
+  proc: 'muted' as any,
 };
 
 /**
@@ -36,8 +46,8 @@ export const METRIC_COLOR_KEY: Record<MetricType, 'cpu' | 'mem' | 'net' | 'disk'
  * Components multiply these values to derive font sizes, gaps, padding and chart heights.
  */
 export const SIZE_SCALE: Record<SizeType, { font: number; gap: number; pad: number; chartH: number }> = {
-  s: { font: 10, gap: 3, pad: 4,  chartH: 80  },
-  m: { font: 12, gap: 4, pad: 6,  chartH: 140 },
+  s: { font: 10, gap: 3, pad: 4, chartH: 80 },
+  m: { font: 12, gap: 4, pad: 6, chartH: 140 },
   l: { font: 14, gap: 6, pad: 10, chartH: 220 },
 };
 
@@ -50,12 +60,18 @@ export const SIZE_SCALE: Record<SizeType, { font: number; gap: number; pad: numb
  */
 export function extractMetricValue(m: TtMetrics, metric: MetricType): number {
   switch (metric) {
-    case 'cpu':  return m.cpu;
-    case 'mem':  return m.mem;
-    case 'load': return m.load1;
-    case 'net':  return m.netRx + m.netTx;
-    case 'disk': return m.duUsage;
-    case 'proc': return m.nrTotal;
+    case 'cpu':
+      return m.cpu;
+    case 'mem':
+      return m.mem;
+    case 'load':
+      return m.load1;
+    case 'net':
+      return m.netRx + m.netTx;
+    case 'disk':
+      return m.duUsage;
+    case 'proc':
+      return m.nrTotal;
   }
 }
 

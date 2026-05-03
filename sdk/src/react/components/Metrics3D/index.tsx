@@ -68,7 +68,7 @@ export function Metrics3D({
   style,
   theme: themeProp,
 }: Metrics3DProps) {
-  const base = useTheme();
+  const { theme: base } = useTheme();
   const t = themeProp ? { ...base, ...themeProp } : base;
   const sc = SIZE_SCALE[size];
   const W = Math.round(sc.chartH * 2.2);

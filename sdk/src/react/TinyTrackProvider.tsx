@@ -67,7 +67,9 @@ export function TinyTrackProvider({ url, token, children, reconnect, reconnectDe
     client.on('config', onConfig);
     client.on('close', onClose);
     client.on('sysinfo', setSysinfo);
-    client.connect().catch(() => { /* reconnect handles retries */ });
+    client.connect().catch(() => {
+      /* reconnect handles retries */
+    });
     return () => {
       cancelled = true;
       client.off('ready', onOpen);
@@ -121,7 +123,9 @@ export function useRawPackets(handler: (pktType: number, payload: DataView) => v
   useEffect(() => {
     if (!client) return;
     client.on('packet', handler);
-    return () => { client.off('packet', handler); };
+    return () => {
+      client.off('packet', handler);
+    };
   }, [client, handler]);
 }
 

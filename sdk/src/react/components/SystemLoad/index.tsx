@@ -44,7 +44,7 @@ const LEVEL_LABEL: Record<LoadLevel, string> = {
 };
 
 export function SystemLoad({ className, style, theme: themeProp, size = 'm' }: SystemLoadProps) {
-  const base = useTheme();
+  const { theme: base } = useTheme();
   const t = themeProp ? { ...base, ...themeProp } : base;
   const s = themeStyles(t);
   const sc = SIZE_SCALE[size];

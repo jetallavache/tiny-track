@@ -1,8 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TinyTrackClient, RING_L1 } from '../src/index.js';
 import {
-  PROTO_MAGIC, HEADER_SIZE, PKT_METRICS, PKT_CONFIG, PKT_ACK, PKT_RING_STATS,
-  buildCmd, CMD_GET_SNAPSHOT,
+  PROTO_MAGIC,
+  HEADER_SIZE,
+  PKT_METRICS,
+  PKT_CONFIG,
+  PKT_ACK,
+  PKT_RING_STATS,
+  buildCmd,
+  CMD_GET_SNAPSHOT,
 } from '../src/proto.js';
 
 // ---------------------------------------------------------------------------
@@ -16,17 +22,25 @@ class MockWS {
   binaryType = 'arraybuffer';
   readyState = MockWS.OPEN;
   sent: ArrayBuffer[] = [];
-  onopen:    ((e: Event) => void) | null = null;
-  onclose:   ((e: CloseEvent) => void) | null = null;
-  onerror:   ((e: Event) => void) | null = null;
+  onopen: ((e: Event) => void) | null = null;
+  onclose: ((e: CloseEvent) => void) | null = null;
+  onerror: ((e: Event) => void) | null = null;
   onmessage: ((e: MessageEvent) => void) | null = null;
 
-  constructor(public url: string) { MockWS.instance = this; }
+  constructor(public url: string) {
+    MockWS.instance = this;
+  }
 
-  send(data: ArrayBuffer) { this.sent.push(data); }
-  close() { this.readyState = MockWS.CLOSED; }
+  send(data: ArrayBuffer) {
+    this.sent.push(data);
+  }
+  close() {
+    this.readyState = MockWS.CLOSED;
+  }
 
-  simulateOpen()    { this.onopen?.(new Event('open')); }
+  simulateOpen() {
+    this.onopen?.(new Event('open'));
+  }
   simulateClose(code = 1000) {
     this.readyState = MockWS.CLOSED;
     this.onclose?.(new CloseEvent('close', { code, reason: '' }));
@@ -99,13 +113,13 @@ describe('TinyTrackClient', () => {
 
   it('appends /websocket path', () => {
     client.connect();
-    expect(MockWS.instance!.url).toBe('ws://localhost:4026/websocket');
+    expect(MockWS.instance!.url).toBe('ws://localhost:4026/v1/stream');
   });
 
   it('strips trailing /websocket from url', () => {
-    const c = new TinyTrackClient('ws://localhost:4026/websocket');
+    const c = new TinyTrackClient('ws://localhost:4026/v1/stream');
     c.connect();
-    expect(MockWS.instance!.url).toBe('ws://localhost:4026/websocket');
+    expect(MockWS.instance!.url).toBe('ws://localhost:4026/v1/stream');
   });
 
   it('emits metrics on PKT_METRICS frame', () => {
