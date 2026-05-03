@@ -1,6 +1,6 @@
 {
   "name": "tinytsdk-lite",
-  "version": "0.7.0",
+  "version": "0.1.0",
   "type": "module",
   "description": "TinyTrack SDK Lite — Minimal WebSocket client for system metrics (core only, no React)",
   "main": "dist/index.cjs.js",
@@ -28,6 +28,7 @@
     "@rollup/plugin-terser": "^1.0.0",
     "@rollup/plugin-typescript": "^11.1.6",
     "rollup": "^4.60.1",
+    "tslib": "^2.8.1",
     "typescript": "^5.9.3",
     "vitest": "^4.1.4"
   },
@@ -41,6 +42,6 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jetallavache/tiny-track"
+    "url": "https://github.com/jetallavache/tinytrack"
   }
 }
