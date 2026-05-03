@@ -3,30 +3,53 @@ import { useTheme } from 'tinytsdk/react';
 import type { ThemePreset } from 'tinytsdk/react';
 
 export type Route =
-  | 'introduction'
-  | 'installation'
-  | 'docs'
-  | 'themes'
+  | 'home'
+  | 'server-overview'
+  | 'server-install'
+  | 'server-docker'
+  | 'server-config'
+  | 'cli-overview'
+  | 'sdk-introduction'
+  | 'sdk-installation'
+  | 'sdk-docs'
+  | 'sdk-themes'
   | 'MetricsBar'
   | 'MetricsPanel'
   | 'Dashboard'
+  | 'DashboardV2'
+  | 'DashboardComponents'
   | 'TimeSeriesChart'
+  | 'TimeSeriesChartAutoLevel'
   | 'Timeline'
+  | 'TimelineWithLazyLoad'
   | 'SystemLoad'
   | 'Metrics3D'
   | 'DiskMap'
   | 'RawPackets';
 
 const NAV: { label: string; route: Route; group?: string }[] = [
-  { label: 'Introduction', route: 'introduction' },
-  { label: 'Installation', route: 'installation' },
-  { label: 'Server Docs & Troubleshooting', route: 'docs' },
-  { label: 'Themes', route: 'themes' },
+  { label: 'Home', route: 'home' },
+  
+  { label: 'Overview', route: 'server-overview', group: 'Server' },
+  { label: 'Installation', route: 'server-install', group: 'Server' },
+  { label: 'Docker', route: 'server-docker', group: 'Server' },
+  { label: 'Configuration', route: 'server-config', group: 'Server' },
+  
+  { label: 'CLI Overview', route: 'cli-overview', group: 'CLI' },
+  
+  { label: 'Introduction', route: 'sdk-introduction', group: 'SDK' },
+  { label: 'Installation', route: 'sdk-installation', group: 'SDK' },
+  { label: 'Documentation', route: 'sdk-docs', group: 'SDK' },
+  { label: 'Themes', route: 'sdk-themes', group: 'SDK' },
   { label: 'MetricsBar', route: 'MetricsBar', group: 'Components' },
   { label: 'MetricsPanel', route: 'MetricsPanel', group: 'Components' },
   { label: 'Dashboard', route: 'Dashboard', group: 'Components' },
+  { label: 'Dashboard v2', route: 'DashboardV2', group: 'Components' },
+  { label: 'Dashboard Components', route: 'DashboardComponents', group: 'Components' },
   { label: 'TimeSeriesChart', route: 'TimeSeriesChart', group: 'Components' },
+  { label: 'TimeSeriesChart Auto', route: 'TimeSeriesChartAutoLevel', group: 'Components' },
   { label: 'Timeline', route: 'Timeline', group: 'Components' },
+  { label: 'Timeline Lazy Load', route: 'TimelineWithLazyLoad', group: 'Components' },
   { label: 'SystemLoad', route: 'SystemLoad', group: 'Components' },
   { label: 'Metrics3D', route: 'Metrics3D', group: 'Components' },
   { label: 'DiskMap', route: 'DiskMap', group: 'Components' },
