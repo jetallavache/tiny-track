@@ -1,0 +1,131 @@
+# tiny-cli
+
+`tiny-cli` is the command-line interface for TinyTrack. It reads shared memory directly,
+bypassing the network stack, and provides both a command-line snapshot mode and an
+interactive ncurses TUI dashboard.
+
+## CLI mode
+
+### Commands
+
+```bash
+tiny-cli status           # daemon status and uptime
+tiny-cli metrics          # current metrics snapshot
+tiny-cli history l1       # last hour  (1-second resolution)
+tiny-cli history l2       # last 24 hours (1-minute resolution)
+tiny-cli history l3       # last 30 days (1-hour resolution)
+tiny-cli dashboard        # launch interactive TUI
+```
+
+### `status`
+
+Prints the current state of `tinytd` and `tinytrack`, including uptime, PID,
+shared memory path, and ring buffer fill levels.
+
+```
+tinytd     running  pid=1234  uptime=2h 14m
+tinytrack  running  pid=1235  uptime=2h 14m
+shm        /dev/shm/tinytrack.shm  (4.2 MB)
+L1         3600/3600 entries  (full)
+L2         87/1440 entries
+L3         2/720 entries
+```
+
+### `metrics`
+
+Prints a single metrics snapshot from the current L1 ring buffer head.
+
+```
+CPU    23.4%
+Memory 41.2%
+Disk   58.0%
+Net RX 12.1 KB/s
+Net TX  3.8 KB/s
+Load   0.82 / 0.61 / 0.44
+```
+
+### `history`
+
+Prints historical data from the specified ring buffer level in CSV format.
+
+```bash
+tiny-cli history l1 > metrics-last-hour.csv
+```
+
+Output format:
+
+```
+timestamp,cpu,mem,disk,net_rx,net_tx,load1,load5,load15
+1713600000,2340,4120,5800,12390,3820,82,61,44
+...
+```
+
+## TUI mode
+
+The interactive TUI dashboard is launched with `tiny-cli dashboard`.
+
+> **Note**: The TUI mode is currently under active development. Some features
+> described below may not yet be available in the current release.
+
+### Layout
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ tinytrack.dev  [connected]  hostname: server01           │
+├──────────────┬──────────────────────────────────────────┤
+│ CPU   23.4%  │  ████████████████░░░░░░░░░░░░░░░░░░░░░░  │
+│ RAM   41.2%  │  ████████████████████░░░░░░░░░░░░░░░░░░  │
+│ Disk  58.0%  │  ████████████████████████████░░░░░░░░░░  │
+│ Net ↓ 12 KB  │                                          │
+│ Net ↑  4 KB  │  [sparkline chart — last 60 seconds]     │
+│ Load  0.82   │                                          │
+├──────────────┴──────────────────────────────────────────┤
+│ q=quit  r=refresh  h=history  1/2/3=level               │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Keyboard shortcuts
+
+| Key | Action |
+|-----|--------|
+| `q` | Quit |
+| `r` | Force refresh |
+| `h` | Toggle history view |
+| `1` | Switch to L1 (last hour) |
+| `2` | Switch to L2 (last 24h) |
+| `3` | Switch to L3 (last 30d) |
+| `↑` / `↓` | Scroll history |
+
+## Command-line flags
+
+```
+tiny-cli [OPTIONS] COMMAND
+
+  -c FILE    Configuration file (default: /etc/tinytrack/tinytrack.conf)
+  -s PATH    Shared memory path override
+  -j         Output in JSON format (CLI mode only)
+  -V         Print version and exit
+  -h         Print help and exit
+```
+
+## JSON output
+
+Use `-j` for machine-readable output:
+
+```bash
+tiny-cli -j metrics
+```
+
+```json
+{
+  "timestamp": 1713600000,
+  "cpu": 23.4,
+  "mem": 41.2,
+  "disk": 58.0,
+  "net_rx": 12390,
+  "net_tx": 3820,
+  "load1": 0.82,
+  "load5": 0.61,
+  "load15": 0.44
+}
+```

@@ -1,0 +1,84 @@
+# Lite — tinytsdk-lite
+
+`tinytsdk-lite` is a standalone lightweight package containing only the WebSocket client
+and binary protocol parser. It has no React dependency and is suitable for environments
+where bundle size is critical.
+
+## Specifications
+
+| Metric | Value |
+|--------|-------|
+| Bundle size (gzip) | **2.7 KB** |
+| Dependencies | none |
+| React required | no |
+| TypeScript | yes |
+| Browser support | ES2020+ |
+
+## Installation
+
+```bash
+npm install tinytsdk-lite
+# or
+pnpm add tinytsdk-lite
+```
+
+## Usage
+
+The API is identical to the core `tinytsdk` client:
+
+```ts
+import { TinyTrackClient } from 'tinytsdk-lite';
+
+const client = new TinyTrackClient('ws://your-host:25015');
+
+client.on('metrics', (m) => {
+  console.log(`CPU: ${(m.cpu / 100).toFixed(1)}%`);
+});
+
+client.connect();
+```
+
+## Differences from tinytsdk
+
+| Feature | tinytsdk | tinytsdk-lite |
+|---------|----------|---------------|
+| WebSocket client | ✓ | ✓ |
+| Protocol parser | ✓ | ✓ |
+| TypeScript types | ✓ | ✓ |
+| React components | ✓ | — |
+| Hooks | ✓ | — |
+| ThemeProvider | ✓ | — |
+| IIFE/CDN bundle | ✓ | — |
+| Bundle size (gzip) | 2.8 KB (core) + 23.7 KB (react) | 2.7 KB |
+
+## When to use tinytsdk-lite
+
+Use `tinytsdk-lite` when:
+
+- You are building a vanilla JS application without React
+- You are integrating TinyTrack into an existing framework (Vue, Svelte, Angular)
+- Bundle size is a hard constraint
+- You only need the WebSocket client and protocol parsing
+
+Use `tinytsdk` when:
+
+- You are building a React or Next.js application
+- You want ready-made UI components
+- You need the full theme system
+
+## Versioning
+
+`tinytsdk-lite` is versioned in sync with `tinytsdk`. Both packages share the same
+protocol implementation and are always compatible with each other.
+
+```json
+{
+  "tinytsdk": "0.7.0",
+  "tinytsdk-lite": "0.7.0"
+}
+```
+
+## npm
+
+- [tinytsdk](https://www.npmjs.com/package/tinytsdk)
+- [tinytsdk-lite](https://www.npmjs.com/package/tinytsdk-lite)

@@ -24,8 +24,20 @@ function randomMetrics(prev: Metrics): Metrics {
   };
 }
 
-function Bar({ label, value, max = 100, unit = '%', warn = 70, crit = 90 }: {
-  label: string; value: number; max?: number; unit?: string; warn?: number; crit?: number;
+function Bar({
+  label,
+  value,
+  max = 100,
+  unit = '%',
+  warn = 70,
+  crit = 90,
+}: {
+  label: string;
+  value: number;
+  max?: number;
+  unit?: string;
+  warn?: number;
+  crit?: number;
 }) {
   const pct = (value / max) * 100;
   const color = pct >= crit ? 'bg-red-500' : pct >= warn ? 'bg-yellow-500' : 'bg-emerald-500';
@@ -47,7 +59,14 @@ function Bar({ label, value, max = 100, unit = '%', warn = 70, crit = 90 }: {
 }
 
 export function LiveDemo() {
-  const [metrics, setMetrics] = useState<Metrics>({ cpu: 23, mem: 41, net_rx: 12000, net_tx: 4000, disk: 58, load1: 0.8 });
+  const [metrics, setMetrics] = useState<Metrics>({
+    cpu: 23,
+    mem: 41,
+    net_rx: 12000,
+    net_tx: 4000,
+    disk: 58,
+    load1: 0.8,
+  });
   const [packets, setPackets] = useState<string[]>([]);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -60,7 +79,9 @@ export function LiveDemo() {
         return next;
       });
     }, 1000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
   }, []);
 
   return (

@@ -1,0 +1,82 @@
+# Installation
+
+## One-line install (recommended)
+
+The install script builds TinyTrack from source, installs binaries to `/usr/local/bin`,
+and registers `tinytd` and `tinytrack` as systemd services.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/jetallavache/tinytrack/main/install.sh | bash
+```
+
+Supported distributions: Debian/Ubuntu, Fedora/RHEL, Arch Linux.
+
+After installation, the server is available at:
+
+```
+ws://your-host:25015/v1/stream
+```
+
+## Manual build from source
+
+### Prerequisites
+
+```bash
+# Debian / Ubuntu
+apt-get install -y build-essential autoconf automake libssl-dev
+
+# Fedora / RHEL
+dnf install -y gcc make autoconf automake openssl-devel
+
+# Arch
+pacman -S --noconfirm base-devel openssl
+```
+
+### Build
+
+```bash
+git clone https://github.com/jetallavache/tinytrack.git
+cd tinytrack/server
+
+./bootstrap.sh   # first time only (autoreconf)
+./configure
+make
+sudo make install
+```
+
+Binaries are installed to `/usr/local/bin/tinytd`, `/usr/local/bin/tinytrack`,
+and `/usr/local/bin/tiny-cli`.
+
+### Systemd services
+
+```bash
+sudo cp server/etc/systemd/tinytd.service    /etc/systemd/system/
+sudo cp server/etc/systemd/tinytrack.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now tinytd tinytrack
+```
+
+## Verify installation
+
+```bash
+systemctl status tinytd
+systemctl status tinytrack
+
+# Check WebSocket endpoint
+curl -s http://localhost:25015/health
+```
+
+## Configuration
+
+The default configuration file is installed to `/etc/tinytrack/tinytrack.conf`.
+See [Configuration](/docs/server/configuration) for all available options.
+
+## Uninstall
+
+```bash
+sudo systemctl stop tinytd tinytrack
+sudo systemctl disable tinytd tinytrack
+sudo rm /usr/local/bin/tinytd /usr/local/bin/tinytrack /usr/local/bin/tiny-cli
+sudo rm /etc/systemd/system/tinytd.service /etc/systemd/system/tinytrack.service
+sudo rm -rf /etc/tinytrack /dev/shm/tinytrack.shm
+```

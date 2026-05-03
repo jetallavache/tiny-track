@@ -1,0 +1,94 @@
+# tinytd
+
+`tinytd` is the metrics collector daemon. It is the sole writer to the shared memory
+ring buffers and has no network interface.
+
+## Architecture
+
+On startup, `tinytd`:
+
+1. Creates or opens the shared memory segment at `/dev/shm/tinytrack.shm`
+2. Initializes three ring buffers (L1, L2, L3) with configurable capacities
+3. Enters a collection loop, reading metrics from `/proc` at the configured interval
+4. Writes each sample to the L1 ring buffer
+5. Aggregates L1 samples into L2 (every 60 seconds) and L3 (every 3600 seconds)
+
+## Metrics collected
+
+| Metric | Source | Description |
+|--------|--------|-------------|
+| CPU utilization | `/proc/stat` | Per-core and aggregate CPU usage |
+| Memory usage | `/proc/meminfo` | Total, used, free, cached, buffers |
+| Network throughput | `/proc/net/dev` | Bytes/s RX and TX per interface |
+| Disk usage | `statfs()` | Used/total bytes per mount point |
+| Load average | `/proc/loadavg` | 1m, 5m, 15m load averages |
+
+## Command-line flags
+
+```
+tinytd [OPTIONS]
+
+  -c FILE    Configuration file (default: /etc/tinytrack/tinytrack.conf)
+  -f         Run in foreground (do not daemonize)
+  -v         Verbose logging
+  -d         Debug mode (implies -f, -v)
+  -V         Print version and exit
+  -h         Print help and exit
+```
+
+## Configuration
+
+`tinytd` reads its configuration from the shared `tinytrack.conf` file.
+Relevant sections:
+
+```ini
+[tinytd]
+interval_ms   = 1000      # collection interval in milliseconds
+shm_path      = /dev/shm/tinytrack.shm
+proc_root     = /proc     # override for Docker: /host/proc
+rootfs_path   = /         # override for Docker: /host/rootfs
+
+[ringbuf]
+l1_capacity   = 3600      # 1 hour at 1s resolution
+l2_capacity   = 1440      # 24 hours at 1min resolution
+l3_capacity   = 720       # 30 days at 1hr resolution
+```
+
+See [Configuration](/docs/server/configuration) for the full reference.
+
+## Debugging
+
+Run in foreground with verbose output:
+
+```bash
+tinytd -f -v -c /etc/tinytrack/tinytrack.conf
+```
+
+Debug build with AddressSanitizer:
+
+```bash
+cd server
+./configure CFLAGS="-g -O0 -fsanitize=address,undefined"
+make
+./tinytd/tinytd -f -d
+```
+
+## Development
+
+When modifying the metrics collection logic:
+
+1. Edit `server/tinytd/src/` — collection routines
+2. Edit `server/common/metrics.h` / `metrics.c` — shared metric structures
+3. If the `MetricsSnapshot` wire format changes, update `server/common/proto/v2.h`
+   and mirror the change in `sdk/src/proto.ts`
+4. Run `make check` to execute integration tests
+
+## Troubleshooting
+
+See [Troubleshooting](/docs/server/troubleshooting) for common issues.
+
+Common problems:
+
+- **Shared memory not created**: check `/dev/shm` is mounted and writable
+- **High CPU usage**: increase `interval_ms` in configuration
+- **Missing metrics**: verify `/proc` is accessible (relevant in containers)

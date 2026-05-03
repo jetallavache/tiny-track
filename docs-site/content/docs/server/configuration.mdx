@@ -1,0 +1,97 @@
+# Configuration
+
+Both `tinytd` and `tinytrack` read from a single configuration file,
+by default `/etc/tinytrack/tinytrack.conf`.
+
+## File format
+
+The configuration file uses INI format with section headers in brackets.
+Comments begin with `#`. String values do not require quotes.
+
+```ini
+# /etc/tinytrack/tinytrack.conf
+
+[tinytd]
+interval_ms   = 1000
+shm_path      = /dev/shm/tinytrack.shm
+proc_root     = /proc
+rootfs_path   = /
+
+[ringbuf]
+l1_capacity   = 3600
+l2_capacity   = 1440
+l3_capacity   = 720
+
+[gateway]
+port          = 25015
+bind_addr     = 0.0.0.0
+max_clients   = 64
+tls_enabled   = false
+tls_cert      =
+tls_key       =
+
+[log]
+level         = info
+file          =
+```
+
+## Section: [tinytd]
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `interval_ms` | integer | `1000` | Metrics collection interval in milliseconds |
+| `shm_path` | string | `/dev/shm/tinytrack.shm` | Shared memory file path |
+| `proc_root` | string | `/proc` | `/proc` mount point. Override to `/host/proc` in Docker. |
+| `rootfs_path` | string | `/` | Root filesystem path. Override to `/host/rootfs` in Docker. |
+
+## Section: [ringbuf]
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `l1_capacity` | integer | `3600` | L1 ring buffer capacity (entries). At 1s interval: 1 hour. |
+| `l2_capacity` | integer | `1440` | L2 ring buffer capacity. At 1min aggregation: 24 hours. |
+| `l3_capacity` | integer | `720` | L3 ring buffer capacity. At 1hr aggregation: 30 days. |
+
+## Section: [gateway]
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `port` | integer | `25015` | TCP port to listen on |
+| `bind_addr` | string | `0.0.0.0` | Bind address. Use `127.0.0.1` to restrict to localhost. |
+| `max_clients` | integer | `64` | Maximum concurrent WebSocket connections |
+| `tls_enabled` | boolean | `false` | Enable TLS (WSS / HTTPS) |
+| `tls_cert` | string | — | Path to TLS certificate file (PEM) |
+| `tls_key` | string | — | Path to TLS private key file (PEM) |
+
+## Section: [log]
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `level` | string | `info` | Log level: `debug`, `info`, `warn`, `error` |
+| `file` | string | — | Log file path. Empty = stderr. |
+
+## Environment variable overrides
+
+The following environment variables override the corresponding configuration keys.
+They are primarily used in Docker deployments:
+
+| Variable | Overrides |
+|----------|-----------|
+| `TT_PROC_ROOT` | `[tinytd] proc_root` |
+| `TT_ROOTFS_PATH` | `[tinytd] rootfs_path` |
+| `TT_SHM_PATH` | `[tinytd] shm_path` |
+| `TT_PORT` | `[gateway] port` |
+| `TT_BIND_ADDR` | `[gateway] bind_addr` |
+| `TT_TLS_ENABLED` | `[gateway] tls_enabled` |
+| `TT_TLS_CERT` | `[gateway] tls_cert` |
+| `TT_TLS_KEY` | `[gateway] tls_key` |
+| `TT_LOG_LEVEL` | `[log] level` |
+
+## Reloading configuration
+
+`tinytd` and `tinytrack` do not support live configuration reload.
+After changing the configuration file, restart both services:
+
+```bash
+sudo systemctl restart tinytd tinytrack
+```

@@ -1,0 +1,71 @@
+# Installation
+
+## npm
+
+Install the main SDK package:
+
+```bash
+npm install tinytsdk
+```
+
+For React components, the package exports a separate entry point:
+
+```tsx
+import { TinyTrackProvider, MetricsBar } from 'tinytsdk/react';
+```
+
+## pnpm / yarn
+
+```bash
+pnpm add tinytsdk
+# or
+yarn add tinytsdk
+```
+
+## CDN (no build step)
+
+For vanilla JS usage without a bundler:
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/tinytsdk/dist/tinytsdk.min.js"></script>
+<script>
+  const client = new TinyTrack.TinyTrackClient('ws://your-host:25015');
+  client.on('metrics', (m) => {
+    console.log('CPU:', m.cpu / 100, '%');
+  });
+  client.connect();
+</script>
+```
+
+## tinytsdk-lite
+
+For environments where bundle size is critical and React components are not needed:
+
+```bash
+npm install tinytsdk-lite
+```
+
+`tinytsdk-lite` is a standalone package containing only the WebSocket client and protocol parser.
+It has no React dependency and weighs **2.7 KB gzip**. See [Lite](/docs/sdk/lite) for details.
+
+## Peer dependencies
+
+`tinytsdk/react` requires React 18 or 19:
+
+```bash
+npm install react react-dom
+```
+
+`Metrics3D` additionally requires Three.js, loaded dynamically on demand:
+
+```bash
+npm install three
+```
+
+## TypeScript
+
+The package ships full TypeScript declarations. No `@types/*` packages are needed.
+
+```ts
+import type { TtTheme, MetricType } from 'tinytsdk/react';
+```

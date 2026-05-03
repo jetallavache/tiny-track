@@ -1,0 +1,115 @@
+# Raw Packets & TypeScript
+
+## Accessing raw binary packets
+
+`TinyTrackClient` exposes a `raw` event that fires for every binary frame received from the server,
+before parsing. This is useful for logging, debugging, or implementing custom protocol extensions.
+
+```ts
+import { TinyTrackClient } from 'tinytsdk';
+
+const client = new TinyTrackClient('ws://your-host:25015');
+
+client.on('raw', (buf: ArrayBuffer) => {
+  const view = new DataView(buf);
+  const type = view.getUint8(0);
+  console.log('packet type:', type.toString(16));
+});
+
+client.connect();
+```
+
+## Protocol constants
+
+All protocol constants are exported from `tinytsdk`:
+
+```ts
+import {
+  PKT_METRICS,
+  PKT_SYS_INFO,
+  PKT_RING_INFO,
+  CMD_GET_SNAPSHOT,
+  CMD_GET_SYS_INFO,
+  CMD_GET_RING_INFO,
+  RING_L1,
+  RING_L2,
+  RING_L3,
+} from 'tinytsdk';
+```
+
+## Typed metrics object
+
+The `MetricsSnapshot` type describes the parsed metrics payload:
+
+```ts
+import type { MetricsSnapshot } from 'tinytsdk';
+
+client.on('metrics', (m: MetricsSnapshot) => {
+  /* All values are integers scaled by 100 (fixed-point).
+     Divide by 100 to get the human-readable value. */
+  const cpuPct  = m.cpu  / 100;   // 0.0 – 100.0 %
+  const memPct  = m.mem  / 100;   // 0.0 – 100.0 %
+  const diskPct = m.disk / 100;   // 0.0 – 100.0 %
+  const netRx   = m.net_rx;       // bytes/s
+  const netTx   = m.net_tx;       // bytes/s
+  const load1   = m.load1  / 100; // load average × 100
+  const load5   = m.load5  / 100;
+  const load15  = m.load15 / 100;
+});
+```
+
+## Sending commands
+
+Use `buildCmd` to construct binary command frames:
+
+```ts
+import { buildCmd, CMD_GET_RING_INFO, RING_L2 } from 'tinytsdk';
+
+/* Request L2 ring buffer info */
+const frame = buildCmd(CMD_GET_RING_INFO, RING_L2);
+client.send(frame);
+```
+
+## useRawPackets hook
+
+In React, use the `useRawPackets` hook to subscribe to raw frames:
+
+```tsx
+import { useRawPackets } from 'tinytsdk/react';
+
+function DebugPanel() {
+  const [last, setLast] = React.useState<string>('—');
+
+  useRawPackets((buf) => {
+    const view = new DataView(buf);
+    setLast('0x' + view.getUint8(0).toString(16).padStart(2, '0'));
+  });
+
+  return <code>Last packet type: {last}</code>;
+}
+```
+
+## CSV export example
+
+```ts
+import { TinyTrackClient } from 'tinytsdk';
+
+const client = new TinyTrackClient('ws://your-host:25015');
+const rows: string[] = ['timestamp,cpu,mem,disk,net_rx,net_tx'];
+
+client.on('metrics', (m) => {
+  rows.push(`${Date.now()},${m.cpu},${m.mem},${m.disk},${m.net_rx},${m.net_tx}`);
+});
+
+/* Download after 60 seconds */
+setTimeout(() => {
+  const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'metrics.csv';
+  a.click();
+}, 60_000);
+
+client.connect();
+```

@@ -6,12 +6,12 @@ import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { Menu, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ThemeSwitcher } from './theme-switcher';
 
 const links = [
-  { href: '/tinytd', label: 'tinytd' },
-  { href: '/tinytrack', label: 'tinytrack' },
-  { href: '/tiny-cli', label: 'tiny-cli' },
-  { href: '/sdk', label: 'SDK' },
+  { href: '/components', label: 'components' },
+  { href: '/themes', label: 'themes' },
+  { href: '/docs', label: 'docs' },
 ];
 
 export function Nav() {
@@ -24,9 +24,12 @@ export function Nav() {
     <header className="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-sm">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5 font-semibold tracking-tight" onClick={() => setOpen(false)}>
-          <Image src="/logo.svg" alt="TinyTrack" width={24} height={24} />
-          <span className="text-foreground">TinyTrack</span>
+        <Link href="/" className="flex items-center gap-2.5" onClick={() => setOpen(false)}>
+          <Image src="/logo.svg" alt="tinytrack" width={18} height={18} />
+          <span className="font-mono text-sm font-semibold tracking-tight text-foreground">tinytrack.dev</span>
+          <span className="rounded px-1.5 py-0.5 text-[10px] font-mono font-medium bg-primary/10 text-primary border border-primary/20 leading-none">
+            beta
+          </span>
         </Link>
 
         {/* Desktop nav */}
@@ -36,21 +39,14 @@ export function Nav() {
               key={href}
               href={href}
               className={cn(
-                'rounded-md px-3 py-1.5 text-sm transition-colors',
+                'rounded-md px-3 py-1.5 text-sm font-mono transition-colors',
                 isActive(href) ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:text-foreground',
               )}
             >
               {label}
             </Link>
           ))}
-          <a
-            href="https://github.com/jetallavache/tinytrack"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="ml-2 rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            GitHub ↗
-          </a>
+          <ThemeSwitcher />
         </nav>
 
         {/* Mobile hamburger */}
@@ -72,21 +68,14 @@ export function Nav() {
               href={href}
               onClick={() => setOpen(false)}
               className={cn(
-                'rounded-md px-3 py-2 text-sm transition-colors',
+                'rounded-md px-3 py-2 text-sm font-mono transition-colors',
                 isActive(href) ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:text-foreground',
               )}
             >
               {label}
             </Link>
           ))}
-          <a
-            href="https://github.com/jetallavache/tinytrack"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-md px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            GitHub ↗
-          </a>
+          <ThemeSwitcher />
         </div>
       )}
     </header>

@@ -1,0 +1,174 @@
+# Docker & Kubernetes
+
+## Docker
+
+### Quick start
+
+```bash
+docker run -d --name tinytrack \
+  -p 25015:25015 \
+  -v /proc:/host/proc:ro \
+  -v /:/host/rootfs:ro \
+  -v /dev/shm:/dev/shm \
+  -e TT_PROC_ROOT=/host/proc \
+  -e TT_ROOTFS_PATH=/host/rootfs \
+  jetallavache/tinytrack:latest
+```
+
+The container runs both `tinytd` and `tinytrack` under a process supervisor.
+
+### Environment variables
+
+| Variable | Description |
+|----------|-------------|
+| `TT_PROC_ROOT` | Path to the host `/proc` mount inside the container |
+| `TT_ROOTFS_PATH` | Path to the host root filesystem inside the container |
+| `TT_PORT` | WebSocket port (default: `25015`) |
+| `TT_TLS_ENABLED` | Enable TLS: `true` / `false` |
+| `TT_TLS_CERT` | Path to TLS certificate inside the container |
+| `TT_TLS_KEY` | Path to TLS private key inside the container |
+| `TT_LOG_LEVEL` | Log level: `debug`, `info`, `warn`, `error` |
+
+### Volume mounts
+
+| Host path | Container path | Mode | Purpose |
+|-----------|---------------|------|---------|
+| `/proc` | `/host/proc` | `ro` | Read host metrics from `/proc` |
+| `/` | `/host/rootfs` | `ro` | Read disk usage via `statfs()` |
+| `/dev/shm` | `/dev/shm` | `rw` | Shared memory for ring buffers |
+
+> **Security note**: Mounting `/` as read-only gives the container access to the host
+> filesystem. Use a more restrictive mount if this is a concern:
+> ```bash
+> -v /:/host/rootfs:ro,rbind
+> ```
+
+## Docker Compose
+
+```yaml
+services:
+  tinytrack:
+    image: jetallavache/tinytrack:latest
+    ports:
+      - "25015:25015"
+    volumes:
+      - /proc:/host/proc:ro
+      - /:/host/rootfs:ro
+      - /dev/shm:/dev/shm
+    environment:
+      TT_PROC_ROOT: /host/proc
+      TT_ROOTFS_PATH: /host/rootfs
+    restart: unless-stopped
+```
+
+Start:
+
+```bash
+docker compose up -d
+docker compose logs -f tinytrack
+```
+
+## Kubernetes — DaemonSet
+
+Deploy TinyTrack as a DaemonSet to monitor every node in the cluster:
+
+```yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: tinytrack
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: tinytrack
+  template:
+    metadata:
+      labels:
+        app: tinytrack
+    spec:
+      hostPID: false
+      containers:
+        - name: tinytrack
+          image: jetallavache/tinytrack:latest
+          ports:
+            - containerPort: 25015
+              name: websocket
+          env:
+            - name: TT_PROC_ROOT
+              value: /host/proc
+            - name: TT_ROOTFS_PATH
+              value: /host/rootfs
+          volumeMounts:
+            - name: proc
+              mountPath: /host/proc
+              readOnly: true
+            - name: rootfs
+              mountPath: /host/rootfs
+              readOnly: true
+            - name: shm
+              mountPath: /dev/shm
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "16Mi"
+            limits:
+              cpu: "50m"
+              memory: "32Mi"
+      volumes:
+        - name: proc
+          hostPath:
+            path: /proc
+        - name: rootfs
+          hostPath:
+            path: /
+        - name: shm
+          hostPath:
+            path: /dev/shm
+```
+
+### Service (optional)
+
+Expose the WebSocket port within the cluster:
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: tinytrack
+  namespace: monitoring
+spec:
+  selector:
+    app: tinytrack
+  ports:
+    - port: 25015
+      targetPort: 25015
+      name: websocket
+  type: ClusterIP
+```
+
+## Building the Docker image
+
+```bash
+cd server
+docker build -t tinytrack:local .
+```
+
+The `Dockerfile` is located at `server/Dockerfile`.
+
+## Prometheus integration
+
+`tinytrack` exposes a Prometheus metrics endpoint at `/metrics`:
+
+```
+http://your-host:25015/metrics
+```
+
+Add to your `prometheus.yml`:
+
+```yaml
+scrape_configs:
+  - job_name: tinytrack
+    static_configs:
+      - targets: ['your-host:25015']
+```

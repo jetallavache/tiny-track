@@ -1,0 +1,80 @@
+# Themes
+
+`tinytsdk/react` components support a flexible theming system based on token overrides.
+Themes can be applied globally via `TinyTrackProvider` or per-component via the `theme` prop.
+
+## Theme tokens
+
+The `TtTheme` interface defines all available tokens:
+
+```ts
+interface TtTheme {
+  /* Background colors */
+  bg:        string;  /* component background */
+  bgAlt:     string;  /* alternate row / section background */
+
+  /* Text colors */
+  fg:        string;  /* primary text */
+  fgMuted:   string;  /* secondary / muted text */
+
+  /* Metric accent colors */
+  cpu:       string;
+  mem:       string;
+  disk:      string;
+  net:       string;
+  load:      string;
+
+  /* Status colors */
+  ok:        string;  /* normal / healthy */
+  warn:      string;  /* warning threshold */
+  crit:      string;  /* critical threshold */
+
+  /* Border and radius */
+  border:    string;
+  radius:    string;
+
+  /* Font */
+  font:      string;
+}
+```
+
+## Global theme via provider
+
+```tsx
+import { TinyTrackProvider } from 'tinytsdk/react';
+
+const myTheme = {
+  bg:    '#0d1117',
+  cpu:   '#f97316',
+  mem:   '#a78bfa',
+  ok:    '#22c55e',
+  warn:  '#f59e0b',
+  crit:  '#ef4444',
+};
+
+export default function App() {
+  return (
+    <TinyTrackProvider url="ws://your-host:25015" theme={myTheme}>
+      <MetricsPanel />
+      <MetricsBar />
+    </TinyTrackProvider>
+  );
+}
+```
+
+## Per-component override
+
+```tsx
+<MetricsPanel theme={{ cpu: '#f97316', mem: '#a78bfa' }} />
+```
+
+Per-component tokens are merged with the global theme. Only the specified tokens are overridden.
+
+## Built-in themes
+
+| Theme | Description |
+|-------|-------------|
+| `default` | Dark terminal aesthetic. Green accents, monospace font. |
+| `shadcnui` | shadcn/ui-compatible. Neutral palette, CSS variable integration. |
+
+See [Default](/themes/default) and [shadcn/ui](/themes/shadcnui) for full token listings.

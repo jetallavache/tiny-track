@@ -12,12 +12,17 @@ interface LiveExampleClientProps {
   reactCode: string;
   vanillaCode: string;
   /** Rendered shiki HTML panels passed as children[0]=react, children[1]=vanilla */
-  children: [React.ReactNode, React.ReactNode, React.ReactNode]; /* preview, react, vanilla */
+  children: [React.ReactNode, React.ReactNode, React.ReactNode] /* preview, react, vanilla */;
   center?: boolean;
 }
 
 export function LiveExampleClient({
-  title, description, reactCode, vanillaCode, children, center,
+  title,
+  description,
+  reactCode,
+  vanillaCode,
+  children,
+  center,
 }: LiveExampleClientProps) {
   const [tab, setTab] = useState<Tab>('preview');
   const [copied, setCopied] = useState(false);

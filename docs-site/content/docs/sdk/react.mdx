@@ -1,0 +1,155 @@
+# React — tinytsdk/react
+
+`tinytsdk/react` provides a set of React components and hooks for displaying real-time
+system metrics in React and Next.js applications.
+
+## Installation
+
+```bash
+npm install tinytsdk
+# React 18 or 19 is required as a peer dependency
+```
+
+## TinyTrackProvider
+
+All components must be wrapped in `TinyTrackProvider`. The provider manages the WebSocket
+connection and distributes metrics to child components via React context.
+
+```tsx
+import { TinyTrackProvider } from 'tinytsdk/react';
+
+export default function App() {
+  return (
+    <TinyTrackProvider url="ws://your-host:25015">
+      {/* components here */}
+    </TinyTrackProvider>
+  );
+}
+```
+
+### Provider props
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `url` | `string` | required | WebSocket server URL |
+| `theme` | `Partial<TtTheme>` | default theme | Global theme token overrides |
+| `reconnect` | `boolean` | `true` | Auto-reconnect on disconnect |
+| `reconnectDelay` | `number` | `2000` | Initial reconnect delay in ms |
+
+## Components
+
+See the [Components](/components) section for full documentation of each component
+with live previews and code examples.
+
+| Component | Import |
+|-----------|--------|
+| `MetricsBar` | `import { MetricsBar } from 'tinytsdk/react'` |
+| `MetricsPanel` | `import { MetricsPanel } from 'tinytsdk/react'` |
+| `TimeSeriesChart` | `import { TimeSeriesChart } from 'tinytsdk/react'` |
+| `Dashboard` | `import { Dashboard } from 'tinytsdk/react'` |
+| `Timeline` | `import { Timeline } from 'tinytsdk/react'` |
+| `DiskMap` | `import { DiskMap } from 'tinytsdk/react'` |
+| `Metrics3D` | `import { Metrics3D } from 'tinytsdk/react'` |
+| `Sparkline` | `import { Sparkline } from 'tinytsdk/react'` |
+| `SystemLoad` | `import { SystemLoad } from 'tinytsdk/react'` |
+
+## Hooks
+
+### `useMetrics()`
+
+Returns the latest `MetricsSnapshot` and connection status.
+
+```tsx
+import { useMetrics } from 'tinytsdk/react';
+
+function CpuDisplay() {
+  const { metrics, connected } = useMetrics();
+  if (!connected) return <span>Connecting…</span>;
+  return <span>CPU: {(metrics.cpu / 100).toFixed(1)}%</span>;
+}
+```
+
+### `useSysInfo()`
+
+Returns static system information received during the handshake.
+
+```tsx
+import { useSysInfo } from 'tinytsdk/react';
+
+function HostInfo() {
+  const info = useSysInfo();
+  return <span>{info?.hostname ?? '—'}</span>;
+}
+```
+
+### `useHistory(level)`
+
+Returns historical metrics for the specified ring buffer level.
+
+```tsx
+import { useHistory } from 'tinytsdk/react';
+
+function HistoryChart() {
+  const entries = useHistory('l1');
+  return <span>{entries.length} data points</span>;
+}
+```
+
+### `useRawPackets(handler)`
+
+Subscribes to raw binary frames.
+
+```tsx
+import { useRawPackets } from 'tinytsdk/react';
+
+function DebugPanel() {
+  useRawPackets((buf) => {
+    console.log('raw frame:', buf.byteLength, 'bytes');
+  });
+  return null;
+}
+```
+
+### `useTheme()`
+
+Returns the current resolved theme tokens.
+
+```tsx
+import { useTheme } from 'tinytsdk/react';
+
+function CustomWidget() {
+  const theme = useTheme();
+  return <div style={{ background: theme.bg, color: theme.fg }}>…</div>;
+}
+```
+
+## Next.js
+
+In Next.js App Router, `TinyTrackProvider` must be used inside a Client Component:
+
+```tsx
+// app/providers.tsx
+'use client';
+import { TinyTrackProvider } from 'tinytsdk/react';
+
+export function Providers({ children }: { children: React.ReactNode }) {
+  return (
+    <TinyTrackProvider url={process.env.NEXT_PUBLIC_TT_URL!}>
+      {children}
+    </TinyTrackProvider>
+  );
+}
+
+// app/layout.tsx
+import { Providers } from './providers';
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html>
+      <body>
+        <Providers>{children}</Providers>
+      </body>
+    </html>
+  );
+}
+```
