@@ -98,7 +98,8 @@ struct tt_proto_history_req {
 #define TT_HISTORY_BATCH_MAX 60u /* Max samples per response frame  */
 
 #define HISTORY_FLAG_LAST 0x01u /* Set on the final frame of a batch */
-#define HISTORY_FLAG_AGG  0x02u /* Set when payload contains tt_agg_metrics (L2/L3) */
+#define HISTORY_FLAG_AGG \
+  0x02u /* Set when payload contains tt_agg_metrics (L2/L3) */
 
 #pragma pack(push, 1)
 struct tt_proto_history_resp {
@@ -132,8 +133,10 @@ struct tt_proto_ring_stat {
   uint32_t capacity; /* Total ring capacity (samples)            */
   uint32_t head;     /* Current write position                   */
   uint32_t filled;   /* Number of valid samples                  */
-  uint64_t first_ts; /* Timestamp of oldest sample, Unix ms — little-endian (no hton); SDK reads via readUint64LE */
-  uint64_t last_ts;  /* Timestamp of newest sample, Unix ms — little-endian (no hton); SDK reads via readUint64LE */
+  uint64_t first_ts; /* Timestamp of oldest sample, Unix ms — little-endian (no
+                        hton); SDK reads via readUint64LE */
+  uint64_t last_ts;  /* Timestamp of newest sample, Unix ms — little-endian (no
+                        hton); SDK reads via readUint64LE */
 }; /* 25 bytes */
 
 struct tt_proto_stats {

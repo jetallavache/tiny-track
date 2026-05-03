@@ -75,7 +75,9 @@ static int drop_privileges(const char* user, const char* group) {
   struct group* gr = getgrnam(group);
   if (!gr) {
     tt_log_err("Privileges unknown group: %s", group);
-    tt_log_err("           See https://tinytrack.dev/docs/troubleshooting#drop-privileges");
+    tt_log_err(
+        "           See "
+        "https://tinytrack.dev/docs/troubleshooting#drop-privileges");
     return -1;
   }
   if (setgid(gr->gr_gid) < 0) {
@@ -83,12 +85,15 @@ static int drop_privileges(const char* user, const char* group) {
     return -1;
   }
   if (setgroups(0, NULL) < 0)
-    tt_log_warning("Privileges setgroups failed: %s (non-fatal)", strerror(errno));
+    tt_log_warning("Privileges setgroups failed: %s (non-fatal)",
+                   strerror(errno));
 
   struct passwd* pw = getpwnam(user);
   if (!pw) {
     tt_log_err("Privileges unknown user: %s", user);
-    tt_log_err("           See https://tinytrack.dev/docs/troubleshooting#drop-privileges");
+    tt_log_err(
+        "           See "
+        "https://tinytrack.dev/docs/troubleshooting#drop-privileges");
     return -1;
   }
   if (setuid(pw->pw_uid) < 0) {
@@ -187,7 +192,8 @@ int main(int argc, char** argv) {
 
   if (ttd_writer_init(&writer, &cfg) < 0) {
     tt_log_err("Storage    cannot initialize ring buffer");
-    tt_log_err("           See https://tinytrack.dev/docs/troubleshooting#no-mmap");
+    tt_log_err(
+        "           See https://tinytrack.dev/docs/troubleshooting#no-mmap");
     return 1;
   }
 
@@ -211,13 +217,17 @@ int main(int argc, char** argv) {
     struct group* gr = getgrnam(cfg.group);
     if (pw && gr) {
       if (chown(cfg.live_path, pw->pw_uid, gr->gr_gid) != 0)
-        tt_log_warning("Storage    chown %s failed: %s", cfg.live_path, strerror(errno));
+        tt_log_warning("Storage    chown %s failed: %s", cfg.live_path,
+                       strerror(errno));
       if (chown(cfg.shadow_path, pw->pw_uid, gr->gr_gid) != 0)
-        tt_log_warning("Storage    chown %s failed: %s", cfg.shadow_path, strerror(errno));
+        tt_log_warning("Storage    chown %s failed: %s", cfg.shadow_path,
+                       strerror(errno));
     }
     if (drop_privileges(cfg.user, cfg.group) < 0) {
       tt_log_err("Privileges cannot drop to %s:%s", cfg.user, cfg.group);
-      tt_log_err("           See https://tinytrack.dev/docs/troubleshooting#drop-privileges");
+      tt_log_err(
+          "           See "
+          "https://tinytrack.dev/docs/troubleshooting#drop-privileges");
       cleanup(&rt, &cst, &writer, cfg.pid_file);
       return 1;
     }
@@ -226,12 +236,16 @@ int main(int argc, char** argv) {
 
   /* ── Storage ─────────────────────────────────────────────────────── */
   tt_log_info("Storage    live=%s", cfg.live_path);
-  tt_log_info("Storage    shadow=%s  sync=%us", cfg.shadow_path, cfg.shadow_sync_interval_sec);
+  tt_log_info("Storage    shadow=%s  sync=%us", cfg.shadow_path,
+              cfg.shadow_sync_interval_sec);
 
   /* ── Collection ──────────────────────────────────────────────────── */
-  tt_log_info("Collection interval=%u ms  du_interval=%u s", cfg.interval_ms, cfg.du_interval_sec);
-  tt_log_info("Ring       L1=%u slots (1s/1h)  L2=%u slots (1min/24h)  L3=%u slots (1h/30d)",
-              cfg.l1_capacity, cfg.l2_capacity, cfg.l3_capacity);
+  tt_log_info("Collection interval=%u ms  du_interval=%u s", cfg.interval_ms,
+              cfg.du_interval_sec);
+  tt_log_info(
+      "Ring       L1=%u slots (1s/1h)  L2=%u slots (1min/24h)  L3=%u slots "
+      "(1h/30d)",
+      cfg.l1_capacity, cfg.l2_capacity, cfg.l3_capacity);
 
   /* ── Ready ───────────────────────────────────────────────────────── */
   tt_log_notice("tinytd ready  pid=%d", (int)getpid());

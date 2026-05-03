@@ -130,6 +130,25 @@ uninstall-hook:
         test-fast test-unit test-integration test-smoke test-system \
         test-perf test-bench test-sanitize test-static test-gateway test-all
 
+token-reload:
+	@echo "  Token setup tinytrack.service"
+	@read -s -p "Enter your authentication token: " TOKEN; \
+	echo; \
+	if [ -n "$$TOKEN" ]; then \
+		sudo mkdir -p /etc/systemd/system/tinytrack.service.d/; \
+		( \
+			echo "[Service]"; \
+			echo "$$TOKEN" | sudo systemd-creds encrypt --name=auth_token -p - -; \
+			echo ""; \
+			echo "Environment=\"AUTH_TOKEN_PATH=%d/auth_token\""; \
+		) | sudo tee /etc/systemd/system/tinytrack.service.d/50-auth-token.conf > /dev/null; \
+		echo "  Token has been securely stored."; \
+	else \
+		echo "  No token provided. Skipping authentication setup."; \
+	fi
+	systemctl daemon-reload
+	systemctl restart tinytrack
+
 check-gateway:
 	$(MAKE) -C gateway check-gateway
 

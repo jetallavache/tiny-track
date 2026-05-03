@@ -192,7 +192,8 @@ void ttg_net_mgr_poll(struct ttg_mgr* mgr, int ms) {
     if (!c->is_closing && c->is_websocket && mgr->idle_timeout_ms > 0 &&
         c->last_recv_time > 0) {
       if (now - (uint64_t)c->last_recv_time * 1000 > mgr->idle_timeout_ms) {
-        tt_log_info("%lu idle timeout (%u ms), closing", c->id, mgr->idle_timeout_ms);
+        tt_log_info("%lu idle timeout (%u ms), closing", c->id,
+                    mgr->idle_timeout_ms);
         c->is_closing = 1;
       }
     }

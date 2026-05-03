@@ -151,7 +151,8 @@ int ttr_writer_recover_from_shadow(struct ttr_writer* ctx) {
   {
     char ts_buf[20];
     fmt_ts_ms(hdr->last_shadow_sync_ts, ts_buf, sizeof(ts_buf));
-    tt_log_notice("Recovered %zu bytes from shadow (last_sync=%s)", ctx->total_size, ts_buf);
+    tt_log_notice("Recovered %zu bytes from shadow (last_sync=%s)",
+                  ctx->total_size, ts_buf);
   }
   return 1;
 }

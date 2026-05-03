@@ -1,6 +1,7 @@
 #ifndef TTG_CONFIG_H
 #define TTG_CONFIG_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "common/log/log.h"
@@ -15,10 +16,11 @@ struct ttg_config {
   enum tt_log_level log_level;
 
   /* Gateway — network (hostname + port + tls assembled into listen[]) */
-  char hostname[128];     /* Bind address, e.g. "0.0.0.0" or "127.0.0.1" */
-  uint16_t port;          /* Listen port, e.g. 25015                      */
-  int tls;                /* 0 = ws://, 1 = wss://                        */
-  char listen[256];       /* Assembled: http://HOST:PORT  (derived, not read directly) */
+  char hostname[128]; /* Bind address, e.g. "0.0.0.0" or "127.0.0.1" */
+  uint16_t port;      /* Listen port, e.g. 25015                      */
+  int tls;            /* 0 = ws://, 1 = wss://                        */
+  char listen[256]; /* Assembled: http://HOST:PORT  (derived, not read directly)
+                     */
   char shm_path[256];     /* Path to live mmap file       */
   int update_interval_ms; /* Default push interval, ms    */
 
@@ -27,12 +29,14 @@ struct ttg_config {
   char tls_key[256];  /* PEM private key file, or ""  */
   char tls_ca[256];   /* PEM CA bundle, or ""         */
 
-  /* Authentication (optional — disabled when empty) */
-  char auth_token[128];      /* Shared secret; empty = no auth       */
-  uint32_t auth_timeout_ms;  /* Max ms to wait for CMD_AUTH (default 5000) */
+  /* Authentication (optional — disabled when false or empty) */
+  bool auth_enable;         /* enable/disable authentication */
+  uint32_t auth_timeout_ms; /* Max ms to wait for CMD_AUTH (default 5000) */
+  char auth_token[512]; /* Shared secret; empty = no auth, 0 = token unset */
 
   /* CORS (optional) */
-  char cors_origins[512];    /* Comma-separated allowed origins, or "*", or "" = disabled */
+  char cors_origins[512]; /* Comma-separated allowed origins, or "*", or "" =
+                             disabled */
 
   /* Safety limits */
   uint32_t max_connections;   /* Max simultaneous accepted conns (0 = 128) */
@@ -44,7 +48,8 @@ struct ttg_config {
 
 /*
  * Load [gateway] section from config file, then apply CLI overrides.
- * hostname_override / port_override / shm_override may be NULL / 0 (no override).
+ * hostname_override / port_override / shm_override may be NULL / 0 (no
+ * override).
  */
 void ttg_config_load(struct ttg_config* cfg, const char* config_path,
                      const char* hostname_override, uint16_t port_override,

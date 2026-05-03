@@ -54,17 +54,17 @@
 /* New v3 commands (extend PKT_CMD from v1/v2)                         */
 /* ------------------------------------------------------------------ */
 
-#define CMD_GET_ALERTS   0x20u /* Request PKT_ALERTS_RESP            */
+#define CMD_GET_ALERTS 0x20u   /* Request PKT_ALERTS_RESP            */
 #define CMD_CLEAR_ALERTS 0x21u /* Clear alerts ring                  */
 
 /* ------------------------------------------------------------------ */
 /* Alert metric identifiers                                             */
 /* ------------------------------------------------------------------ */
 
-#define ALERT_METRIC_CPU    0x01u
-#define ALERT_METRIC_MEM    0x02u
-#define ALERT_METRIC_LOAD1  0x03u
-#define ALERT_METRIC_DISK   0x04u
+#define ALERT_METRIC_CPU 0x01u
+#define ALERT_METRIC_MEM 0x02u
+#define ALERT_METRIC_LOAD1 0x03u
+#define ALERT_METRIC_DISK 0x04u
 
 /* Alert severity levels (reuse from v1 PKT_ALERT) */
 /* ALERT_INFO / ALERT_WARNING / ALERT_CRITICAL defined in v1.h */
@@ -75,12 +75,12 @@
 
 #pragma pack(push, 1)
 struct tt_alert_event {
-  uint64_t ts;          /* Unix ms when threshold was crossed         */
-  uint8_t  metric_id;   /* ALERT_METRIC_* constant                    */
-  uint8_t  severity;    /* ALERT_WARNING or ALERT_CRITICAL            */
-  uint16_t value;       /* Metric value at trigger time (same units)  */
-  uint16_t threshold;   /* Configured threshold that was crossed      */
-  uint16_t _reserved;   /* Must be 0                                  */
+  uint64_t ts;                /* Unix ms when threshold was crossed         */
+  uint8_t metric_id;          /* ALERT_METRIC_* constant                    */
+  uint8_t severity;           /* ALERT_WARNING or ALERT_CRITICAL            */
+  uint16_t value;             /* Metric value at trigger time (same units)  */
+  uint16_t threshold;         /* Configured threshold that was crossed      */
+  uint16_t _reserved;         /* Must be 0                                  */
   struct tt_metrics snapshot; /* Full metrics snapshot at trigger time */
 };
 #pragma pack(pop)

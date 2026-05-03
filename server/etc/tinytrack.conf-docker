@@ -96,5 +96,6 @@ max_headers_size = 16384
 
 # cors_origins        = *
 
-# auth_token      = changeme
+# auth_enable     = true
 # auth_timeout_ms = 5000
+# auth_token      = changeme

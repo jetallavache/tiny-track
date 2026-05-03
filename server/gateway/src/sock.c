@@ -113,9 +113,11 @@ bool ttg_sock_open_listener(struct ttg_conn* c, const char* url) {
                                 sizeof(on))) != 0) {
       tt_log_err("setsockopt(SO_REUSEADDR): %d", TTG_SOCK_ERR(rc));
     } else if ((rc = bind(fd, &usa.sa, slen)) != 0) {
-      tt_log_err("Cannot bind to port %u: %s (errno=%d)",
-                 ntohs(c->local.port), strerror(errno), TTG_SOCK_ERR(rc));
-      tt_log_err("  Port already in use?  See https://tinytrack.dev/docs/troubleshooting#port-in-use");
+      tt_log_err("Cannot bind to port %u: %s (errno=%d)", ntohs(c->local.port),
+                 strerror(errno), TTG_SOCK_ERR(rc));
+      tt_log_err(
+          "  Port already in use?  See "
+          "https://tinytrack.dev/docs/troubleshooting#port-in-use");
     } else if ((rc = listen(fd, TTG_SOCK_LISTEN_BACKLOG_SIZE)) != 0) {
       tt_log_err("listen: %d", TTG_SOCK_ERR(rc));
     } else {
@@ -175,7 +177,8 @@ void ttg_sock_accept_conn(struct ttg_mgr* mgr, struct ttg_conn* lsn) {
   if (mgr->max_connections > 0) {
     uint32_t active = 0;
     for (struct ttg_conn* p = mgr->conns; p != NULL; p = p->next)
-      if (!p->is_listening) active++;
+      if (!p->is_listening)
+        active++;
     if (active >= mgr->max_connections) {
       tt_log_warning("max_connections=%u reached, rejecting connection",
                      mgr->max_connections);

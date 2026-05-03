@@ -444,16 +444,19 @@ static void http_cb(struct ttg_conn* c, int ev, void* ev_data) {
 
       /* Validate URI and headers size against configured limits */
       {
-        uint32_t max_uri = c->mgr->max_uri_size     ? c->mgr->max_uri_size     : 8192;
-        uint32_t max_hdr = c->mgr->max_headers_size ? c->mgr->max_headers_size : 16384;
+        uint32_t max_uri = c->mgr->max_uri_size ? c->mgr->max_uri_size : 8192;
+        uint32_t max_hdr =
+            c->mgr->max_headers_size ? c->mgr->max_headers_size : 16384;
         if (hm.uri.len > max_uri) {
-          tt_log_info("%lu URI too long (%zu > %u), sending 414", c->id, hm.uri.len, max_uri);
+          tt_log_info("%lu URI too long (%zu > %u), sending 414", c->id,
+                      hm.uri.len, max_uri);
           ttg_http_reply(c, 414, "", "URI Too Long");
           c->is_draining = 1;
           return;
         }
         if ((size_t)n > max_hdr) {
-          tt_log_info("%lu headers too large (%d > %u), sending 431", c->id, n, max_hdr);
+          tt_log_info("%lu headers too large (%d > %u), sending 431", c->id, n,
+                      max_hdr);
           ttg_http_reply(c, 431, "", "Request Header Fields Too Large");
           c->is_draining = 1;
           return;

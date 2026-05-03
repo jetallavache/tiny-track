@@ -17,9 +17,9 @@
 
 /* Main file header - 256 bytes */
 struct ttr_header {
-  uint32_t magic;               /* TTR_MAGIC */
-  uint32_t version;             /* TTR_VERSION */
-  uint32_t checksum;            /* Adler32 of the entire shadow file (0 = disabled) */
+  uint32_t magic;    /* TTR_MAGIC */
+  uint32_t version;  /* TTR_VERSION */
+  uint32_t checksum; /* Adler32 of the entire shadow file (0 = disabled) */
   uint64_t last_update_ts;      /* Timestamp of last update (heartbeat) */
   uint64_t last_shadow_sync_ts; /* Timestamp of last shadow sync */
   uint32_t writer_pid;          /* PID of the writer process */

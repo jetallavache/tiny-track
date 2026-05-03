@@ -34,7 +34,8 @@ void ttg_session_set_auth(const char* token, uint32_t timeout_ms) {
 }
 
 void ttg_session_set_cors(const char* origins) {
-  snprintf(g_cors_origins, sizeof(g_cors_origins), "%s", origins ? origins : "");
+  snprintf(g_cors_origins, sizeof(g_cors_origins), "%s",
+           origins ? origins : "");
 }
 
 /*
@@ -47,7 +48,8 @@ void ttg_session_set_cors(const char* origins) {
  *
  * out must be at least 256 bytes.
  */
-static void cors_headers_for(const char* req_origin, char* out, size_t out_size) {
+static void cors_headers_for(const char* req_origin, char* out,
+                             size_t out_size) {
   out[0] = '\0';
   if (g_cors_origins[0] == '\0' || req_origin == NULL || req_origin[0] == '\0')
     return;
@@ -67,12 +69,15 @@ static void cors_headers_for(const char* req_origin, char* out, size_t out_size)
   char* end;
   while (tok && *tok) {
     /* trim leading spaces */
-    while (*tok == ' ') tok++;
+    while (*tok == ' ')
+      tok++;
     end = strchr(tok, ',');
-    if (end) *end = '\0';
+    if (end)
+      *end = '\0';
     /* trim trailing spaces */
     size_t len = strlen(tok);
-    while (len > 0 && tok[len - 1] == ' ') tok[--len] = '\0';
+    while (len > 0 && tok[len - 1] == ' ')
+      tok[--len] = '\0';
 
     if (strcmp(tok, req_origin) == 0) {
       snprintf(out, out_size,
@@ -120,7 +125,8 @@ static void send_history(struct ttg_conn* c,
   int is_agg = (req->level == RING_LEVEL_L2 || req->level == RING_LEVEL_L3);
 
   while (remaining > 0) {
-    int batch = remaining < TT_HISTORY_BATCH_MAX ? remaining : TT_HISTORY_BATCH_MAX;
+    int batch =
+        remaining < TT_HISTORY_BATCH_MAX ? remaining : TT_HISTORY_BATCH_MAX;
     int got = ttg_reader_get_history(g_reader, req->level, samples, batch);
     if (got <= 0)
       break;
@@ -132,7 +138,7 @@ static void send_history(struct ttg_conn* c,
         .level = req->level,
         .count = htons((uint16_t)got),
         .flags = (uint8_t)((is_last ? HISTORY_FLAG_LAST : 0) |
-                           (is_agg  ? HISTORY_FLAG_AGG  : 0)),
+                           (is_agg ? HISTORY_FLAG_AGG : 0)),
     };
 
     if (is_agg) {
@@ -148,14 +154,17 @@ static void send_history(struct ttg_conn* c,
         agg_samples[i].min = samples[i];
         agg_samples[i].max = samples[i];
       }
-      size_t agg_payload_size = sizeof(resp) + (size_t)got * sizeof(*agg_samples);
+      size_t agg_payload_size =
+          sizeof(resp) + (size_t)got * sizeof(*agg_samples);
       uint8_t* payload = alloca(agg_payload_size);
       memcpy(payload, &resp, sizeof(resp));
-      memcpy(payload + sizeof(resp), agg_samples, (size_t)got * sizeof(*agg_samples));
+      memcpy(payload + sizeof(resp), agg_samples,
+             (size_t)got * sizeof(*agg_samples));
 
       uint8_t buf[sizeof(struct tt_proto_header) + 4096];
-      size_t n = ttg_proto_build(buf, sizeof(buf), TT_PROTO_V2, PKT_HISTORY_RESP,
-                                 (uint32_t)time(NULL), payload, (uint16_t)agg_payload_size);
+      size_t n = ttg_proto_build(buf, sizeof(buf), TT_PROTO_V2,
+                                 PKT_HISTORY_RESP, (uint32_t)time(NULL),
+                                 payload, (uint16_t)agg_payload_size);
       if (n > 0)
         ttg_ws_send(c, buf, n, TTG_WS_OP_BINARY);
     } else {
@@ -166,8 +175,9 @@ static void send_history(struct ttg_conn* c,
       memcpy(payload + sizeof(resp), samples, (size_t)got * sizeof(*samples));
 
       uint8_t buf[sizeof(struct tt_proto_header) + 4096];
-      size_t n = ttg_proto_build(buf, sizeof(buf), TT_PROTO_V2, PKT_HISTORY_RESP,
-                                 (uint32_t)time(NULL), payload, (uint16_t)raw_payload_size);
+      size_t n = ttg_proto_build(buf, sizeof(buf), TT_PROTO_V2,
+                                 PKT_HISTORY_RESP, (uint32_t)time(NULL),
+                                 payload, (uint16_t)raw_payload_size);
       if (n > 0)
         ttg_ws_send(c, buf, n, TTG_WS_OP_BINARY);
     }
@@ -268,9 +278,7 @@ static void on_ws_message(struct ttg_conn* c, const void* data, size_t len) {
   size_t payload_len = len - sizeof(*hdr);
 
   /* Handle CMD_AUTH before any auth check */
-  if (hdr->type == PKT_CMD &&
-      payload_len >= 1 &&
-      payload[0] == CMD_AUTH) {
+  if (hdr->type == PKT_CMD && payload_len >= 1 && payload[0] == CMD_AUTH) {
     struct tt_proto_ack ack = {.cmd_type = CMD_AUTH, .status = ACK_ERROR};
 
     if (payload_len >= 1 + sizeof(struct tt_proto_auth)) {
@@ -349,8 +357,7 @@ static void on_ws_open(struct ttg_conn* c, struct ttg_http_message* hm) {
     if (auth_hdr != NULL) {
       const char* prefix = "Bearer ";
       size_t plen = 7;
-      if (auth_hdr->len > plen &&
-          strncmp(auth_hdr->buf, prefix, plen) == 0) {
+      if (auth_hdr->len > plen && strncmp(auth_hdr->buf, prefix, plen) == 0) {
         size_t tlen = auth_hdr->len - plen;
         size_t expected = strlen(g_auth_token);
         if (tlen == expected &&
@@ -399,19 +406,28 @@ static const char* detect_format(struct ttg_http_message* hm) {
     size_t n = hm->query.len < sizeof(q) - 1 ? hm->query.len : sizeof(q) - 1;
     memcpy(q, hm->query.buf, n);
     q[n] = '\0';
-    if (strstr(q, "format=csv"))        return "csv";
-    if (strstr(q, "format=xml"))        return "xml";
-    if (strstr(q, "format=prometheus")) return "prometheus";
-    if (strstr(q, "format=json"))       return "json";
+    if (strstr(q, "format=csv"))
+      return "csv";
+    if (strstr(q, "format=xml"))
+      return "xml";
+    if (strstr(q, "format=prometheus"))
+      return "prometheus";
+    if (strstr(q, "format=json"))
+      return "json";
   }
   /* 2. Accept header */
   struct ttg_str* accept = ttg_http_get_header(hm, "Accept");
   if (accept && accept->len > 0) {
-    if (ttg_str_match(*accept, str("text/csv"), NULL))             return "csv";
-    if (ttg_str_match(*accept, str("text/xml"), NULL))             return "xml";
-    if (ttg_str_match(*accept, str("application/xml"), NULL))      return "xml";
-    if (ttg_str_match(*accept, str("text/plain"), NULL))           return "prometheus";
-    if (ttg_str_match(*accept, str("application/openmetrics"), NULL)) return "prometheus";
+    if (ttg_str_match(*accept, str("text/csv"), NULL))
+      return "csv";
+    if (ttg_str_match(*accept, str("text/xml"), NULL))
+      return "xml";
+    if (ttg_str_match(*accept, str("application/xml"), NULL))
+      return "xml";
+    if (ttg_str_match(*accept, str("text/plain"), NULL))
+      return "prometheus";
+    if (ttg_str_match(*accept, str("application/openmetrics"), NULL))
+      return "prometheus";
   }
   return "json"; /* default */
 }
@@ -420,28 +436,23 @@ static void reply_metrics_json(struct ttg_conn* c, const struct tt_metrics* m,
                                const char* cors) {
   char buf[512];
   snprintf(buf, sizeof(buf),
-    "{"
-    "\"timestamp\":%llu,"
-    "\"cpu\":%.4f,"
-    "\"mem\":%.4f,"
-    "\"disk\":%.4f,"
-    "\"disk_total\":%llu,"
-    "\"disk_free\":%llu,"
-    "\"load\":{\"1m\":%.2f,\"5m\":%.2f,\"15m\":%.2f},"
-    "\"procs\":{\"running\":%u,\"total\":%u},"
-    "\"net\":{\"rx\":%u,\"tx\":%u}"
-    "}",
-    (unsigned long long)m->timestamp,
-    m->cpu_usage  / 10000.0,
-    m->mem_usage  / 10000.0,
-    m->du_usage   / 10000.0,
-    (unsigned long long)m->du_total_bytes,
-    (unsigned long long)m->du_free_bytes,
-    m->load_1min  / 100.0,
-    m->load_5min  / 100.0,
-    m->load_15min / 100.0,
-    m->nr_running, m->nr_total,
-    m->net_rx, m->net_tx);
+           "{"
+           "\"timestamp\":%llu,"
+           "\"cpu\":%.4f,"
+           "\"mem\":%.4f,"
+           "\"disk\":%.4f,"
+           "\"disk_total\":%llu,"
+           "\"disk_free\":%llu,"
+           "\"load\":{\"1m\":%.2f,\"5m\":%.2f,\"15m\":%.2f},"
+           "\"procs\":{\"running\":%u,\"total\":%u},"
+           "\"net\":{\"rx\":%u,\"tx\":%u}"
+           "}",
+           (unsigned long long)m->timestamp, m->cpu_usage / 10000.0,
+           m->mem_usage / 10000.0, m->du_usage / 10000.0,
+           (unsigned long long)m->du_total_bytes,
+           (unsigned long long)m->du_free_bytes, m->load_1min / 100.0,
+           m->load_5min / 100.0, m->load_15min / 100.0, m->nr_running,
+           m->nr_total, m->net_rx, m->net_tx);
   char hdrs[320];
   snprintf(hdrs, sizeof(hdrs), "Content-Type: application/json\r\n%s", cors);
   ttg_http_reply(c, 200, hdrs, "%s", buf);
@@ -451,20 +462,15 @@ static void reply_metrics_csv(struct ttg_conn* c, const struct tt_metrics* m,
                               const char* cors) {
   char buf[512];
   snprintf(buf, sizeof(buf),
-    "timestamp,cpu,mem,disk,disk_total,disk_free,"
-    "load_1m,load_5m,load_15m,procs_running,procs_total,net_rx,net_tx\n"
-    "%llu,%.4f,%.4f,%.4f,%llu,%llu,%.2f,%.2f,%.2f,%u,%u,%u,%u\n",
-    (unsigned long long)m->timestamp,
-    m->cpu_usage  / 10000.0,
-    m->mem_usage  / 10000.0,
-    m->du_usage   / 10000.0,
-    (unsigned long long)m->du_total_bytes,
-    (unsigned long long)m->du_free_bytes,
-    m->load_1min  / 100.0,
-    m->load_5min  / 100.0,
-    m->load_15min / 100.0,
-    m->nr_running, m->nr_total,
-    m->net_rx, m->net_tx);
+           "timestamp,cpu,mem,disk,disk_total,disk_free,"
+           "load_1m,load_5m,load_15m,procs_running,procs_total,net_rx,net_tx\n"
+           "%llu,%.4f,%.4f,%.4f,%llu,%llu,%.2f,%.2f,%.2f,%u,%u,%u,%u\n",
+           (unsigned long long)m->timestamp, m->cpu_usage / 10000.0,
+           m->mem_usage / 10000.0, m->du_usage / 10000.0,
+           (unsigned long long)m->du_total_bytes,
+           (unsigned long long)m->du_free_bytes, m->load_1min / 100.0,
+           m->load_5min / 100.0, m->load_15min / 100.0, m->nr_running,
+           m->nr_total, m->net_rx, m->net_tx);
   char hdrs[320];
   snprintf(hdrs, sizeof(hdrs), "Content-Type: text/csv\r\n%s", cors);
   ttg_http_reply(c, 200, hdrs, "%s", buf);
@@ -474,26 +480,21 @@ static void reply_metrics_xml(struct ttg_conn* c, const struct tt_metrics* m,
                               const char* cors) {
   char buf[768];
   snprintf(buf, sizeof(buf),
-    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-    "<metrics timestamp=\"%llu\">\n"
-    "  <cpu>%.4f</cpu>\n"
-    "  <mem>%.4f</mem>\n"
-    "  <disk usage=\"%.4f\" total=\"%llu\" free=\"%llu\"/>\n"
-    "  <load m1=\"%.2f\" m5=\"%.2f\" m15=\"%.2f\"/>\n"
-    "  <procs running=\"%u\" total=\"%u\"/>\n"
-    "  <net rx=\"%u\" tx=\"%u\"/>\n"
-    "</metrics>\n",
-    (unsigned long long)m->timestamp,
-    m->cpu_usage  / 10000.0,
-    m->mem_usage  / 10000.0,
-    m->du_usage   / 10000.0,
-    (unsigned long long)m->du_total_bytes,
-    (unsigned long long)m->du_free_bytes,
-    m->load_1min  / 100.0,
-    m->load_5min  / 100.0,
-    m->load_15min / 100.0,
-    m->nr_running, m->nr_total,
-    m->net_rx, m->net_tx);
+           "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+           "<metrics timestamp=\"%llu\">\n"
+           "  <cpu>%.4f</cpu>\n"
+           "  <mem>%.4f</mem>\n"
+           "  <disk usage=\"%.4f\" total=\"%llu\" free=\"%llu\"/>\n"
+           "  <load m1=\"%.2f\" m5=\"%.2f\" m15=\"%.2f\"/>\n"
+           "  <procs running=\"%u\" total=\"%u\"/>\n"
+           "  <net rx=\"%u\" tx=\"%u\"/>\n"
+           "</metrics>\n",
+           (unsigned long long)m->timestamp, m->cpu_usage / 10000.0,
+           m->mem_usage / 10000.0, m->du_usage / 10000.0,
+           (unsigned long long)m->du_total_bytes,
+           (unsigned long long)m->du_free_bytes, m->load_1min / 100.0,
+           m->load_5min / 100.0, m->load_15min / 100.0, m->nr_running,
+           m->nr_total, m->net_rx, m->net_tx);
   char hdrs[320];
   snprintf(hdrs, sizeof(hdrs), "Content-Type: application/xml\r\n%s", cors);
   ttg_http_reply(c, 200, hdrs, "%s", buf);
@@ -504,48 +505,49 @@ static void reply_metrics_prometheus(struct ttg_conn* c,
                                      const char* cors) {
   char buf[2048];
   snprintf(buf, sizeof(buf),
-    "# HELP tinytrack_cpu_usage_ratio CPU usage (0..1)\n"
-    "# TYPE tinytrack_cpu_usage_ratio gauge\n"
-    "tinytrack_cpu_usage_ratio %.4f\n"
-    "# HELP tinytrack_memory_usage_ratio Memory usage (0..1)\n"
-    "# TYPE tinytrack_memory_usage_ratio gauge\n"
-    "tinytrack_memory_usage_ratio %.4f\n"
-    "# HELP tinytrack_disk_usage_ratio Disk usage (0..1)\n"
-    "# TYPE tinytrack_disk_usage_ratio gauge\n"
-    "tinytrack_disk_usage_ratio %.4f\n"
-    "# HELP tinytrack_disk_total_bytes Total disk space in bytes\n"
-    "# TYPE tinytrack_disk_total_bytes gauge\n"
-    "tinytrack_disk_total_bytes %llu\n"
-    "# HELP tinytrack_disk_free_bytes Free disk space in bytes\n"
-    "# TYPE tinytrack_disk_free_bytes gauge\n"
-    "tinytrack_disk_free_bytes %llu\n"
-    "# HELP tinytrack_load_average Load average\n"
-    "# TYPE tinytrack_load_average gauge\n"
-    "tinytrack_load_average{interval=\"1m\"} %.2f\n"
-    "tinytrack_load_average{interval=\"5m\"} %.2f\n"
-    "tinytrack_load_average{interval=\"15m\"} %.2f\n"
-    "# HELP tinytrack_processes_running Running processes\n"
-    "# TYPE tinytrack_processes_running gauge\n"
-    "tinytrack_processes_running %u\n"
-    "# HELP tinytrack_processes_total Total processes\n"
-    "# TYPE tinytrack_processes_total gauge\n"
-    "tinytrack_processes_total %u\n"
-    "# HELP tinytrack_network_receive_bytes_total Network RX bytes/s\n"
-    "# TYPE tinytrack_network_receive_bytes_total counter\n"
-    "tinytrack_network_receive_bytes_total %u\n"
-    "# HELP tinytrack_network_transmit_bytes_total Network TX bytes/s\n"
-    "# TYPE tinytrack_network_transmit_bytes_total counter\n"
-    "tinytrack_network_transmit_bytes_total %u\n"
-    "# HELP tinytrack_scrape_timestamp_ms Timestamp of last sample ms\n"
-    "# TYPE tinytrack_scrape_timestamp_ms gauge\n"
-    "tinytrack_scrape_timestamp_ms %llu\n",
-    m->cpu_usage  / 10000.0, m->mem_usage  / 10000.0, m->du_usage / 10000.0,
-    (unsigned long long)m->du_total_bytes, (unsigned long long)m->du_free_bytes,
-    m->load_1min / 100.0, m->load_5min / 100.0, m->load_15min / 100.0,
-    m->nr_running, m->nr_total, m->net_rx, m->net_tx,
-    (unsigned long long)m->timestamp);
+           "# HELP tinytrack_cpu_usage_ratio CPU usage (0..1)\n"
+           "# TYPE tinytrack_cpu_usage_ratio gauge\n"
+           "tinytrack_cpu_usage_ratio %.4f\n"
+           "# HELP tinytrack_memory_usage_ratio Memory usage (0..1)\n"
+           "# TYPE tinytrack_memory_usage_ratio gauge\n"
+           "tinytrack_memory_usage_ratio %.4f\n"
+           "# HELP tinytrack_disk_usage_ratio Disk usage (0..1)\n"
+           "# TYPE tinytrack_disk_usage_ratio gauge\n"
+           "tinytrack_disk_usage_ratio %.4f\n"
+           "# HELP tinytrack_disk_total_bytes Total disk space in bytes\n"
+           "# TYPE tinytrack_disk_total_bytes gauge\n"
+           "tinytrack_disk_total_bytes %llu\n"
+           "# HELP tinytrack_disk_free_bytes Free disk space in bytes\n"
+           "# TYPE tinytrack_disk_free_bytes gauge\n"
+           "tinytrack_disk_free_bytes %llu\n"
+           "# HELP tinytrack_load_average Load average\n"
+           "# TYPE tinytrack_load_average gauge\n"
+           "tinytrack_load_average{interval=\"1m\"} %.2f\n"
+           "tinytrack_load_average{interval=\"5m\"} %.2f\n"
+           "tinytrack_load_average{interval=\"15m\"} %.2f\n"
+           "# HELP tinytrack_processes_running Running processes\n"
+           "# TYPE tinytrack_processes_running gauge\n"
+           "tinytrack_processes_running %u\n"
+           "# HELP tinytrack_processes_total Total processes\n"
+           "# TYPE tinytrack_processes_total gauge\n"
+           "tinytrack_processes_total %u\n"
+           "# HELP tinytrack_network_receive_bytes_total Network RX bytes/s\n"
+           "# TYPE tinytrack_network_receive_bytes_total counter\n"
+           "tinytrack_network_receive_bytes_total %u\n"
+           "# HELP tinytrack_network_transmit_bytes_total Network TX bytes/s\n"
+           "# TYPE tinytrack_network_transmit_bytes_total counter\n"
+           "tinytrack_network_transmit_bytes_total %u\n"
+           "# HELP tinytrack_scrape_timestamp_ms Timestamp of last sample ms\n"
+           "# TYPE tinytrack_scrape_timestamp_ms gauge\n"
+           "tinytrack_scrape_timestamp_ms %llu\n",
+           m->cpu_usage / 10000.0, m->mem_usage / 10000.0,
+           m->du_usage / 10000.0, (unsigned long long)m->du_total_bytes,
+           (unsigned long long)m->du_free_bytes, m->load_1min / 100.0,
+           m->load_5min / 100.0, m->load_15min / 100.0, m->nr_running,
+           m->nr_total, m->net_rx, m->net_tx, (unsigned long long)m->timestamp);
   char hdrs[320];
-  snprintf(hdrs, sizeof(hdrs), "Content-Type: text/plain; version=0.0.4\r\n%s", cors);
+  snprintf(hdrs, sizeof(hdrs), "Content-Type: text/plain; version=0.0.4\r\n%s",
+           cors);
   ttg_http_reply(c, 200, hdrs, "%s", buf);
 }
 
@@ -557,10 +559,14 @@ static void reply_metrics(struct ttg_conn* c, struct ttg_http_message* hm,
     return;
   }
   const char* fmt = detect_format(hm);
-  if (strcmp(fmt, "csv") == 0)        reply_metrics_csv(c, &m, cors);
-  else if (strcmp(fmt, "xml") == 0)   reply_metrics_xml(c, &m, cors);
-  else if (strcmp(fmt, "prometheus") == 0) reply_metrics_prometheus(c, &m, cors);
-  else                                reply_metrics_json(c, &m, cors);
+  if (strcmp(fmt, "csv") == 0)
+    reply_metrics_csv(c, &m, cors);
+  else if (strcmp(fmt, "xml") == 0)
+    reply_metrics_xml(c, &m, cors);
+  else if (strcmp(fmt, "prometheus") == 0)
+    reply_metrics_prometheus(c, &m, cors);
+  else
+    reply_metrics_json(c, &m, cors);
 }
 
 static void reply_sysinfo_json(struct ttg_conn* c, const char* cors) {
@@ -568,13 +574,12 @@ static void reply_sysinfo_json(struct ttg_conn* c, const char* cors) {
   ttg_reader_get_sysinfo(g_reader, &info);
   char buf[512];
   snprintf(buf, sizeof(buf),
-    "{\"hostname\":\"%s\",\"os\":\"%s\",\"uptime\":%llu,"
-    "\"slots\":{\"l1\":%u,\"l2\":%u,\"l3\":%u},"
-    "\"interval_ms\":%u}",
-    info.hostname, info.os_type,
-    (unsigned long long)be64toh(info.uptime_sec),
-    ntohl(info.slots_l1), ntohl(info.slots_l2), ntohl(info.slots_l3),
-    ntohl(info.interval_ms));
+           "{\"hostname\":\"%s\",\"os\":\"%s\",\"uptime\":%llu,"
+           "\"slots\":{\"l1\":%u,\"l2\":%u,\"l3\":%u},"
+           "\"interval_ms\":%u}",
+           info.hostname, info.os_type,
+           (unsigned long long)be64toh(info.uptime_sec), ntohl(info.slots_l1),
+           ntohl(info.slots_l2), ntohl(info.slots_l3), ntohl(info.interval_ms));
   char hdrs[320];
   snprintf(hdrs, sizeof(hdrs), "Content-Type: application/json\r\n%s", cors);
   ttg_http_reply(c, 200, hdrs, "%s", buf);
@@ -589,31 +594,35 @@ static void reply_sysinfo(struct ttg_conn* c, struct ttg_http_message* hm,
            l3 = ntohl(info.slots_l3), iv = ntohl(info.interval_ms);
 
   const char* fmt = detect_format(hm);
-  char buf[768]; char hdrs[320];
+  char buf[768];
+  char hdrs[320];
 
   if (strcmp(fmt, "csv") == 0) {
     snprintf(buf, sizeof(buf),
-      "hostname,os,uptime,slots_l1,slots_l2,slots_l3,interval_ms\n"
-      "%s,%s,%llu,%u,%u,%u,%u\n",
-      info.hostname, info.os_type, (unsigned long long)uptime, l1, l2, l3, iv);
+             "hostname,os,uptime,slots_l1,slots_l2,slots_l3,interval_ms\n"
+             "%s,%s,%llu,%u,%u,%u,%u\n",
+             info.hostname, info.os_type, (unsigned long long)uptime, l1, l2,
+             l3, iv);
     snprintf(hdrs, sizeof(hdrs), "Content-Type: text/csv\r\n%s", cors);
   } else if (strcmp(fmt, "xml") == 0) {
     snprintf(buf, sizeof(buf),
-      "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-      "<sysinfo>\n"
-      "  <hostname>%s</hostname>\n"
-      "  <os>%s</os>\n"
-      "  <uptime>%llu</uptime>\n"
-      "  <slots l1=\"%u\" l2=\"%u\" l3=\"%u\"/>\n"
-      "  <interval_ms>%u</interval_ms>\n"
-      "</sysinfo>\n",
-      info.hostname, info.os_type, (unsigned long long)uptime, l1, l2, l3, iv);
+             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+             "<sysinfo>\n"
+             "  <hostname>%s</hostname>\n"
+             "  <os>%s</os>\n"
+             "  <uptime>%llu</uptime>\n"
+             "  <slots l1=\"%u\" l2=\"%u\" l3=\"%u\"/>\n"
+             "  <interval_ms>%u</interval_ms>\n"
+             "</sysinfo>\n",
+             info.hostname, info.os_type, (unsigned long long)uptime, l1, l2,
+             l3, iv);
     snprintf(hdrs, sizeof(hdrs), "Content-Type: application/xml\r\n%s", cors);
   } else {
     snprintf(buf, sizeof(buf),
-      "{\"hostname\":\"%s\",\"os\":\"%s\",\"uptime\":%llu,"
-      "\"slots\":{\"l1\":%u,\"l2\":%u,\"l3\":%u},\"interval_ms\":%u}",
-      info.hostname, info.os_type, (unsigned long long)uptime, l1, l2, l3, iv);
+             "{\"hostname\":\"%s\",\"os\":\"%s\",\"uptime\":%llu,"
+             "\"slots\":{\"l1\":%u,\"l2\":%u,\"l3\":%u},\"interval_ms\":%u}",
+             info.hostname, info.os_type, (unsigned long long)uptime, l1, l2,
+             l3, iv);
     snprintf(hdrs, sizeof(hdrs), "Content-Type: application/json\r\n%s", cors);
   }
   ttg_http_reply(c, 200, hdrs, "%s", buf);
@@ -635,17 +644,17 @@ static void on_http(struct ttg_conn* c, struct ttg_http_message* hm) {
 
   /* CORS preflight */
   if (ttg_str_casecmp(hm->method, str("OPTIONS")) == 0) {
-    ttg_http_reply(c, 204,
-                   cors[0] ? "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n" : "",
-                   "%s", cors);
+    ttg_http_reply(
+        c, 204,
+        cors[0] ? "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n" : "",
+        "%s", cors);
     return;
   }
 
   /* ── HTTP Authentication ───────────────────────────────────────── */
   /* /v1/status is public (health check for load balancers).
    * All other /v1/* endpoints require auth when auth_token is configured. */
-  if (g_auth_token[0] &&
-      !ttg_str_match(hm->uri, str("/v1/status"), NULL) &&
+  if (g_auth_token[0] && !ttg_str_match(hm->uri, str("/v1/status"), NULL) &&
       !ttg_str_match(hm->uri, str("/websocket"), NULL) &&
       !ttg_str_match(hm->uri, str("/v1/stream"), NULL)) {
     struct ttg_str* auth_hdr = ttg_http_get_header(hm, "Authorization");
@@ -660,14 +669,13 @@ static void on_http(struct ttg_conn* c, struct ttg_http_message* hm) {
       }
     }
     if (!authed) {
-      ttg_http_reply(c, 401,
-                     "WWW-Authenticate: Bearer realm=\"tinytrack\"\r\n",
+      ttg_http_reply(c, 401, "WWW-Authenticate: Bearer realm=\"tinytrack\"\r\n",
                      "{\"error\":\"unauthorized\"}");
       return;
     }
   }
 
-  bool is_get  = ttg_str_casecmp(hm->method, str("GET"))  == 0;
+  bool is_get = ttg_str_casecmp(hm->method, str("GET")) == 0;
   bool is_post = ttg_str_casecmp(hm->method, str("POST")) == 0;
 
   /* ── WebSocket upgrade ─────────────────────────────────────────── */
@@ -699,17 +707,18 @@ static void on_http(struct ttg_conn* c, struct ttg_http_message* hm) {
     char hdrs[320];
     if (strcmp(fmt, "csv") == 0) {
       snprintf(hdrs, sizeof(hdrs), "Content-Type: text/csv\r\n%s", cors);
-      ttg_http_reply(c, ok ? 200 : 503, hdrs,
-                     "status\n%s\n", ok ? "ok" : "no_data");
+      ttg_http_reply(c, ok ? 200 : 503, hdrs, "status\n%s\n",
+                     ok ? "ok" : "no_data");
     } else if (strcmp(fmt, "xml") == 0) {
       snprintf(hdrs, sizeof(hdrs), "Content-Type: application/xml\r\n%s", cors);
       ttg_http_reply(c, ok ? 200 : 503, hdrs,
                      "<?xml version=\"1.0\"?><status>%s</status>\n",
                      ok ? "ok" : "no_data");
     } else {
-      snprintf(hdrs, sizeof(hdrs), "Content-Type: application/json\r\n%s", cors);
-      ttg_http_reply(c, ok ? 200 : 503, hdrs,
-                     "{\"status\":\"%s\"}", ok ? "ok" : "no_data");
+      snprintf(hdrs, sizeof(hdrs), "Content-Type: application/json\r\n%s",
+               cors);
+      ttg_http_reply(c, ok ? 200 : 503, hdrs, "{\"status\":\"%s\"}",
+                     ok ? "ok" : "no_data");
     }
     return;
   }
@@ -717,7 +726,8 @@ static void on_http(struct ttg_conn* c, struct ttg_http_message* hm) {
   /* ── POST /v1/stream/pause ─────────────────────────────────────── */
   if (is_post && ttg_str_match(hm->uri, str("/v1/stream/pause"), NULL)) {
     for (struct ttg_conn* p = c->mgr->conns; p; p = p->next)
-      if (p->data[0] == WS_MARK) p->streaming_paused = 1;
+      if (p->data[0] == WS_MARK)
+        p->streaming_paused = 1;
     ttg_http_reply(c, 200, cors, "{\"status\":\"paused\"}");
     return;
   }
@@ -725,7 +735,8 @@ static void on_http(struct ttg_conn* c, struct ttg_http_message* hm) {
   /* ── POST /v1/stream/resume ────────────────────────────────────── */
   if (is_post && ttg_str_match(hm->uri, str("/v1/stream/resume"), NULL)) {
     for (struct ttg_conn* p = c->mgr->conns; p; p = p->next)
-      if (p->data[0] == WS_MARK) p->streaming_paused = 0;
+      if (p->data[0] == WS_MARK)
+        p->streaming_paused = 0;
     ttg_http_reply(c, 200, cors, "{\"status\":\"resumed\"}");
     return;
   }
@@ -779,10 +790,10 @@ void ttg_session_timer_fn(void* arg) {
   time_t now = time(NULL);
 
   /* ── Watchdog: detect tinytd death ─────────────────────────────── */
-  static int daemon_dead = 0;       /* 0=ok, 1=warned, 2=disconnecting */
+  static int daemon_dead = 0; /* 0=ok, 1=warned, 2=disconnecting */
   static time_t last_watchdog = 0;
 
-  if (now - last_watchdog >= 2) {   /* check every 2 seconds */
+  if (now - last_watchdog >= 2) { /* check every 2 seconds */
     last_watchdog = now;
     const struct ttr_header* hdr =
         (const struct ttr_header*)g_reader->ring.addr;
@@ -790,18 +801,22 @@ void ttg_session_timer_fn(void* arg) {
     if (hdr && hdr->last_update_ts > 0) {
       uint64_t now_ms = (uint64_t)now * 1000;
       uint32_t interval = hdr->interval_ms > 0 ? hdr->interval_ms : 1000;
-      uint64_t age_ms = now_ms > hdr->last_update_ts
-                            ? now_ms - hdr->last_update_ts
-                            : 0;
+      uint64_t age_ms =
+          now_ms > hdr->last_update_ts ? now_ms - hdr->last_update_ts : 0;
 
       if (age_ms > (uint64_t)interval * 10 && daemon_dead < 2) {
         /* Hard threshold: disconnect all clients */
         daemon_dead = 2;
-        tt_log_err("Daemon     tinytd stopped — no update for %llums, disconnecting clients",
-                   (unsigned long long)age_ms);
-        tt_log_err("           See https://tinytrack.dev/docs/troubleshooting#daemon-stopped");
+        tt_log_err(
+            "Daemon     tinytd stopped — no update for %llums, disconnecting "
+            "clients",
+            (unsigned long long)age_ms);
+        tt_log_err(
+            "           See "
+            "https://tinytrack.dev/docs/troubleshooting#daemon-stopped");
         for (struct ttg_conn* c = mgr->conns; c != NULL; c = c->next) {
-          if (c->data[0] != WS_MARK || !c->is_authed) continue;
+          if (c->data[0] != WS_MARK || !c->is_authed)
+            continue;
           send_alert(c, ALERT_CRITICAL,
                      "tinytd daemon stopped — metrics unavailable");
           c->is_draining = 1;
@@ -811,9 +826,12 @@ void ttg_session_timer_fn(void* arg) {
         daemon_dead = 1;
         tt_log_warning("Daemon     tinytd unresponsive — no update for %llums",
                        (unsigned long long)age_ms);
-        tt_log_warning("           See https://tinytrack.dev/docs/troubleshooting#daemon-stopped");
+        tt_log_warning(
+            "           See "
+            "https://tinytrack.dev/docs/troubleshooting#daemon-stopped");
         for (struct ttg_conn* c = mgr->conns; c != NULL; c = c->next) {
-          if (c->data[0] != WS_MARK || !c->is_authed) continue;
+          if (c->data[0] != WS_MARK || !c->is_authed)
+            continue;
           send_alert(c, ALERT_WARNING,
                      "tinytd daemon unresponsive — metrics may be stale");
         }

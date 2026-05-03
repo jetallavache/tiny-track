@@ -105,18 +105,19 @@ int main(int argc, char** argv) {
   int do_daemonize = 1;
 
   static const struct option long_opts[] = {
-      {"config",    required_argument, NULL, 'c'},
-      {"port",      required_argument, NULL, 'p'},
-      {"hostname",  required_argument, NULL, 'H'},
-      {"shm",       required_argument, NULL, 's'},
-      {"daemon",    no_argument,       NULL, 'd'},
-      {"no-daemon", no_argument,       NULL, 'n'},
-      {"help",      no_argument,       NULL, 'h'},
+      {"config", required_argument, NULL, 'c'},
+      {"port", required_argument, NULL, 'p'},
+      {"hostname", required_argument, NULL, 'H'},
+      {"shm", required_argument, NULL, 's'},
+      {"daemon", no_argument, NULL, 'd'},
+      {"no-daemon", no_argument, NULL, 'n'},
+      {"help", no_argument, NULL, 'h'},
       {NULL, 0, NULL, 0},
   };
 
   int opt;
-  while ((opt = getopt_long(argc, argv, "c:p:H:s:dnh", long_opts, NULL)) != -1) {
+  while ((opt = getopt_long(argc, argv, "c:p:H:s:dnh", long_opts, NULL)) !=
+         -1) {
     switch (opt) {
       case 'c':
         config_path = optarg;
@@ -141,13 +142,16 @@ int main(int argc, char** argv) {
       }
       case 'h':
         printf(
-            "Usage: tinytrack [-d] [-c CONFIG] [-p PORT] [-H HOST] [-s SHM_PATH]\n\n"
+            "Usage: tinytrack [-d] [-c CONFIG] [-p PORT] [-H HOST] [-s "
+            "SHM_PATH]\n\n"
             "Options:\n"
             "  -d, --daemon        Run as daemon (background, default)\n"
             "  -n, --no-daemon     Run in foreground\n"
             "  -c, --config FILE   Path to configuration file\n"
-            "  -p, --port PORT     Listen port (overrides config gateway.port)\n"
-            "  -H, --hostname HOST Bind address (overrides config gateway.hostname)\n"
+            "  -p, --port PORT     Listen port (overrides config "
+            "gateway.port)\n"
+            "  -H, --hostname HOST Bind address (overrides config "
+            "gateway.hostname)\n"
             "  -s, --shm PATH      Path to tinytd live mmap file\n"
             "  -h, --help          Show this help and exit\n\n"
             "Signals:\n"
@@ -161,7 +165,8 @@ int main(int argc, char** argv) {
 
   struct ttg_config cfg;
   memset(&cfg, 0, sizeof(cfg));
-  ttg_config_load(&cfg, config_path, hostname_override, port_override, shm_override);
+  ttg_config_load(&cfg, config_path, hostname_override, port_override,
+                  shm_override);
 
   /* Daemonize before tt_log_init (closes all fds) */
   if (do_daemonize)
@@ -190,14 +195,17 @@ int main(int argc, char** argv) {
   static struct ttg_reader reader;
   if (ttg_reader_open(&reader, cfg.shm_path) != 0) {
     tt_log_err("Cannot open shared memory: %s", cfg.shm_path);
-    tt_log_err("  Is tinytd running?  See https://tinytrack.dev/docs/troubleshooting#no-mmap");
+    tt_log_err(
+        "  Is tinytd running?  See "
+        "https://tinytrack.dev/docs/troubleshooting#no-mmap");
     return 1;
   }
   tt_log_info("Storage    mmap=%s", cfg.shm_path);
 
   /* Non-fatal liveness check: warn if tinytd appears dead */
   if (ttg_reader_check_liveness(&reader) != 0)
-    tt_log_warning("Storage    gateway will serve stale data until tinytd restarts");
+    tt_log_warning(
+        "Storage    gateway will serve stale data until tinytd restarts");
 
   if (write_pid_file(cfg.pid_file) < 0)
     tt_log_warning("PID file   cannot write %s (non-fatal)", cfg.pid_file);
@@ -205,7 +213,8 @@ int main(int argc, char** argv) {
   if (getuid() == 0) {
     if (drop_privileges(cfg.user, cfg.group) < 0) {
       tt_log_err("Privileges cannot drop to %s:%s", cfg.user, cfg.group);
-      tt_log_err("  See https://tinytrack.dev/docs/troubleshooting#drop-privileges");
+      tt_log_err(
+          "  See https://tinytrack.dev/docs/troubleshooting#drop-privileges");
       ttg_reader_close(&reader);
       unlink(cfg.pid_file);
       return 1;
@@ -220,7 +229,9 @@ int main(int argc, char** argv) {
 
   bool use_tls = ((ttg_url_is_ssl(cfg.listen)) != 0);
   if (use_tls && (cfg.tls_cert[0] == '\0' || cfg.tls_key[0] == '\0')) {
-    tt_log_err("TLS        cert or key not set (tls=true requires tls_cert + tls_key)");
+    tt_log_err(
+        "TLS        cert or key not set (tls=true requires tls_cert + "
+        "tls_key)");
     tt_log_err("  See https://tinytrack.dev/docs/troubleshooting#tls-config");
     ttg_reader_close(&reader);
     unlink(cfg.pid_file);
@@ -235,10 +246,10 @@ int main(int argc, char** argv) {
 
   struct ttg_mgr mgr;
   ttg_net_mgr_init(&mgr, use_tls ? &tls_cfg : NULL);
-  mgr.max_connections  = cfg.max_connections;
+  mgr.max_connections = cfg.max_connections;
   mgr.header_timeout_ms = cfg.header_timeout_ms ? cfg.header_timeout_ms : 10000;
-  mgr.idle_timeout_ms  = cfg.idle_timeout_ms;
-  mgr.max_uri_size     = cfg.max_uri_size     ? cfg.max_uri_size     : 8192;
+  mgr.idle_timeout_ms = cfg.idle_timeout_ms;
+  mgr.max_uri_size = cfg.max_uri_size ? cfg.max_uri_size : 8192;
   mgr.max_headers_size = cfg.max_headers_size ? cfg.max_headers_size : 16384;
   if (use_tls && !mgr.tls_ctx) {
     tt_log_err("TLS        context init failed — check cert/key files");
@@ -252,25 +263,32 @@ int main(int argc, char** argv) {
 
   /* ── Endpoints ───────────────────────────────────────────────────── */
   tt_log_info("WebSocket  %s/v1/stream  (legacy: /websocket)", cfg.listen);
-  tt_log_info("Metrics    %s/v1/metrics  (?format=json|csv|xml|prometheus)", cfg.listen);
+  tt_log_info("Metrics    %s/v1/metrics  (?format=json|csv|xml|prometheus)",
+              cfg.listen);
   tt_log_info("Sysinfo    %s/v1/sysinfo  (?format=json|csv|xml)", cfg.listen);
   tt_log_info("Status     %s/v1/status  (public, no auth)", cfg.listen);
 
   /* ── Security ────────────────────────────────────────────────────── */
   tt_log_info("TLS        %s", use_tls ? "enabled" : "disabled");
-  tt_log_info("Auth       %s", cfg.auth_token[0]
-                  ? "enabled (Bearer header / CMD_AUTH)"
+  tt_log_info("Auth       %s",
+              (cfg.auth_enable == true)
+                  ? (cfg.auth_token[0] == '\0')
+                        ? (cfg.auth_token[0] == '\1')
+                              ? "error (Couldn't read value from token "
+                                "configuration file)"
+                              : "error (AUTH_TOKEN_PATH is not set)"
+                        : "enabled (Bearer header / CMD_AUTH)"
                   : "disabled");
   if (cfg.cors_origins[0])
     tt_log_info("CORS       %s", strcmp(cfg.cors_origins, "*") == 0
-                    ? "* (all origins — dev mode only)"
-                    : cfg.cors_origins);
+                                     ? "* (all origins — dev mode only)"
+                                     : cfg.cors_origins);
   else
     tt_log_info("CORS       disabled");
 
   /* ── Ready ───────────────────────────────────────────────────────── */
-  tt_log_notice("tinytrack ready  listen=%s  pid=%d",
-                cfg.listen, (int)getpid());
+  tt_log_notice("tinytrack ready  listen=%s  pid=%d", cfg.listen,
+                (int)getpid());
 
   ttg_http_listen(&mgr, cfg.listen, ttg_session_event_fn, NULL);
 
