@@ -5,13 +5,18 @@ set -e
 SERVER_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$SERVER_DIR"
 
+# Test binaries
+cd "tests"
+make clean     2>/dev/null || true
+
+cd "../"
 # Build system
 make clean     2>/dev/null || true
 make distclean 2>/dev/null || true
 
 # Autotools generated files
-rm -f  aclocal.m4 ar-lib compile config.guess config.h config.h.in config.h.in~ \
-       config.log config.status config.sub configure configure~ \
+rm -f  aclocal.m4 ar-lib compile config.guess config.guess~ config.h config.h.in config.h.in~ \
+       config.log config.status config.sub config.sub~ configure configure~ \
        depcomp install-sh missing stamp-h1 test-driver
 rm -rf autom4te.cache/
 
@@ -40,5 +45,14 @@ rm -f /tmp/tt-test-* /tmp/tt-bench-* /tmp/tt-san-* /tmp/tt-vg-* /tmp/tt-run-* /t
 rm -f /tmp/tinytd-test-live.dat /tmp/tinytd-test-shadow.dat /tmp/tinytd-test.pid
 rm -f /tmp/tinytd-tls-live.dat  /tmp/tinytd-tls-shadow.dat
 rm -f /tmp/tinytrack-test.pid
+
+# NPM and Python artifacts
+find . -name '.pytest_cache' -not -path './.git/*' -type d -exec rm -rf {} + 2>/dev/null || true
+rm -rf tests/gateway/__pycache__
+rm -rf tests/gateway/node_modules
+
+# Automake test output
+rm -f tests/test-suite.log
+rm -f tests/tinytd/*.log tests/tinytd/*.trs tests/tinytd/*.bin
 
 echo "server: clean done"

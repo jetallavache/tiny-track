@@ -37,7 +37,12 @@ suite_ws() {
 
 suite_http() {
     printf '\n=== HTTP tests ===\n'
-    run_pytest "http" tests/gateway/test_http.py
+    run_pytest "http" tests/gateway/test_http.py tests/gateway/test_http_parser.py
+}
+
+suite_ws_frames() {
+    printf '\n=== WS frame edge-case tests ===\n'
+    run_pytest "ws_frames" tests/gateway/test_ws_frames.py
 }
 
 suite_tls() {
@@ -156,7 +161,7 @@ suite_docker_tls() {
         -p "${TLS_PORT}:25015" \
         -e TT_PROC_ROOT=/host/proc \
         -e TT_ROOTFS_PATH=/host/rootfs \
-        -e TT_LISTEN="wss://0.0.0.0:25015" \
+        -e TT_TLS=true \
         -e TT_TLS_CERT=/certs/server.crt \
         -e TT_TLS_KEY=/certs/server.key \
         tinytrack-test:latest >/dev/null
@@ -259,7 +264,7 @@ suite_sanitize() {
           gateway/src/url.c gateway/src/b64.c gateway/src/proto.c \
           gateway/src/reader.c gateway/src/tls.c gateway/src/config.c \
           gateway/src/util.c gateway/src/printf.c \
-          common/metrics.c common/timer.c \
+          common/metrics.c common/timer.c common/sysfs.c \
           common/config/ini.c common/config/paths.c common/config/read.c \
           common/log/core.c common/log/stderr.c common/log/syslog.c \
           common/ringbuf/shm.c common/ringbuf/writer.c common/ringbuf/reader.c"
@@ -439,6 +444,7 @@ suite_valgrind() {
 
     printf "  Running ws + http + sock tests against valgrind gateway...\n"
     TINYTRACK_TEST_PORT=$VALGRIND_PORT \
+    WS_TIMEOUT=30 \
     python3 -m pytest \
         tests/gateway/test_ws.py \
         tests/gateway/test_http.py \
@@ -481,12 +487,19 @@ suite_valgrind() {
     rm -f "$VALGRIND_LOG" "$VG_LIVE" "$VG_SHADOW" "$VG_CONF"
 }
 
+suite_auth() {
+    printf '\n=== Authentication tests ===\n'
+    run_pytest "auth" tests/gateway/test_auth.py
+}
+
 SUITES="${*:-ws http tls load sock js}"
 
 for suite in $SUITES; do
     case "$suite" in
+        auth)     suite_auth ;;
         ws)       suite_ws ;;
         http)     suite_http ;;
+        ws_frames) suite_ws_frames ;;
         tls)      suite_tls ;;
         load)     suite_load ;;
         sock)     suite_sock ;;
@@ -496,7 +509,7 @@ for suite in $SUITES; do
         docker-tls)  suite_docker_tls ;;
         sanitize) suite_sanitize ;;
         valgrind) suite_valgrind ;;
-        all)      suite_sock; suite_http; suite_ws; suite_tls; suite_load; suite_js; suite_sysinfo; suite_sanitize; suite_valgrind ;;
+        all)      suite_sock; suite_http; suite_ws; suite_ws_frames; suite_auth; suite_tls; suite_load; suite_js; suite_sysinfo; suite_sanitize; suite_valgrind ;;
         *)        printf "Unknown suite: %s\n" "$suite"; exit 1 ;;
     esac
 done

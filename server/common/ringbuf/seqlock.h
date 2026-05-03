@@ -10,10 +10,11 @@ static inline void ttr_seqlock_write_begin(_Atomic uint32_t* seq) {
   atomic_store_explicit(seq, s + 1, memory_order_release);
 }
 
-/* Writer: end write */
+/* Writer: end write — seq_cst ensures all data writes are visible before
+ * the even sequence number is published to readers. */
 static inline void ttr_seqlock_write_end(_Atomic uint32_t* seq) {
   uint32_t s = atomic_load_explicit(seq, memory_order_relaxed);
-  atomic_store_explicit(seq, s + 1, memory_order_release);
+  atomic_store_explicit(seq, s + 1, memory_order_seq_cst);
 }
 
 /* Reader: begin read */

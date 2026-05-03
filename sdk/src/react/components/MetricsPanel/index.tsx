@@ -14,7 +14,7 @@ import { detectAlerts } from '../../utils/alerts.js';
 import { fmtPct, fmtBytes, fmtLoad, fmtUptimeSec, bar } from '../../utils/format.js';
 import { MetricType, SizeType, SIZE_SCALE, ALL_METRICS } from '../../utils/metrics.js';
 import { loadTrend, calcLoadScore } from '../../utils/alerts.js';
-import { MetricRow } from './MetricRow.js';
+import { BarType, MetricRow } from './MetricRow.js';
 import { BytesDisplay } from '../BytesDisplay.js';
 
 export interface MetricsPanelProps {
@@ -52,36 +52,41 @@ const ARROW_COUNT = 8;
 const LTR_CHARS = ['░', '░', '▒', '▓', '█', '▓', '▒', '░'] as const;
 const RTL_CHARS = ['░', '▒', '▓', '█', '▓', '▒', '░', '░'] as const;
 
+const CHARS_POINTS = ['●', '●', '●', '●', '●', '●', '●'] as const;
+
 function LoadArrows({
   trend,
   color,
   faint,
   fontSize,
   bg,
+  typeBar,
 }: {
   trend: 'rising' | 'falling' | 'stable';
   color: string;
   faint: string;
   fontSize: number;
   bg: string;
+  typeBar: BarType;
 }) {
   if (trend === 'stable') return null;
   const ltr = trend === 'rising';
-  const chars = ltr ? LTR_CHARS : RTL_CHARS;
-  const duration = 1.1;
+  const chars = typeBar == 'ascii' ? (ltr ? LTR_CHARS : RTL_CHARS) : CHARS_POINTS;
+  const duration = 1.5;
   const brightColor = dimColor(color, bg);
   return (
     <span
       style={{
         display: 'inline-flex',
         alignItems: 'center',
-        gap: 0,
+        gap: typeBar == 'ascii' ? 0 : 2.4,
         width: 72,
         flexShrink: 0,
         fontFamily: '"JetBrains Mono","Fira Code",monospace',
-        fontSize,
+        fontSize: typeBar == 'ascii' ? fontSize : fontSize - 2,
         lineHeight: 1,
         letterSpacing: 1,
+        color: typeBar == 'normal' ? color : brightColor,
       }}
     >
       {chars.map((ch, i) => {
@@ -138,7 +143,7 @@ export function MetricsPanel({
   size = 'm',
   columns = 1,
 }: MetricsPanelProps) {
-  const base = useTheme();
+  const { theme: base } = useTheme();
   const t = themeProp ? { ...base, ...themeProp } : base;
   const s = themeStyles(t);
   const sc = SIZE_SCALE[size];
@@ -312,14 +317,27 @@ export function MetricsPanel({
   const lbl = (short: string, full: string) => (isL ? full : short);
   const trend = m ? loadTrend(m) : 'stable';
   const arrowColor = trend === 'rising' ? t.crit : t.ok;
+  const typeBar: BarType =
+    t.themeName == 'shadcnui' || t.themeName == 'heroui' || t.themeName == 'dracula' || t.themeName == 'material'
+      ? 'normal'
+      : 'ascii';
 
   function renderMetricRows(metricList: MetricType[]) {
-    const mr = (key: string, label: string, value: string, barStr: string | null, color: string, tooltip?: string) => (
+    const mr = (
+      key: string,
+      label: string,
+      value: string,
+      barStr: string | null,
+      barType: BarType,
+      color: string,
+      tooltip?: string,
+    ) => (
       <MetricRow
         key={key}
         label={label}
         value={value}
         barStr={barStr}
+        barType={barType}
         color={color}
         s={s}
         t={t}
@@ -336,6 +354,7 @@ export function MetricsPanel({
             lbl('CPU', 'CPU usage'),
             m ? fmtPct(m.cpu) : '—',
             m ? bar(m.cpu) : null,
+            typeBar,
             t.cpu,
             isL ? `CPU: ${m ? fmtPct(m.cpu) : '—'}` : undefined,
           );
@@ -345,6 +364,7 @@ export function MetricsPanel({
             lbl('Mem', 'Memory'),
             m ? fmtPct(m.mem) : '—',
             m ? bar(m.mem) : null,
+            typeBar,
             t.mem,
             isL ? `Memory: ${m ? fmtPct(m.mem) : '—'}` : undefined,
           );
@@ -356,6 +376,7 @@ export function MetricsPanel({
                 lbl('Disk', 'Disk usage'),
                 m ? fmtPct(m.duUsage) : '—',
                 m ? bar(m.duUsage) : null,
+                typeBar,
                 t.disk,
                 isL ? `Disk: ${m ? fmtPct(m.duUsage) : '—'}` : undefined,
               )}
@@ -377,6 +398,7 @@ export function MetricsPanel({
                 lbl('Load', 'System load'),
                 loadScore !== null ? `${loadScore}%` : '—',
                 loadScore !== null ? bar(loadScore * 100) : null,
+                typeBar,
                 loadColor,
                 isL ? 'Overall system load score (0–100)' : undefined,
               )}
@@ -386,7 +408,14 @@ export function MetricsPanel({
                     <span style={{ color: t.muted, minWidth: labelW, fontSize: sc.font - 2, whiteSpace: 'nowrap' }}>
                       {lbl('L. avg', 'Load aver.')}
                     </span>
-                    <LoadArrows trend={trend} color={arrowColor} faint={t.faint} fontSize={sc.font} bg={t.bg} />
+                    <LoadArrows
+                      trend={trend}
+                      color={arrowColor}
+                      faint={t.faint}
+                      fontSize={sc.font}
+                      bg={t.bg}
+                      typeBar={typeBar}
+                    />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ minWidth: labelW }} />
@@ -396,7 +425,7 @@ export function MetricsPanel({
                   </div>
                 </>
               ) : (
-                mr('load-avg', lbl('L. avg', 'Load aver.'), '—', null, t.load)
+                mr('load-avg', lbl('L. avg', 'Load aver.'), '—', null, typeBar, t.load)
               )}
             </div>
           );
@@ -490,7 +519,14 @@ export function MetricsPanel({
     return (
       <div
         className={className}
-        style={{ ...s.root, fontSize: sc.font, gap: sc.gap, padding: sc.pad, width: 'fit-content', ...style }}
+        style={{
+          ...s.root,
+          fontSize: sc.font,
+          gap: sc.gap,
+          padding: sc.pad,
+          width: 'fit-content',
+          ...style,
+        }}
       >
         {header}
         <div style={s.divider} />

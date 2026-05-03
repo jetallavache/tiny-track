@@ -1,5 +1,5 @@
-export { TinyTrackClient } from './client.js';
-export type { TinyTrackClientOptions, ClientEventMap } from './client.js';
+export { TinyTrackClient, createClient } from './client.js';
+export type { TinyTrackClientOptions, CreateClientOptions, ClientEventMap, ReconnectStrategy } from './client.js';
 export type { TtMetrics, TtConfig, TtAck, TtStats, TtHistoryResp, TtSysInfo } from './client.js';
 export {
   /* Protocol constants */
@@ -28,13 +28,19 @@ export {
   CMD_GET_SYS_INFO,
   CMD_START,
   CMD_STOP,
+  CMD_AUTH,
+  /* Packet types (auth) */
+  PKT_AUTH_REQ,
   /* ACK status codes */
   ACK_OK,
   ACK_ERROR,
+  ACK_AUTH_FAIL,
   /* Builders */
   buildCmd,
   buildHistoryReq,
   buildSubscribe,
+  buildAuth,
+  historyToMetrics,
   /* Parsers */
   parseHeader,
   parseMetrics,
@@ -44,4 +50,4 @@ export {
   parseHistoryResp,
   parseSysInfo,
 } from './proto.js';
-export type { TtFrame, TtRingStat } from './proto.js';
+export type { TtFrame, TtRingStat, TtAggMetrics } from './proto.js';

@@ -1,0 +1,152 @@
+# Troubleshooting
+
+## Diagnostics checklist
+
+Before investigating specific issues, verify the basic state of the system:
+
+```bash
+# Check service status
+systemctl status tinytd
+systemctl status tinytrack
+
+# Check shared memory
+ls -lh /dev/shm/tinytrack.shm
+
+# Check port
+ss -tlnp | grep 25015
+
+# Check logs
+journalctl -u tinytd -n 50
+journalctl -u tinytrack -n 50
+```
+
+## Common issues
+
+### tinytd does not start
+
+**Symptom**: `systemctl status tinytd` shows `failed` or `activating`.
+
+**Causes and solutions**:
+
+1. `/dev/shm` not mounted or not writable:
+   ```bash
+   mount | grep shm
+   ls -la /dev/shm
+   ```
+
+2. `/proc` not accessible (container without `--pid=host`):
+   ```bash
+   ls /proc/stat
+   ```
+
+3. Configuration file not found:
+   ```bash
+   tinytd -f -v -c /etc/tinytrack/tinytrack.conf
+   ```
+
+### tinytrack does not start
+
+**Symptom**: `systemctl status tinytrack` shows `failed`.
+
+**Causes and solutions**:
+
+1. Port 25015 already in use:
+   ```bash
+   ss -tlnp | grep 25015
+   # Change port in /etc/tinytrack/tinytrack.conf
+   ```
+
+2. Shared memory not found (tinytd not running):
+   ```bash
+   systemctl start tinytd
+   ```
+
+3. TLS certificate not found:
+   ```bash
+   # Disable TLS or fix certificate paths in configuration
+   ```
+
+### No metrics in browser
+
+**Symptom**: WebSocket connects but no data arrives.
+
+**Causes and solutions**:
+
+1. `tinytd` is not running — metrics stream is empty:
+   ```bash
+   systemctl start tinytd
+   ```
+
+2. Firewall blocking port 25015:
+   ```bash
+   # UFW
+   ufw allow 25015/tcp
+
+   # iptables
+   iptables -A INPUT -p tcp --dport 25015 -j ACCEPT
+   ```
+
+3. Wrong WebSocket URL — verify the endpoint:
+   ```
+   ws://your-host:25015/v1/stream
+   ```
+
+### High CPU usage by tinytd
+
+**Symptom**: `tinytd` consumes more than 1% CPU.
+
+**Solution**: Increase the collection interval:
+
+```ini
+[tinytd]
+interval_ms = 2000   # 2 seconds instead of 1
+```
+
+### Shared memory grows unbounded
+
+**Symptom**: `/dev/shm/tinytrack.shm` is unexpectedly large.
+
+**Cause**: Ring buffer capacities are set too high.
+
+**Solution**: Reduce capacities in configuration and restart `tinytd`:
+
+```ini
+[ringbuf]
+l1_capacity = 3600
+l2_capacity = 1440
+l3_capacity = 720
+```
+
+### WebSocket disconnects frequently
+
+**Symptom**: Client reconnects every few seconds.
+
+**Causes and solutions**:
+
+1. Reverse proxy (nginx, Caddy) timeout — add WebSocket timeout configuration:
+   ```nginx
+   proxy_read_timeout 3600s;
+   proxy_send_timeout 3600s;
+   ```
+
+2. Load balancer idle timeout — configure keepalive or increase timeout.
+
+## Debug mode
+
+Run both daemons in foreground with debug logging:
+
+```bash
+tinytd   -f -d -c /etc/tinytrack/tinytrack.conf
+tinytrack -f -d -c /etc/tinytrack/tinytrack.conf
+```
+
+## Sanitizer build
+
+For memory and undefined behavior debugging:
+
+```bash
+cd server
+./configure CFLAGS="-g -O0 -fsanitize=address,undefined"
+make
+./tinytd/tinytd -f -d
+```

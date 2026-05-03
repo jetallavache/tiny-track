@@ -23,15 +23,28 @@
 #     TT_L3_AGG_INTERVAL    L2→L3 aggregation interval, s   (default: 3600)
 #
 #   Gateway:
-#     TT_LISTEN             listen address  ws:// or wss://  (default: ws://0.0.0.0:25015)
+#     TT_HOSTNAME           bind address                     (default: 0.0.0.0)
+#     TT_PORT               listen port                      (default: 25015)
+#     TT_AUTH_TOKEN         shared secret for auth           (default: disabled)
 #     TT_UPDATE_INTERVAL    push interval to clients, ms     (default: 1000)
 #     TT_LOG_LEVEL          log level: debug/info/notice/warning/error (default: info)
 #     TT_LOG_BACKEND        log backend: docker/stdout/stderr (default: docker)
 #
-#   TLS (required when TT_LISTEN starts with wss://):
+#   TLS (requires tls = true in config or TT_TLS=true):
+#     TT_TLS                enable TLS: true/false           (default: false)
 #     TT_TLS_CERT           path to PEM certificate file
 #     TT_TLS_KEY            path to PEM private key file
-#     TT_TLS_CA             path to PEM CA bundle (optional, for client cert auth)
+#     TT_TLS_CA             path to PEM CA bundle (optional)
+#
+# TODO:
+# max_connections = 128
+# header_timeout_ms = 5000
+# idle_timeout_ms = 0
+# max_uri_size = 8192
+# max_headers_size = 16384
+# auth_enable     = false
+# auth_timeout_ms = 5000
+# cors_origins =
 
 set -e
 
@@ -80,8 +93,17 @@ group = root
 pid_file        = /var/run/tinytrack.pid
 log_backend     = docker
 log_level       = info
-listen          = ws://0.0.0.0:25015
+hostname        = 0.0.0.0
+port            = 25015
 update_interval = 1000
+max_connections = 128
+header_timeout_ms = 5000
+idle_timeout_ms = 0
+max_uri_size = 8192
+max_headers_size = 16384
+auth_enable     = false
+auth_timeout_ms = 5000
+cors_origins =
 CONF_EOF
 fi
 
@@ -100,17 +122,40 @@ apply() {
 [ -n "${TT_DU_INTERVAL_SEC:-}"   ] && apply du_interval_sec    "$TT_DU_INTERVAL_SEC"
 [ -n "${TT_LIVE_PATH:-}"         ] && apply live_path          "$TT_LIVE_PATH"
 [ -n "${TT_SHADOW_PATH:-}"       ] && apply shadow_path        "$TT_SHADOW_PATH"
-[ -n "${TT_L1_CAPACITY:-}"       ] && apply l1_capacity        "$TT_L1_CAPACITY"
-[ -n "${TT_L2_CAPACITY:-}"       ] && apply l2_capacity        "$TT_L2_CAPACITY"
-[ -n "${TT_L3_CAPACITY:-}"       ] && apply l3_capacity        "$TT_L3_CAPACITY"
+[ -n "${TT_L1_CAPACITY:-}"       ] && apply l1_capacity         "$TT_L1_CAPACITY"
+[ -n "${TT_L2_CAPACITY:-}"       ] && apply l2_capacity         "$TT_L2_CAPACITY"
 [ -n "${TT_L2_AGG_INTERVAL:-}"   ] && apply l2_agg_interval_sec "$TT_L2_AGG_INTERVAL"
+[ -n "${TT_L3_CAPACITY:-}"       ] && apply l3_capacity         "$TT_L3_CAPACITY"
 [ -n "${TT_L3_AGG_INTERVAL:-}"   ] && apply l3_agg_interval_sec "$TT_L3_AGG_INTERVAL"
-[ -n "${TT_LISTEN:-}"            ] && apply listen             "$TT_LISTEN"
+[ -n "${TT_HOSTNAME:-}"          ] && apply hostname           "$TT_HOSTNAME"
+[ -n "${TT_PORT:-}"              ] && apply port               "$TT_PORT"
 [ -n "${TT_UPDATE_INTERVAL:-}"   ] && apply update_interval    "$TT_UPDATE_INTERVAL"
 [ -n "${TT_LOG_LEVEL:-}"         ] && apply log_level          "$TT_LOG_LEVEL"
 [ -n "${TT_LOG_BACKEND:-}"       ] && apply log_backend        "$TT_LOG_BACKEND"
+[ -n "${TT_AUTH_ENABLE:-}"       ] && apply auth_enable        "$TT_AUTH_ENABLE"
+[ -n "${TT_AUTH_TIMEOUT_MS:-}"   ] && apply auth_timeout_ms    "$TT_AUTH_TIMEOUT_MS"
+[ -n "${TT_MAX_CONNECTIONS:-}"   ] && apply max_connections    "$TT_MAX_CONNECTIONS"
+[ -n "${TT_HEADER_TIMEOUT_MS:-}" ] && apply header_timeout_ms  "$TT_HEADER_TIMEOUT_MS"
+[ -n "${TT_IDLE_TIMEOUT_MS:-}"   ] && apply idle_timeout_ms    "$TT_IDLE_TIMEOUT_MS"
+[ -n "${TT_MAX_URI_SIZE:-}"      ] && apply max_uri_size       "$TT_MAX_URI_SIZE"
+[ -n "${TT_MAX_HEADERS_SIZE:-}"  ] && apply max_headers_size   "$TT_MAX_HEADERS_SIZE"
+[ -n "${TT_CORS_ORIGINS:-}"      ] && apply cors_origins       "$TT_CORS_ORIGINS"
 
-# TLS — append to config only if not already present
+# TLS enable flag
+if [ -n "${TT_TLS:-}" ]; then
+    grep -q "^tls " "$CONF" \
+        && sed -i "s|^tls .*|tls = $TT_TLS|" "$CONF" \
+        || echo "tls = $TT_TLS" >> "$CONF"
+fi
+
+# Auth token — deprecated
+# if [ -n "${TT_AUTH_TOKEN:-}" ]; then
+#     grep -q "^auth_token" "$CONF" \
+#         && sed -i "s|^auth_token.*|auth_token = $TT_AUTH_TOKEN|" "$CONF" \
+#         || echo "auth_token = $TT_AUTH_TOKEN" >> "$CONF"
+# fi
+
+# TLS cert/key/ca — append to config only if not already present
 if [ -n "${TT_TLS_CERT:-}" ]; then
     grep -q "^tls_cert" "$CONF" \
         && sed -i "s|^tls_cert.*|tls_cert = $TT_TLS_CERT|" "$CONF" \
@@ -144,6 +189,6 @@ while [ $i -lt 50 ] && [ ! -f "$LIVE" ]; do
     i=$((i+1))
 done
 
-tinytrack --no-daemon --config "$CONF" &
+AUTH_TOKEN=$TT_AUTH_TOKEN tinytrack --no-daemon --config "$CONF" &
 
 wait $TD_PID

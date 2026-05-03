@@ -5,7 +5,11 @@ import { TtTheme, themeStyles } from '../../theme.js';
 import { fmtPct, bar } from '../../utils/format.js';
 
 export function MetricBarRow({
-  label, value, color, t, fontSize,
+  label,
+  value,
+  color,
+  t,
+  fontSize,
 }: {
   label: string;
   value: number;
@@ -31,7 +35,11 @@ export function MetricBarRow({
 import { Sparkline } from '../Sparkline/index.js';
 
 export function SparkBlock({
-  label, data, max, color, h = 28,
+  label,
+  data,
+  max,
+  color,
+  h = 28,
 }: {
   label: string;
   data: number[];

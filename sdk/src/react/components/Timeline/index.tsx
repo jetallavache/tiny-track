@@ -9,8 +9,15 @@ import { useState, useEffect, useCallback, CSSProperties } from 'react';
 import { useTinyTrack } from '../../TinyTrackProvider.js';
 import { useTheme, TtTheme, themeStyles } from '../../theme.js';
 import { TtMetrics, TtHistoryResp } from '../../../client.js';
-import { RING_L1, RING_L2, RING_L3 } from '../../../proto.js';
-import { MetricType, AggregationType, SizeType, SIZE_SCALE, METRIC_LABEL, METRIC_COLOR_KEY } from '../../utils/metrics.js';
+import { RING_L1, RING_L2, RING_L3, historyToMetrics } from '../../../proto.js';
+import {
+  MetricType,
+  AggregationType,
+  SizeType,
+  SIZE_SCALE,
+  METRIC_LABEL,
+  METRIC_COLOR_KEY,
+} from '../../utils/metrics.js';
 import { TimelineRow } from './TimelineRow.js';
 
 export interface TimelineProps {
@@ -34,7 +41,7 @@ export interface TimelineProps {
 const RINGS = [
   { level: RING_L1, label: 'L1 · 1s', fmt: fmtTime },
   { level: RING_L2, label: 'L2 · 1m', fmt: fmtHour },
-  { level: RING_L3, label: 'L3 · 1h', fmt: fmtDay  },
+  { level: RING_L3, label: 'L3 · 1h', fmt: fmtDay },
 ] as const;
 
 const AGG_OPTIONS: AggregationType[] = ['avg', 'max', 'min'];
@@ -55,9 +62,11 @@ export function Timeline({
   rowHeight,
   aggregation: aggProp,
   size = 'm',
-  className, style, theme: themeProp,
+  className,
+  style,
+  theme: themeProp,
 }: TimelineProps) {
-  const base = useTheme();
+  const { theme: base } = useTheme();
   const t = themeProp ? { ...base, ...themeProp } : base;
   const s = themeStyles(t);
   const sc = SIZE_SCALE[size];
@@ -72,7 +81,9 @@ export function Timeline({
 
   const { client, connected } = useTinyTrack();
   const [samples, setSamples] = useState<Record<number, TtMetrics[]>>({
-    [RING_L1]: [], [RING_L2]: [], [RING_L3]: [],
+    [RING_L1]: [],
+    [RING_L2]: [],
+    [RING_L3]: [],
   });
 
   const addSamples = useCallback((level: number, incoming: TtMetrics[]) => {
@@ -88,8 +99,8 @@ export function Timeline({
     client.getHistory(RING_L1, 3600);
     client.getHistory(RING_L2, 1440);
     client.getHistory(RING_L3, 168);
-    const onHistory = (r: TtHistoryResp) => addSamples(r.level, r.samples);
-    const onMetrics  = (m: TtMetrics)    => addSamples(RING_L1, [m]);
+    const onHistory = (r: TtHistoryResp) => addSamples(r.level, historyToMetrics(r));
+    const onMetrics = (m: TtMetrics) => addSamples(RING_L1, [m]);
     client.on('history', onHistory);
     client.on('metrics', onMetrics);
     return () => {
@@ -106,7 +117,16 @@ export function Timeline({
 
         {/* Metric badges */}
         {metrics.map((m) => (
-          <span key={m} style={{ fontSize: sc.font - 2, padding: '1px 5px', background: t.surface, borderRadius: t.radius, color: t[METRIC_COLOR_KEY[m]] }}>
+          <span
+            key={m}
+            style={{
+              fontSize: sc.font - 2,
+              padding: '1px 5px',
+              background: t.surface,
+              borderRadius: t.radius,
+              color: t[METRIC_COLOR_KEY[m]],
+            }}
+          >
             {METRIC_LABEL[m]}
           </span>
         ))}
@@ -121,7 +141,9 @@ export function Timeline({
           title="Visible window (bars)"
         >
           {WINDOW_OPTIONS.map((n) => (
-            <option key={n} value={n}>{n} bars</option>
+            <option key={n} value={n}>
+              {n} bars
+            </option>
           ))}
         </select>
 
@@ -168,7 +190,12 @@ export function Timeline({
 }
 
 function fmtTime(ts: number): string {
-  return new Date(ts).toLocaleTimeString('en', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  return new Date(ts).toLocaleTimeString('en', {
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
 }
 
 function fmtHour(ts: number): string {

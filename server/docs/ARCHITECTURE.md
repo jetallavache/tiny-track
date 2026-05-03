@@ -76,7 +76,7 @@ File: /dev/shm/tinytd-live.dat
   Offset   Size    Content
   ------   ----    -------
   0        256     ttr_header
-             magic (4), version (4), crc32 (4),
+             magic (4), version (4), checksum (4),
              last_update_ts (8), last_shadow_sync_ts (8),
              writer_pid (4), num_consumers (4),
              interval_ms (4), l2_agg_interval_ms (4), l3_agg_interval_ms (4),

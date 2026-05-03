@@ -19,8 +19,12 @@ const preview: Preview = {
     (Story, context) => {
       const preset = context.globals.theme ?? 'terminal';
       const bg: Record<string, string> = {
-        terminal: '#111827', dark: '#1e1e2e', light: '#ffffff',
-        material: '#1c1b1f', dracula: '#282a36', heroui: '#0f0f1a',
+        terminal: '#111827',
+        dark: '#1e1e2e',
+        light: '#ffffff',
+        material: '#1c1b1f',
+        dracula: '#282a36',
+        heroui: '#0f0f1a',
       };
       return React.createElement(
         ThemeProvider,

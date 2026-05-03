@@ -240,7 +240,7 @@ export function DiskMap({
   style,
   theme: themeProp,
 }: DiskMapProps) {
-  const base = useTheme();
+  const { theme: base } = useTheme();
   const t = themeProp ? { ...base, ...themeProp } : base;
   const sc = SIZE_SCALE[size];
 

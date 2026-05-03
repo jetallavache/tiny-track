@@ -7,7 +7,7 @@ const sysInfoDiv = document.getElementById('sysinfo');
 const wsStatus = document.getElementById('wsStatus');
 
 let ws = null;
-let historyBuf = []; /* accumulate PKT_HISTORY_RESP batches */
+let historyBuf = [];
 
 /* ------------------------------------------------------------------ */
 /* Logging                                                              */
@@ -86,8 +86,14 @@ const handlers = {
     addLog(`← PKT_METRICS: CPU=${fmtPct(m.cpu_usage)} MEM=${fmtPct(m.mem_usage)} RX=${fmtNet(m.net_rx)}`);
   },
 
-  onAck({ cmdType, ok }) {
-    addLog(`← PKT_ACK: cmd=0x${cmdType.toString(16)} status=${ok ? 'OK' : 'ERROR'}`);
+  onAck({ cmdType, status, ok }) {
+    const label = cmdType === PROTO.CMD_AUTH
+      ? (status === PROTO.ACK_OK ? '✓ AUTH OK' : status === PROTO.ACK_AUTH_FAIL ? '✗ AUTH FAIL' : 'AUTH ERROR')
+      : (ok ? 'OK' : 'ERROR');
+    addLog(`← PKT_ACK: cmd=0x${cmdType.toString(16)} status=${label}`);
+    if (cmdType === PROTO.CMD_AUTH && ok) {
+      wsStatus.innerHTML = '<span style="color:green">Connected (authenticated)</span>';
+    }
   },
 
   onAlert({ level, message }) {
@@ -95,8 +101,19 @@ const handlers = {
     addLog(`← PKT_ALERT [${labels[level] ?? level}]: ${message}`);
   },
 
-  onHistoryResp({ level, samples, isLast }) {
-    historyBuf.push(...samples);
+  onAuthReq() {
+    addLog('← PKT_AUTH_REQ: server requires authentication');
+    const token = document.getElementById('authToken').value.trim();
+    if (token) {
+      send(buildAuth(token));
+      addLog(`→ CMD_AUTH (token: ${token.slice(0, 4)}***)`);
+    } else {
+      addLog('✗ Auth required but no token set — fill in the Auth Token field');
+      wsStatus.innerHTML = '<span style="color:orange">Auth required</span>';
+    }
+  },
+
+  onHistoryResp({ level, samples, isLast }) {    historyBuf.push(...samples);
     addLog(`← PKT_HISTORY_RESP: level=${level} +${samples.length} samples (last=${isLast})`);
     if (isLast) {
       addLog(`  History complete: ${historyBuf.length} total samples`);
@@ -229,19 +246,99 @@ document.getElementById('getHistory').addEventListener('click', () => {
 });
 
 document.getElementById('fetchMetrics').addEventListener('click', async () => {
-  const url = document.getElementById('apiUrl').value;
+  const base = document.getElementById('apiUrl').value;
+  const fmt = document.getElementById('apiFormat').value;
+  const url = `${base}v1/metrics${fmt ? '?format=' + fmt : ''}`;
+  const token = document.getElementById('authToken').value.trim();
   try {
-    const r = await fetch(url);
-    const d = await r.json();
-    metricsDiv.innerHTML = `<pre>${JSON.stringify(d, null, 2)}</pre>`;
-    addLog('✓ HTTP metrics fetched');
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+    const r = await fetch(url, { headers });
+    const text = await r.text();
+    document.getElementById('prometheusOut').textContent = text;
+    addLog(`✓ GET ${url} → ${r.status} (${fmt || 'json'})`);
   } catch (e) {
     addLog(`✗ HTTP error: ${e.message}`);
   }
 });
 
+document.getElementById('fetchPrometheus').addEventListener('click', async () => {
+  const base = document.getElementById('apiUrl').value;
+  const url = `${base}v1/metrics?format=prometheus`;
+  const token = document.getElementById('authToken').value.trim();
+  try {
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+    const r = await fetch(url, { headers });
+    const text = await r.text();
+    document.getElementById('prometheusOut').textContent = text;
+    addLog(`✓ GET ${url} — ${text.split('\n').length} lines`);
+  } catch (e) {
+    addLog(`✗ Prometheus fetch error: ${e.message}`);
+  }
+});
+
+document.getElementById('fetchSysinfo').addEventListener('click', async () => {
+  const base = document.getElementById('apiUrl').value;
+  const token = document.getElementById('authToken').value.trim();
+  try {
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+    const r = await fetch(`${base}v1/sysinfo`, { headers });
+    const d = await r.json();
+    document.getElementById('prometheusOut').textContent = JSON.stringify(d, null, 2);
+    addLog(`✓ GET /v1/sysinfo → ${r.status}`);
+  } catch (e) { addLog(`✗ ${e.message}`); }
+});
+
+document.getElementById('fetchStatus').addEventListener('click', async () => {
+  const base = document.getElementById('apiUrl').value;
+  try {
+    const r = await fetch(`${base}v1/status`);
+    const d = await r.json();
+    addLog(`✓ GET /v1/status → ${r.status} ${JSON.stringify(d)}`);
+  } catch (e) { addLog(`✗ ${e.message}`); }
+});
+
+document.getElementById('postPause').addEventListener('click', async () => {
+  const base = document.getElementById('apiUrl').value;
+  const token = document.getElementById('authToken').value.trim();
+  try {
+    const headers = { ...(token ? { 'Authorization': `Bearer ${token}` } : {}) };
+    const r = await fetch(`${base}v1/stream/pause`, { method: 'POST', headers });
+    addLog(`✓ POST /v1/stream/pause → ${r.status}`);
+  } catch (e) { addLog(`✗ ${e.message}`); }
+});
+
+document.getElementById('postResume').addEventListener('click', async () => {
+  const base = document.getElementById('apiUrl').value;
+  const token = document.getElementById('authToken').value.trim();
+  try {
+    const headers = { ...(token ? { 'Authorization': `Bearer ${token}` } : {}) };
+    const r = await fetch(`${base}v1/stream/resume`, { method: 'POST', headers });
+    addLog(`✓ POST /v1/stream/resume → ${r.status}`);
+  } catch (e) { addLog(`✗ ${e.message}`); }
+});
+
+document.getElementById('fetchPrometheus').addEventListener('click', async () => {
+  const base = document.getElementById('apiUrl').value;
+  const url = base + 'metrics';
+  try {
+    const r = await fetch(url);
+    const text = await r.text();
+    document.getElementById('prometheusOut').textContent = text;
+    addLog(`✓ GET ${url} — ${text.split('\n').length} lines`);
+  } catch (e) {
+    addLog(`✗ Prometheus fetch error: ${e.message}`);
+  }
+});
+
 document.getElementById('clearLog').addEventListener('click', () => {
   log.innerHTML = '';
+});
+
+document.getElementById('sendAuth').addEventListener('click', () => {
+  const token = document.getElementById('authToken').value.trim();
+  if (!token) { addLog('✗ Token is empty'); return; }
+  send(buildAuth(token));
+  addLog(`→ CMD_AUTH (token: ${token.slice(0, 4)}***)`);
 });
 
 addLog('Ready. Connect to WebSocket to start.');

@@ -37,4 +37,11 @@ int ttg_reader_get_sysinfo(struct ttg_reader* ctx,
 
 void ttg_reader_close(struct ttg_reader* ctx);
 
+/*
+ * Check if tinytd is alive by inspecting writer_pid and last_update_ts.
+ * Returns 0 if alive, -1 if stale/dead (logs a warning).
+ * Non-fatal: gateway continues even if tinytd is not running.
+ */
+int ttg_reader_check_liveness(struct ttg_reader* ctx);
+
 #endif

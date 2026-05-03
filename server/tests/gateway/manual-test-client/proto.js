@@ -32,10 +32,15 @@ const PROTO = {
   CMD_GET_SYS_INFO: 0x11,
   CMD_START: 0x12,
   CMD_STOP: 0x13,
+  CMD_AUTH: 0x14,
 
   /* ACK status */
   ACK_OK: 0x00,
   ACK_ERROR: 0x01,
+  ACK_AUTH_FAIL: 0x02,
+
+  /* Auth */
+  PKT_AUTH_REQ: 0x15,
 
   /* Ring levels */
   RING_L1: 0x01,
@@ -181,6 +186,18 @@ function buildHistoryReq(level, maxCount = 60, fromTs = 0, toTs = 0) {
   return concat(header, payload);
 }
 
+function buildAuth(token) {
+  /* PKT_CMD / CMD_AUTH payload: [cmd_type:1][token:64] = 65 bytes */
+  const payload = new ArrayBuffer(65);
+  const pv = new DataView(payload);
+  pv.setUint8(0, PROTO.CMD_AUTH);
+  const enc = new TextEncoder().encode(token.slice(0, 63));
+  new Uint8Array(payload, 1, 64).set(enc);
+
+  const header = buildHeader(PROTO.V2, PROTO.PKT_CMD, 65);
+  return concat(header, payload);
+}
+
 function concat(...bufs) {
   const total = bufs.reduce((s, b) => s + b.byteLength, 0);
   const out = new Uint8Array(total);
@@ -249,8 +266,11 @@ function dispatchFrame(frame, handlers) {
       });
       break;
     }
-    case PROTO.PKT_SYS_INFO: {
-      const dec = new TextDecoder();
+    case PROTO.PKT_AUTH_REQ: {
+      handlers.onAuthReq?.();
+      break;
+    }
+    case PROTO.PKT_SYS_INFO: {      const dec = new TextDecoder();
       const hostname = dec.decode(new Uint8Array(payload.buffer, payload.byteOffset, 64)).replace(/\0.*$/, '');
       const os_type = dec.decode(new Uint8Array(payload.buffer, payload.byteOffset + 64, 64)).replace(/\0.*$/, '');
       /* uptime_sec: uint64 BE at offset 128 */
@@ -276,4 +296,4 @@ function dispatchFrame(frame, handlers) {
 }
 
 if (typeof module !== 'undefined')
-  module.exports = { PROTO, parseFrame, parseMetrics, buildCmd, buildSubscribe, buildHistoryReq, dispatchFrame };
+  module.exports = { PROTO, parseFrame, parseMetrics, buildCmd, buildSubscribe, buildHistoryReq, buildAuth, dispatchFrame };

@@ -1,5 +1,9 @@
 .kiro
 
+# Environment files with secrets
+demo/.env
+demo/.env.local
+
 # Private OpenSSL gen
 server/etc/certs/*.crt
 server/etc/certs/*.key
@@ -58,6 +62,12 @@ valgrind-*.core.*
 /tmp/tinytd-test-live.dat
 /tmp/tinytd-test-shadow.dat
 
+# Automake test output
+server/tests/test-suite.log
+server/tests/tinytd/*.log
+server/tests/tinytd/*.trs
+server/tests/tinytd/*.bin
+
 # Node.js
 node_modules/
 
@@ -74,5 +84,5 @@ sdk/storybook-static
 # Demo build output
 demo/dist/
 demo/*.tsbuildinfo
-docs/roadmap*
+docs/roadmap-*.md
 docs/dev-history.md

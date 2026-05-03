@@ -1,0 +1,75 @@
+# shadcn/ui Theme
+
+The `shadcnui` theme maps tinytsdk tokens to shadcn/ui CSS variables, making components
+visually consistent with shadcn/ui-based applications.
+
+## Token mapping
+
+| tinytsdk token | shadcn/ui variable | Description |
+|----------------|--------------------|-------------|
+| `bg` | `hsl(var(--card))` | Component background |
+| `bgAlt` | `hsl(var(--muted))` | Alternate background |
+| `fg` | `hsl(var(--card-foreground))` | Primary text |
+| `fgMuted` | `hsl(var(--muted-foreground))` | Secondary text |
+| `cpu` | `hsl(var(--chart-1))` | CPU metric |
+| `mem` | `hsl(var(--chart-2))` | Memory metric |
+| `disk` | `hsl(var(--chart-3))` | Disk metric |
+| `net` | `hsl(var(--chart-4))` | Network metric |
+| `ok` | `#22c55e` | Normal status |
+| `warn` | `#f59e0b` | Warning |
+| `crit` | `hsl(var(--destructive))` | Critical |
+| `border` | `hsl(var(--border))` | Border |
+| `radius` | `var(--radius)` | Border radius |
+| `font` | `var(--font-mono)` | Font family |
+
+## Usage
+
+```tsx
+import { TinyTrackProvider, MetricsPanel } from 'tinytsdk/react';
+
+const shadcnTheme = {
+  bg:      'hsl(var(--card))',
+  bgAlt:   'hsl(var(--muted))',
+  fg:      'hsl(var(--card-foreground))',
+  fgMuted: 'hsl(var(--muted-foreground))',
+  cpu:     'hsl(var(--chart-1))',
+  mem:     'hsl(var(--chart-2))',
+  disk:    'hsl(var(--chart-3))',
+  net:     'hsl(var(--chart-4))',
+  crit:    'hsl(var(--destructive))',
+  border:  'hsl(var(--border))',
+  radius:  'var(--radius)',
+  font:    'var(--font-mono)',
+};
+
+export default function App() {
+  return (
+    <TinyTrackProvider url="ws://your-host:25015" theme={shadcnTheme}>
+      <MetricsPanel />
+    </TinyTrackProvider>
+  );
+}
+```
+
+## Requirements
+
+The shadcnui theme requires shadcn/ui CSS variables to be present in the document.
+If you are using a shadcn/ui project, these are already defined in your `globals.css`.
+
+For standalone usage, add the following to your CSS:
+
+```css
+:root {
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --border: 214.3 31.8% 91.4%;
+  --destructive: 0 84.2% 60.2%;
+  --chart-1: 142.1 76.2% 36.3%;
+  --chart-2: 221.2 83.2% 53.3%;
+  --chart-3: 47.9 95.8% 53.1%;
+  --chart-4: 262.1 83.3% 57.8%;
+  --radius: 0.5rem;
+}
+```

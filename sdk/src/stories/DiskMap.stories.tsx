@@ -5,8 +5,8 @@ import type { DiskSegment } from '../react/components/DiskMap/index.js';
 
 const SEGMENTS: DiskSegment[] = [
   { label: 'database', bytes: 80_000_000_000 },
-  { label: 'uploads',  bytes: 45_000_000_000 },
-  { label: 'logs',     bytes: 12_000_000_000 },
+  { label: 'uploads', bytes: 45_000_000_000 },
+  { label: 'logs', bytes: 12_000_000_000 },
 ];
 
 const meta: Meta<typeof DiskMap> = {
@@ -56,8 +56,8 @@ export const CustomColors: Story = {
   args: {
     segments: [
       { label: 'database', bytes: 80_000_000_000, color: '#f97316' },
-      { label: 'uploads',  bytes: 45_000_000_000, color: '#a78bfa' },
-      { label: 'logs',     bytes: 12_000_000_000, color: '#34d399' },
+      { label: 'uploads', bytes: 45_000_000_000, color: '#a78bfa' },
+      { label: 'logs', bytes: 12_000_000_000, color: '#34d399' },
     ],
   },
 };
@@ -79,8 +79,8 @@ export const HighUsage: Story = {
   args: {
     segments: [
       { label: 'database', bytes: 200_000_000_000 },
-      { label: 'uploads',  bytes: 150_000_000_000 },
-      { label: 'logs',     bytes: 70_000_000_000 },
+      { label: 'uploads', bytes: 150_000_000_000 },
+      { label: 'logs', bytes: 70_000_000_000 },
     ],
   },
 };

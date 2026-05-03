@@ -5,7 +5,7 @@
 Самый простой способ установить TinyTrack на любой поддерживаемый Linux:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/jetallavache/tiny-track/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/jetallavache/tinytrack/main/install.sh | bash
 ```
 
 Скрипт автоматически:
@@ -18,7 +18,7 @@ curl -fsSL https://raw.githubusercontent.com/jetallavache/tiny-track/main/instal
 ### Установка через Docker (без сборки)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/jetallavache/tiny-track/main/install.sh | TINYTRACK_DOCKER=1 bash
+curl -fsSL https://raw.githubusercontent.com/jetallavache/tinytrack/main/install.sh | TINYTRACK_DOCKER=1 bash
 ```
 
 Скачивает готовый образ с Docker Hub и создаёт `tinytrack-compose.yml` в текущей директории.
@@ -34,15 +34,15 @@ curl -fsSL https://raw.githubusercontent.com/jetallavache/tiny-track/main/instal
 
 ```bash
 # Установить конкретный релиз
-curl -fsSL https://raw.githubusercontent.com/jetallavache/tiny-track/main/install.sh | \
+curl -fsSL https://raw.githubusercontent.com/jetallavache/tinytrack/main/install.sh | \
   TINYTRACK_VERSION=v0.1.6 bash
 
 # Установить без запуска сервисов
-curl -fsSL https://raw.githubusercontent.com/jetallavache/tiny-track/main/install.sh | \
+curl -fsSL https://raw.githubusercontent.com/jetallavache/tinytrack/main/install.sh | \
   TINYTRACK_NO_SERVICE=1 bash
 
 # Установить в нестандартный префикс
-curl -fsSL https://raw.githubusercontent.com/jetallavache/tiny-track/main/install.sh | \
+curl -fsSL https://raw.githubusercontent.com/jetallavache/tinytrack/main/install.sh | \
   TINYTRACK_PREFIX=/opt/tinytrack bash
 ```
 
@@ -77,18 +77,12 @@ sudo zypper install gcc make autoconf automake libtool libopenssl-devel ncurses-
 ### Сборка и установка
 
 ```bash
-git clone https://github.com/jetallavache/tiny-track.git
-cd tiny-track/server
+git clone https://github.com/jetallavache/tinytrack.git
+cd tinytrack/server
 ./bootstrap.sh && ./configure && make
 sudo make install
-```
 
-### Запуск
-
-```bash
-sudo systemctl enable tinytd tinytrack
-sudo systemctl start tinytd tinytrack
-systemctl status tinytd tinytrack
+# После установки сервисы автоматически запускаются
 ```
 
 ### Доступ для пользователя

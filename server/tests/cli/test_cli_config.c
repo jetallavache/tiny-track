@@ -99,10 +99,12 @@ static void test_config_missing_file(void) {
   struct ttc_config cfg;
   memset(&cfg, 0, sizeof(cfg));
 
-  /* Should not crash; fields stay at defaults */
+  /* Should not crash; fields get defaults (possibly from system config) */
   ttc_config_load(&cfg, "/nonexistent/path.conf", NULL, NULL);
   CHECK("missing file: no crash", 1);
-  CHECK("missing file: shm_path empty", cfg.shm_path[0] == '\0');
+  /* shm_path must not contain the test-specific value from g_tmp_conf */
+  CHECK("missing file: shm_path not from test conf",
+        strcmp(cfg.shm_path, "/tmp/tt-cli-test-live.dat") != 0);
 }
 
 /* ------------------------------------------------------------------ */

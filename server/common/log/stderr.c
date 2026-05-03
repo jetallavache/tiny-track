@@ -6,23 +6,23 @@
 static const char* tt_log_level_str(enum tt_log_level level) {
   switch (level) {
     case TT_LOG_EMERG:
-      return "EMERG";
+      return "EMERG ";
     case TT_LOG_ALERT:
-      return "ALERT";
+      return "ALERT ";
     case TT_LOG_CRIT:
-      return "CRIT";
+      return "CRIT  ";
     case TT_LOG_ERR:
-      return "ERROR";
+      return "ERROR ";
     case TT_LOG_WARNING:
-      return "WARN";
+      return "WARN  ";
     case TT_LOG_NOTICE:
       return "NOTICE";
     case TT_LOG_INFO:
-      return "INFO";
+      return "INFO  ";
     case TT_LOG_DEBUG:
-      return "DEBUG";
+      return "DEBUG ";
     default:
-      return "UNKNOWN";
+      return "???   ";
   }
 }
 

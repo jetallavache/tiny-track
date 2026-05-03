@@ -5,20 +5,20 @@
             "name": "debug-tinytd",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/tinytd/tinytd",
+            "program": "${workspaceFolder}/server/tinytd/tinytd",
             "args": ["-c", "etc/tinytrack.conf-debug"],
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            // "environment": [
-            //     {
-            //         "name": "TINYTRACK_LIVE_PATH",
-            //         "value": "/tmp/tinytd-live.dat"
-            //     },
-            //     {
-            //         "name": "TINYTRACK_SHADOW_PATH",
-            //         "value": "/tmp/tinytd-shadow.dat"
-            //     }
-            // ],
+            "cwd": "${workspaceFolder}/server",
+            "environment": [
+                {
+                    "name": "TINYTRACK_LIVE_PATH",
+                    "value": "/tmp/tinytd-live.dat"
+                },
+                {
+                    "name": "TINYTRACK_SHADOW_PATH",
+                    "value": "/tmp/tinytd-shadow.dat"
+                }
+            ],
             "externalConsole": false,
             "MIMode": "gdb",
             "setupCommands": [
@@ -33,10 +33,10 @@
             "name": "debug-tiny-cli",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/cli/tiny-cli",
+            "program": "${workspaceFolder}/server/cli/tiny-cli",
             "args": ["live"],
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
+            "cwd": "${workspaceFolder}/server",
             "environment": [
                 {
                     "name": "TINYTRACK_LIVE_PATH",
@@ -62,10 +62,10 @@
             "name": "debug-tinytrack",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/gateway/tinytrack",
+            "program": "${workspaceFolder}/server/gateway/tinytrack",
             "args": ["-c", "etc/tinytrack.conf-debug"],
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
+            "cwd": "${workspaceFolder}/server",
             "environment": [
                 {
                     "name": "TINYTRACK_LIVE_PATH",
@@ -74,6 +74,10 @@
                 {
                     "name": "TINYTRACK_SHADOW_PATH",
                     "value": "/tmp/tinytd-shadow.dat"
+                },
+                {
+                    "name": "AUTH_TOKEN",
+                    "value": "qwerty"
                 }
             ],
             "preLaunchTask": "start-tinytd-daemon",

@@ -1,0 +1,67 @@
+# Introduction
+
+TinyTrack server consists of three C11 programs that work together to collect, store,
+and serve Linux system metrics.
+
+## Components
+
+### tinytd
+
+`tinytd` is the metrics collector daemon. It runs as a background process, reads
+system metrics from the Linux `/proc` filesystem at configurable intervals, and writes
+them into three ring buffers in shared memory (`/dev/shm`).
+
+`tinytd` has no network interface. It is a pure data producer.
+
+### tinytrack (gateway)
+
+`tinytrack` is the WebSocket and HTTP gateway. It reads metrics from the shared memory
+ring buffers written by `tinytd` and serves them to connected clients over WebSocket
+using binary protocol v2. It also exposes an HTTP endpoint for Prometheus scraping.
+
+`tinytrack` has no direct access to `/proc`. It depends on `tinytd` being running.
+
+### tiny-cli
+
+`tiny-cli` is the command-line interface. It reads shared memory directly (bypassing
+the network) and provides both a command-line snapshot mode and an interactive ncurses
+TUI dashboard.
+
+## Process model
+
+```
+tinytd  ──── /dev/shm/tinytrack.shm ────▶  tinytrack
+                                                │
+                                                ▼
+                                         WebSocket clients
+                                         (browsers, tinytsdk)
+
+tinytd  ──── /dev/shm/tinytrack.shm ────▶  tiny-cli
+                                         (direct shm read)
+```
+
+Both `tinytrack` and `tiny-cli` read from the same shared memory segment.
+`tinytd` is the sole writer.
+
+## Systemd services
+
+When installed via the install script, two systemd services are created:
+
+| Service | Unit file | Description |
+|---------|-----------|-------------|
+| `tinytd.service` | `/etc/systemd/system/tinytd.service` | Metrics collector |
+| `tinytrack.service` | `/etc/systemd/system/tinytrack.service` | WebSocket gateway |
+
+`tinytrack.service` has `After=tinytd.service` to ensure correct startup order.
+
+## Supported platforms
+
+TinyTrack requires a Linux kernel with `/proc` filesystem support.
+It has been tested on:
+
+- Debian 11 / 12
+- Ubuntu 20.04 / 22.04 / 24.04
+- Fedora 38 / 39
+- RHEL 8 / 9
+- Arch Linux
+- Alpine Linux (musl libc)

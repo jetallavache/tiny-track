@@ -98,6 +98,8 @@ struct tt_proto_history_req {
 #define TT_HISTORY_BATCH_MAX 60u /* Max samples per response frame  */
 
 #define HISTORY_FLAG_LAST 0x01u /* Set on the final frame of a batch */
+#define HISTORY_FLAG_AGG \
+  0x02u /* Set when payload contains tt_agg_metrics (L2/L3) */
 
 #pragma pack(push, 1)
 struct tt_proto_history_resp {
@@ -131,8 +133,10 @@ struct tt_proto_ring_stat {
   uint32_t capacity; /* Total ring capacity (samples)            */
   uint32_t head;     /* Current write position                   */
   uint32_t filled;   /* Number of valid samples                  */
-  uint64_t first_ts; /* Timestamp of oldest sample, Unix ms      */
-  uint64_t last_ts;  /* Timestamp of newest sample, Unix ms      */
+  uint64_t first_ts; /* Timestamp of oldest sample, Unix ms — little-endian (no
+                        hton); SDK reads via readUint64LE */
+  uint64_t last_ts;  /* Timestamp of newest sample, Unix ms — little-endian (no
+                        hton); SDK reads via readUint64LE */
 }; /* 25 bytes */
 
 struct tt_proto_stats {
@@ -150,6 +154,29 @@ struct tt_proto_stats {
 #define CMD_GET_SYS_INFO 0x11u   /* Request PKT_SYS_INFO; no arg         */
 #define CMD_START 0x12u          /* Resume metrics streaming (session)  */
 #define CMD_STOP 0x13u           /* Pause  metrics streaming (session)  */
+#define CMD_AUTH 0x14u           /* Authenticate with token (client → server) */
+
+/* ------------------------------------------------------------------ */
+/* PKT_AUTH_REQ  (0x15)  Server → Client  Authentication required      */
+/* Sent immediately after WS open when auth_token is configured and    */
+/* the client did not supply a valid Bearer token in the HTTP upgrade.  */
+/* Client must reply with PKT_CMD / CMD_AUTH within auth_timeout_ms.   */
+/* ------------------------------------------------------------------ */
+
+#define PKT_AUTH_REQ 0x15u /* Server → Client  Auth challenge */
+
+/* ACK status codes (extend v1 ACK_OK / ACK_ERROR) */
+#define ACK_AUTH_FAIL 0x02u /* CMD_AUTH rejected: wrong token  */
+
+/* ------------------------------------------------------------------ */
+/* CMD_AUTH payload  (embedded in tt_proto_cmd._pad, 64 bytes max)     */
+/* ------------------------------------------------------------------ */
+
+#pragma pack(push, 1)
+struct tt_proto_auth {
+  char token[64]; /* Null-terminated shared secret */
+}; /* 64 bytes */
+#pragma pack(pop)
 
 /* ------------------------------------------------------------------ */
 /* PKT_SYS_INFO payload  (response to CMD_GET_SYS_INFO)                     */

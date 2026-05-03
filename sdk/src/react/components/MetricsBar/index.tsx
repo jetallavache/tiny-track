@@ -77,7 +77,9 @@ function Badge({
         paddingLeft: BADGE_PX[size],
         paddingRight: BADGE_PX[size],
         borderRadius: h / 2,
-        border: `1px solid ${t.border}`,
+        borderWidth: '1px',
+        borderStyle: 'solid',
+        borderColor: t.border,
         background: t.surface,
         boxSizing: 'border-box',
         whiteSpace: 'nowrap',
@@ -159,7 +161,9 @@ function BadgePopup({
           paddingLeft: BADGE_PX[size],
           paddingRight: BADGE_PX[size],
           borderRadius: h / 2,
-          border: `1px solid ${t.border}`,
+          borderWidth: '1px',
+          borderStyle: 'solid',
+          borderColor: t.border,
           background: t.surface,
           boxSizing: 'border-box',
           whiteSpace: 'nowrap',
@@ -315,7 +319,7 @@ export function MetricsBar({
   sysInfo,
   size = 'm',
 }: MetricsBarProps) {
-  const base = useTheme();
+  const { theme: base } = useTheme();
   const t = themeProp ? { ...base, ...themeProp } : base;
   const { metrics: m, connected, sysinfo } = useMetrics();
 
@@ -327,6 +331,10 @@ export function MetricsBar({
     ro.observe(barRef.current);
     return () => ro.disconnect();
   }, []);
+
+  useEffect(() => {
+    console.log('Theme в Widget изменился:', t);
+  }, [t]);
 
   const prevRef = useRef(m);
   const alertState = useMemo(() => {
@@ -448,13 +456,14 @@ export function MetricsBar({
             key="net"
             t={t}
             size={size}
+            accentColor={t.net}
             popupTitle="Network"
             popupContent={
               <>
                 <PopupRow
                   label="Upload (TX)"
                   value={m ? fmtBytes(m.netTx) + '/s' : '—'}
-                  color={t.cpu}
+                  color={t.ok}
                   t={t}
                   size={size}
                 />
@@ -470,7 +479,7 @@ export function MetricsBar({
           >
             {size === 'l' ? (
               <>
-                <MetricLabel type="net" label="" size={size} color={t.muted} />
+                <MetricLabel type="net" label="" size={size} color={t.net} />
                 <BLabel size={size}>Upload</BLabel>
                 <BValue color={t.cpu} size={size}>
                   ↑ {m ? <BytesDisplay bytes={m.netTx} color={t.cpu} perSec /> : '—'}
@@ -629,7 +638,10 @@ export function MetricsBar({
           fontFamily: t.font,
           color: t.text,
           background: t.bg,
-          border: `${t.borderWidth}px solid ${t.border}`,
+          borderWidth: `${t.borderWidth}px`,
+          borderStyle: 'solid',
+          borderColor: t.border,
+          // border: `${t.borderWidth}px solid ${t.border}`,
           borderRadius: t.radius,
           padding: gap,
           boxSizing: 'border-box',

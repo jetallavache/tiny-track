@@ -109,14 +109,13 @@ def gateway_tls(tmp_path_factory):
     tls_live   = "/tmp/tinytd-tls-live.dat"
     tls_shadow = "/tmp/tinytd-tls-shadow.dat"
 
-    # Build a fully patched config: separate storage paths, wss:// listen, TLS keys
+    # Build a fully patched config: separate storage paths, https:// (TLS), cert/key
     conf_text = open(CONF).read()
-    conf_text = re.sub(r'(live_path\s*=\s*)\S+',   f'\\1{tls_live}',   conf_text)
-    conf_text = re.sub(r'(shadow_path\s*=\s*)\S+', f'\\1{tls_shadow}', conf_text)
-    conf_text = re.sub(r'(listen\s*=\s*)ws://\S+',
-                       f'\\1wss://0.0.0.0:{GW_TLS_PORT}', conf_text)
-    conf_text = re.sub(r'(listen\s*=\s*wss://\S+)',
-                       f'\\1\ntls_cert = {cert}\ntls_key  = {key}', conf_text)
+    conf_text = re.sub(r'live_path\s*=\s*\S+',   f'live_path = {tls_live}',   conf_text)
+    conf_text = re.sub(r'shadow_path\s*=\s*\S+', f'shadow_path = {tls_shadow}', conf_text)
+    conf_text = re.sub(r'port\s*=\s*\d+',        f'port = {GW_TLS_PORT}',     conf_text)
+    conf_text = re.sub(r'max_connections\s*=\s*\d+', 'max_connections = 10',  conf_text)
+    conf_text += f'\ntls      = true\ntls_cert = {cert}\ntls_key  = {key}\n'
     full_conf = str(cert_dir / "full-tls.conf")
     open(full_conf, "w").write(conf_text)
 

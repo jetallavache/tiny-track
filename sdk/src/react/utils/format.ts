@@ -1,6 +1,7 @@
 /**
  * Formatting helpers for metric values displayed in SDK components.
  */
+import React from 'react';
 import { MetricType } from './metrics.js';
 
 /**

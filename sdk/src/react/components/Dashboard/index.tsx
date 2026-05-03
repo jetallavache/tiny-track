@@ -19,7 +19,8 @@ import { fmtPct, fmtBytes, fmtLoad, fmtUptimeSec } from '../../utils/format.js';
 import { MetricType, SizeType, SIZE_SCALE } from '../../utils/metrics.js';
 import { TtMetrics } from '../../../client.js';
 import { RING_L1 } from '../../../proto.js';
-import { SparkBlock } from './MetricBarRow.js';import { WsConsole } from './WsConsole.js';
+import { SparkBlock } from './MetricBarRow.js';
+import { WsConsole } from './WsConsole.js';
 import { Gauge } from './Gauge.js';
 
 export type DashboardMode = 'compact' | 'expanded';
@@ -56,15 +57,23 @@ function TtLogo({ px, color }: { px: number; color: string }) {
   return (
     <svg width={px} height={px} viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0, color }}>
       <polygon points="8,1 14,4.5 14,11.5 8,15 2,11.5 2,4.5" stroke="currentColor" strokeWidth="1.2" fill="none" />
-      <polyline points="3.5,8 5.5,8 6.5,5 8,11 9.5,6 10.5,8 12.5,8"
-        stroke="currentColor" strokeWidth="1.1" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <polyline
+        points="3.5,8 5.5,8 6.5,5 8,11 9.5,6 10.5,8 12.5,8"
+        stroke="currentColor"
+        strokeWidth="1.1"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
 
 /* ── Load score helpers (mirrors MetricsPanel) ───────────────────────── */
 function calcLoadScore(load1: number, load5: number, load15: number): number {
-  const l1 = load1 / 100, l5 = load5 / 100, l15 = load15 / 100;
+  const l1 = load1 / 100,
+    l5 = load5 / 100,
+    l15 = load15 / 100;
   return Math.min(100, Math.round(((l1 * 0.5 + l5 * 0.3 + l15 * 0.2) / 4) * 100));
 }
 function loadScoreColor(score: number, t: TtTheme): string {
@@ -76,7 +85,9 @@ function loadScoreColor(score: number, t: TtTheme): string {
 
 /* ── Net saturation: normalise bytes/s to 0–10000 (cap at 200 MB/s) ─── */
 const NET_MAX_BPS = 200 * 1024 * 1024;
-function netPct(bps: number) { return Math.min(Math.round((bps / NET_MAX_BPS) * 10000), 10000); }
+function netPct(bps: number) {
+  return Math.min(Math.round((bps / NET_MAX_BPS) * 10000), 10000);
+}
 
 /* ── Button group item style ─────────────────────────────────────────── */
 function btnGroupItem(t: TtTheme, fontSize: number, pos: 'left' | 'mid' | 'right'): CSSProperties {
@@ -100,11 +111,13 @@ export function Dashboard({
   mode: modeProp,
   historySize = 60,
   showSysInfo = true,
-  className, style, theme: themeProp,
+  className,
+  style,
+  theme: themeProp,
   metrics = GAUGE_METRICS,
   size = 'm',
 }: DashboardProps) {
-  const base = useTheme();
+  const { theme: base } = useTheme();
   const t = themeProp ? { ...base, ...themeProp } : base;
   const s = themeStyles(t);
   const sc = SIZE_SCALE[size];
@@ -119,10 +132,7 @@ export function Dashboard({
   const history = useRef<TtMetrics[]>([]);
   const prevMetrics = useRef<TtMetrics | null>(null);
 
-  const allAlerts = useMemo(
-    () => (m ? detectAlerts(m, prevMetrics.current) : []),
-    [m],
-  );
+  const allAlerts = useMemo(() => (m ? detectAlerts(m, prevMetrics.current) : []), [m]);
   const badge = useAlertBadge(allAlerts);
 
   const pushLog = (dir: string, msg: string) => {
@@ -152,16 +162,31 @@ export function Dashboard({
     const onMetrics = (mx: TtMetrics) => {
       if (mx.timestamp === lastTs.current) return;
       lastTs.current = mx.timestamp;
-      pushLog('←', `PKT_METRICS cpu=${fmtPct(mx.cpu)} mem=${fmtPct(mx.mem)} rx=${fmtBytes(mx.netRx)}/s tx=${fmtBytes(mx.netTx)}/s`);
+      pushLog(
+        '←',
+        `PKT_METRICS cpu=${fmtPct(mx.cpu)} mem=${fmtPct(mx.mem)} rx=${fmtBytes(mx.netRx)}/s tx=${fmtBytes(mx.netTx)}/s`,
+      );
     };
     const onAck = (a: { cmdType: number; status: number }) => {
       const names: Record<number, string> = {
-        0x01: 'SET_INTERVAL', 0x02: 'SET_ALERTS', 0x03: 'GET_SNAPSHOT',
-        0x10: 'GET_RING_STATS', 0x11: 'GET_SYS_INFO', 0x12: 'START', 0x13: 'STOP',
+        0x01: 'SET_INTERVAL',
+        0x02: 'SET_ALERTS',
+        0x03: 'GET_SNAPSHOT',
+        0x10: 'GET_RING_STATS',
+        0x11: 'GET_SYS_INFO',
+        0x12: 'START',
+        0x13: 'STOP',
       };
-      pushLog('←', `PKT_ACK cmd=${names[a.cmdType] ?? `0x${a.cmdType.toString(16)}`} status=${a.status === 0 ? 'OK' : 'ERR'}`);
+      pushLog(
+        '←',
+        `PKT_ACK cmd=${names[a.cmdType] ?? `0x${a.cmdType.toString(16)}`} status=${a.status === 0 ? 'OK' : 'ERR'}`,
+      );
     };
-    const onOpen  = () => { pushLog('✓', 'connected'); pushLog('→', 'CMD_GET_SYS_INFO'); pushLog('→', 'CMD_GET_SNAPSHOT'); };
+    const onOpen = () => {
+      pushLog('✓', 'connected');
+      pushLog('→', 'CMD_GET_SYS_INFO');
+      pushLog('→', 'CMD_GET_SNAPSHOT');
+    };
     const onClose = (code: number) => pushLog('✗', `closed (${code})`);
     client.on('metrics', onMetrics);
     client.on('ack', onAck);
@@ -181,26 +206,38 @@ export function Dashboard({
       if (['INPUT', 'SELECT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
       const gaugeOrder: MetricType[] = ['cpu', 'mem', 'disk', 'load', 'net'];
       switch (e.key) {
-        case 's': case 'S':
-          if (connected) { const next = !streaming; setStreaming(next); pushLog('→', next ? 'CMD_START' : 'CMD_STOP'); }
+        case 's':
+        case 'S':
+          if (connected) {
+            const next = !streaming;
+            setStreaming(next);
+            pushLog('→', next ? 'CMD_START' : 'CMD_STOP');
+          }
           break;
-        case 'r': case 'R':
+        case 'r':
+        case 'R':
           window.dispatchEvent(new CustomEvent('tt-gauge-reset'));
           break;
-        case '1': case '2': case '3': case '4': case '5': {
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5': {
           const metric = gaugeOrder[Number(e.key) - 1];
           if (metric && show(metric)) {
-            setExpandedGauge((prev) => prev === metric ? null : metric);
+            setExpandedGauge((prev) => (prev === metric ? null : metric));
             if (mode === 'compact') setMode('expanded');
           }
           break;
         }
-        case 'Escape': setExpandedGauge(null); break;
+        case 'Escape':
+          setExpandedGauge(null);
+          break;
       }
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connected, streaming, mode, metrics]);
 
   /* ── Derived values ─────────────────────────────────────────────────── */
@@ -209,39 +246,44 @@ export function Dashboard({
   const liveColor = connected ? t.ok : t.muted;
 
   const hist = {
-    cpu:   history.current.map((x) => x.cpu),
-    mem:   history.current.map((x) => x.mem),
-    disk:  history.current.map((x) => x.duUsage),
-    load:  history.current.map((x) => calcLoadScore(x.load1, x.load5, x.load15) * 100),
+    cpu: history.current.map((x) => x.cpu),
+    mem: history.current.map((x) => x.mem),
+    disk: history.current.map((x) => x.duUsage),
+    load: history.current.map((x) => calcLoadScore(x.load1, x.load5, x.load15) * 100),
     netTx: history.current.map((x) => x.netTx),
     netRx: history.current.map((x) => x.netRx),
   };
 
-  const ringFill = stats ? {
-    l1: stats.l1.filled / Math.max(sysinfo?.slotsL1 ?? stats.l1.capacity, 1) * 100,
-    l2: stats.l2.filled / Math.max(sysinfo?.slotsL2 ?? stats.l2.capacity, 1) * 100,
-    l3: stats.l3.filled / Math.max(sysinfo?.slotsL3 ?? stats.l3.capacity, 1) * 100,
-  } : null;
+  const ringFill = stats
+    ? {
+        l1: (stats.l1.filled / Math.max(sysinfo?.slotsL1 ?? stats.l1.capacity, 1)) * 100,
+        l2: (stats.l2.filled / Math.max(sysinfo?.slotsL2 ?? stats.l2.capacity, 1)) * 100,
+        l3: (stats.l3.filled / Math.max(sysinfo?.slotsL3 ?? stats.l3.capacity, 1)) * 100,
+      }
+    : null;
 
   const gaugeSize = size === 'l' ? 112 : size === 's' ? 72 : 96;
 
   function toggleGauge(metric: MetricType) {
-    setExpandedGauge((prev) => prev === metric ? null : metric);
+    setExpandedGauge((prev) => (prev === metric ? null : metric));
     if (mode === 'compact') setMode('expanded');
   }
 
   /* ── Render ─────────────────────────────────────────────────────────── */
   return (
     <div className={className} style={{ ...s.root, fontSize: sc.font, gap: sc.gap, width: '100%', ...style }}>
-
       {/* ── Header ───────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <TtLogo px={sc.font + 4} color={liveColor} />
-        <span style={{
-          fontSize: sc.font - 1, fontWeight: 700, letterSpacing: '0.08em',
-          color: liveColor,
-          animation: connected ? 'tt-live-pulse 2s ease-in-out infinite' : undefined,
-        }}>
+        <span
+          style={{
+            fontSize: sc.font - 1,
+            fontWeight: 700,
+            letterSpacing: '0.08em',
+            color: liveColor,
+            animation: connected ? 'tt-live-pulse 2s ease-in-out infinite' : undefined,
+          }}
+        >
           {connected ? 'LIVE' : 'OFF'}
         </span>
         {/* Fixed-width alert badge slot */}
@@ -264,51 +306,94 @@ export function Dashboard({
       <div style={s.divider} />
 
       {/* ── Gauges row ───────────────────────────────────────────────── */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: `repeat(auto-fill, minmax(${gaugeSize + 16}px, 1fr))`,
-        gap: gaugeSize * 0.2,
-        width: '100%',
-      }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: `repeat(auto-fill, minmax(${gaugeSize + 16}px, 1fr))`,
+          gap: gaugeSize * 0.2,
+          width: '100%',
+        }}
+      >
         {show('cpu') && (
-          <Gauge label="CPU" value={m?.cpu ?? null} color={t.cpu} t={t} size={gaugeSize}
+          <Gauge
+            label="CPU"
+            value={m?.cpu ?? null}
+            color={t.cpu}
+            t={t}
+            size={gaugeSize}
             valueLabel={m ? fmtPct(m.cpu) : undefined}
             subLabel={m ? `${m.nrRunning}/${m.nrTotal} proc` : undefined}
-            sparkData={mode === 'expanded' && (expandedGauge === null || expandedGauge === 'cpu') ? hist.cpu : undefined}
-            onClick={() => toggleGauge('cpu')} />
+            sparkData={
+              mode === 'expanded' && (expandedGauge === null || expandedGauge === 'cpu') ? hist.cpu : undefined
+            }
+            onClick={() => toggleGauge('cpu')}
+          />
         )}
         {show('mem') && (
-          <Gauge label="MEM" value={m?.mem ?? null} color={t.mem} t={t} size={gaugeSize}
+          <Gauge
+            label="MEM"
+            value={m?.mem ?? null}
+            color={t.mem}
+            t={t}
+            size={gaugeSize}
             valueLabel={m ? fmtPct(m.mem) : undefined}
             subLabel={m ? `${fmtBytes(m.duTotal - m.duFree)} used` : undefined}
-            sparkData={mode === 'expanded' && (expandedGauge === null || expandedGauge === 'mem') ? hist.mem : undefined}
-            onClick={() => toggleGauge('mem')} />
+            sparkData={
+              mode === 'expanded' && (expandedGauge === null || expandedGauge === 'mem') ? hist.mem : undefined
+            }
+            onClick={() => toggleGauge('mem')}
+          />
         )}
         {show('disk') && (
-          <Gauge label="DISK" value={m?.duUsage ?? null} color={t.disk} t={t} size={gaugeSize}
+          <Gauge
+            label="DISK"
+            value={m?.duUsage ?? null}
+            color={t.disk}
+            t={t}
+            size={gaugeSize}
             valueLabel={m ? fmtPct(m.duUsage) : undefined}
             subLabel={m ? `${fmtBytes(m.duFree)} free` : undefined}
-            sparkData={mode === 'expanded' && (expandedGauge === null || expandedGauge === 'disk') ? hist.disk : undefined}
-            onClick={() => toggleGauge('disk')} />
+            sparkData={
+              mode === 'expanded' && (expandedGauge === null || expandedGauge === 'disk') ? hist.disk : undefined
+            }
+            onClick={() => toggleGauge('disk')}
+          />
         )}
         {show('load') && (
-          <Gauge label="LOAD" value={loadScore !== null ? loadScore * 100 : null} max={10000}
-            color={loadColor} t={t} size={gaugeSize}
+          <Gauge
+            label="LOAD"
+            value={loadScore !== null ? loadScore * 100 : null}
+            max={10000}
+            color={loadColor}
+            t={t}
+            size={gaugeSize}
             valueLabel={loadScore !== null ? `${loadScore}%` : undefined}
             subLabel={m ? `${fmtLoad(m.load1)} / ${fmtLoad(m.load5)} / ${fmtLoad(m.load15)}` : undefined}
-            sparkData={mode === 'expanded' && (expandedGauge === null || expandedGauge === 'load') ? hist.load : undefined}
-            onClick={() => toggleGauge('load')} />
+            sparkData={
+              mode === 'expanded' && (expandedGauge === null || expandedGauge === 'load') ? hist.load : undefined
+            }
+            onClick={() => toggleGauge('load')}
+          />
         )}
         {show('net') && (
-          <Gauge label="NET"
+          <Gauge
+            label="NET"
             value={m ? netPct(m.netTx) : null}
             value2={m ? netPct(m.netRx) : null}
-            color={t.net} color2={t.mem} t={t} size={gaugeSize}
+            color={t.net}
+            color2={t.mem}
+            t={t}
+            size={gaugeSize}
             valueLabel={m ? `↑${fmtBytes(m.netTx)}` : undefined}
             valueLabel2={m ? `↓${fmtBytes(m.netRx)}` : undefined}
-            sparkData={mode === 'expanded' && (expandedGauge === null || expandedGauge === 'net') ? hist.netTx : undefined}
-            sparkData2={mode === 'expanded' && (expandedGauge === null || expandedGauge === 'net') ? hist.netRx : undefined}
-            onClick={() => toggleGauge('net')} />
+            sparkData={
+              mode === 'expanded' && (expandedGauge === null || expandedGauge === 'net') ? hist.netTx : undefined
+            }
+            sparkData2={
+              mode === 'expanded' && (expandedGauge === null || expandedGauge === 'net') ? hist.netRx : undefined
+            }
+            onClick={() => toggleGauge('net')}
+          />
         )}
       </div>
 
@@ -318,20 +403,34 @@ export function Dashboard({
           <div style={s.divider} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             <span style={{ color: t.muted, fontSize: sc.font - 2, letterSpacing: '0.06em' }}>RING BUFFERS</span>
-            {([
-              { key: 'L1', fill: ringFill.l1, slots: sysinfo.slotsL1, interval: sysinfo.intervalMs },
-              { key: 'L2', fill: ringFill.l2, slots: sysinfo.slotsL2, interval: sysinfo.aggL2Ms },
-              { key: 'L3', fill: ringFill.l3, slots: sysinfo.slotsL3, interval: sysinfo.aggL3Ms },
-            ] as const).map(({ key, fill, slots, interval }) => (
+            {(
+              [
+                { key: 'L1', fill: ringFill.l1, slots: sysinfo.slotsL1, interval: sysinfo.intervalMs },
+                { key: 'L2', fill: ringFill.l2, slots: sysinfo.slotsL2, interval: sysinfo.aggL2Ms },
+                { key: 'L3', fill: ringFill.l3, slots: sysinfo.slotsL3, interval: sysinfo.aggL3Ms },
+              ] as const
+            ).map(({ key, fill, slots, interval }) => (
               <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ color: t.faint, fontSize: sc.font - 2, minWidth: 16 }}>{key}</span>
-                <div style={{ flex: 1, maxWidth: 120, height: 4, background: t.surface, borderRadius: 99, overflow: 'hidden' }}>
-                  <div style={{
-                    height: '100%', borderRadius: 99,
-                    background: fill > 80 ? t.warn : t.ok,
-                    width: `${Math.min(fill, 100)}%`,
-                    transition: 'width 0.4s ease',
-                  }} />
+                <div
+                  style={{
+                    flex: 1,
+                    maxWidth: 120,
+                    height: 4,
+                    background: t.surface,
+                    borderRadius: 99,
+                    overflow: 'hidden',
+                  }}
+                >
+                  <div
+                    style={{
+                      height: '100%',
+                      borderRadius: 99,
+                      background: fill > 80 ? t.warn : t.ok,
+                      width: `${Math.min(fill, 100)}%`,
+                      transition: 'width 0.4s ease',
+                    }}
+                  />
                 </div>
                 <span style={{ color: t.faint, fontSize: sc.font - 2, minWidth: 60 }}>
                   {slots} · {interval >= 1000 ? `${interval / 1000}s` : `${interval}ms`}
@@ -350,7 +449,11 @@ export function Dashboard({
         {connected && (
           <button
             style={{ ...btnGroupItem(t, sc.font, 'left'), color: streaming ? t.warn : t.ok }}
-            onClick={() => { const next = !streaming; setStreaming(next); pushLog('→', next ? 'CMD_START' : 'CMD_STOP'); }}
+            onClick={() => {
+              const next = !streaming;
+              setStreaming(next);
+              pushLog('→', next ? 'CMD_START' : 'CMD_STOP');
+            }}
           >
             {streaming ? 'stop' : 'start'}
           </button>
@@ -368,7 +471,10 @@ export function Dashboard({
             }}
             onClick={() => {
               setIntervalIdx(i);
-              if (client) { client.setInterval(INTERVALS[i]); pushLog('→', `CMD_SET_INTERVAL: ${INTERVALS[i]}ms`); }
+              if (client) {
+                client.setInterval(INTERVALS[i]);
+                pushLog('→', `CMD_SET_INTERVAL: ${INTERVALS[i]}ms`);
+              }
             }}
           >
             {l}

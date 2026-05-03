@@ -2,6 +2,7 @@
 
 #include <alloca.h>
 #include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
@@ -20,7 +21,19 @@ static uint64_t get_timestamp_ms(void) {
   return (uint64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
 }
 
-/* Adler32 over buf[0..len), skipping the crc32 field (bytes 8..11) */
+/* Format Unix ms timestamp as "YYYY-MM-DD HH:MM:SS" into buf[20]. */
+static void fmt_ts_ms(uint64_t ms, char* buf, size_t size) {
+  if (ms == 0) {
+    snprintf(buf, size, "(none)");
+    return;
+  }
+  time_t sec = (time_t)(ms / 1000);
+  struct tm tm;
+  localtime_r(&sec, &tm);
+  strftime(buf, size, "%Y-%m-%d %H:%M:%S", &tm);
+}
+
+/* Adler32 over buf[0..len), skipping the checksum field (bytes 8..11) */
 static uint32_t adler32(const void* buf, size_t len) {
   const uint8_t* p = (const uint8_t*)buf;
   uint32_t a = 1, b = 0;
@@ -42,7 +55,7 @@ static void mark_dirty(struct ttr_writer* ctx, size_t off, size_t len) {
 
 static void init_meta(struct ttr_meta* m, uint32_t capacity,
                       uint32_t cell_size) {
-  m->seq = m->head = m->tail = 0;
+  m->seq = m->head = m->_reserved = 0;
   m->capacity = capacity;
   m->cell_size = cell_size;
   m->first_ts = m->last_ts = 0;
@@ -114,9 +127,9 @@ static int shadow_is_valid(const void* addr, size_t size) {
   if (hdr->magic != TTR_MAGIC || hdr->version != TTR_VERSION ||
       hdr->last_update_ts == 0)
     return 0;
-  if (hdr->crc32 != 0 && hdr->crc32 != adler32(addr, size)) {
+  if (hdr->checksum != 0 && hdr->checksum != adler32(addr, size)) {
     tt_log_err("Shadow checksum mismatch: stored=0x%08x computed=0x%08x",
-               hdr->crc32, adler32(addr, size));
+               hdr->checksum, adler32(addr, size));
     return 0;
   }
   return 1;
@@ -135,8 +148,12 @@ int ttr_writer_recover_from_shadow(struct ttr_writer* ctx) {
   hdr->last_update_ts = get_timestamp_ms();
   ctx->dirty_min = 0;
   ctx->dirty_max = ctx->total_size;
-  tt_log_notice("Recovered %zu bytes from shadow (last_sync_ts=%llu)",
-                ctx->total_size, (unsigned long long)hdr->last_shadow_sync_ts);
+  {
+    char ts_buf[20];
+    fmt_ts_ms(hdr->last_shadow_sync_ts, ts_buf, sizeof(ts_buf));
+    tt_log_notice("Recovered %zu bytes from shadow (last_sync=%s)",
+                  ctx->total_size, ts_buf);
+  }
   return 1;
 }
 
@@ -193,9 +210,10 @@ int ttr_writer_init(struct ttr_writer* ctx,
 
   {
     const struct ttr_header* hdr2 = (const struct ttr_header*)ctx->live_addr;
-    tt_log_info("ringbuf ready: size=%zu crc=%s last_sync_ts=%llu",
-                ctx->total_size, cfg->enable_crc ? "on" : "off",
-                (unsigned long long)hdr2->last_shadow_sync_ts);
+    char ts_buf[20];
+    fmt_ts_ms(hdr2->last_shadow_sync_ts, ts_buf, sizeof(ts_buf));
+    tt_log_info("Ring       size=%zu KB  crc=%s  last_sync=%s",
+                ctx->total_size / 1024, cfg->enable_crc ? "on" : "off", ts_buf);
   }
   return TTR_WRITER_OK;
 }
@@ -254,6 +272,11 @@ static int ring_aggregate(struct ttr_writer* ctx, int src_level,
   }
 
   uint8_t agg[256]; /* cs is sizeof(tt_metrics) = 52, 256 is safe upper bound */
+  if (cs > sizeof(agg)) {
+    tt_log_err("ring_aggregate: cell_size %zu exceeds agg buffer", cs);
+    free(tmp);
+    return TTR_WRITER_ERR_NULL;
+  }
   ctx->cfg.aggregate(tmp, n, cs, agg);
   free(tmp);
 
@@ -303,7 +326,7 @@ int ttr_writer_shadow_sync(struct ttr_writer* ctx) {
   ((struct ttr_header*)ctx->live_addr)->last_shadow_sync_ts = now;
   ((struct ttr_header*)ctx->shadow_addr)->last_shadow_sync_ts = now;
 
-  ((struct ttr_header*)ctx->shadow_addr)->crc32 =
+  ((struct ttr_header*)ctx->shadow_addr)->checksum =
       ctx->cfg.enable_crc ? adler32(ctx->shadow_addr, ctx->total_size) : 0;
 
   if (msync(ctx->shadow_addr, ctx->total_size, MS_SYNC) < 0)

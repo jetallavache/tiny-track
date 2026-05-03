@@ -1,0 +1,184 @@
+# Client — tinytsdk
+
+`TinyTrackClient` is the core WebSocket client exported from `tinytsdk`.
+It handles connection lifecycle, binary protocol framing, automatic reconnection,
+and typed event emission.
+
+## Installation
+
+```bash
+npm install tinytsdk
+# or
+pnpm add tinytsdk
+```
+
+## Basic usage
+
+```ts
+import { TinyTrackClient } from 'tinytsdk';
+
+const client = new TinyTrackClient('ws://your-host:25015');
+
+client.on('metrics', (m) => {
+  console.log(`CPU: ${(m.cpu / 100).toFixed(1)}%`);
+  console.log(`RAM: ${(m.mem / 100).toFixed(1)}%`);
+});
+
+client.connect();
+```
+
+## Constructor
+
+```ts
+new TinyTrackClient(url: string, options?: ClientOptions)
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `url` | `string` | WebSocket URL, e.g. `ws://host:25015` |
+| `options.reconnect` | `boolean` | Auto-reconnect on disconnect. Default: `true` |
+| `options.reconnectDelay` | `number` | Reconnect delay in ms. Default: `2000` |
+| `options.reconnectMaxDelay` | `number` | Maximum reconnect delay (exponential backoff). Default: `30000` |
+| `options.timeout` | `number` | Connection timeout in ms. Default: `5000` |
+
+## Events
+
+### `metrics`
+
+Fired on every metrics packet received from the server (approximately once per second).
+
+```ts
+client.on('metrics', (m: MetricsSnapshot) => {
+  /* m.cpu, m.mem, m.disk — fixed-point × 100 */
+  /* m.net_rx, m.net_tx   — bytes/s */
+  /* m.load1, m.load5, m.load15 — load avg × 100 */
+});
+```
+
+### `sysinfo`
+
+Fired once after the initial handshake, containing static system information.
+
+```ts
+client.on('sysinfo', (info: SysInfo) => {
+  console.log(info.hostname, info.os, info.kernel);
+});
+```
+
+### `ringinfo`
+
+Fired in response to a `CMD_GET_RING_INFO` command.
+
+```ts
+client.on('ringinfo', (info: RingInfo) => {
+  console.log('L1 entries:', info.l1.count);
+});
+```
+
+### `connect`
+
+Fired when the WebSocket connection is established and the handshake is complete.
+
+```ts
+client.on('connect', () => {
+  console.log('connected');
+});
+```
+
+### `disconnect`
+
+Fired when the connection is closed.
+
+```ts
+client.on('disconnect', (code: number, reason: string) => {
+  console.log('disconnected:', code, reason);
+});
+```
+
+### `error`
+
+Fired on WebSocket or protocol errors.
+
+```ts
+client.on('error', (err: Error) => {
+  console.error(err);
+});
+```
+
+### `raw`
+
+Fired for every binary frame before parsing. Useful for debugging or custom protocol extensions.
+
+```ts
+client.on('raw', (buf: ArrayBuffer) => {
+  const view = new DataView(buf);
+  console.log('packet type:', view.getUint8(0).toString(16));
+});
+```
+
+## Methods
+
+### `connect()`
+
+Initiates the WebSocket connection and starts the handshake sequence.
+
+```ts
+client.connect();
+```
+
+### `disconnect()`
+
+Closes the WebSocket connection and disables auto-reconnect.
+
+```ts
+client.disconnect();
+```
+
+### `send(frame: ArrayBuffer)`
+
+Sends a raw binary frame to the server.
+
+```ts
+import { buildCmd, CMD_GET_RING_INFO, RING_L2 } from 'tinytsdk';
+client.send(buildCmd(CMD_GET_RING_INFO, RING_L2));
+```
+
+### `on(event, handler)` / `off(event, handler)`
+
+Subscribe and unsubscribe from events.
+
+## Requesting history
+
+To request historical data from a ring buffer level:
+
+```ts
+import { TinyTrackClient, buildCmd, CMD_GET_HISTORY, RING_L1 } from 'tinytsdk';
+
+const client = new TinyTrackClient('ws://your-host:25015');
+
+client.on('connect', () => {
+  /* Request last hour of L1 data */
+  client.send(buildCmd(CMD_GET_HISTORY, RING_L1));
+});
+
+client.on('history', (entries: MetricsSnapshot[], level: 'l1' | 'l2' | 'l3') => {
+  console.log(`Received ${entries.length} entries for level ${level}`);
+});
+
+client.connect();
+```
+
+## CDN / Vanilla JS
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/tinytsdk/dist/tinytsdk.min.js"></script>
+<script>
+  const client = new TinyTrack.TinyTrackClient('ws://your-host:25015');
+  client.on('metrics', (m) => {
+    document.getElementById('cpu').textContent = (m.cpu / 100).toFixed(1) + '%';
+  });
+  client.connect();
+</script>
+```
+
+The IIFE bundle exposes the `TinyTrack` global namespace containing all core exports.

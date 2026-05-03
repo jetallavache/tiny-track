@@ -15,11 +15,11 @@ import { TtTheme } from '../../theme.js';
 
 export interface GaugeProps {
   label: string;
-  value: number | null;       // 0–max
-  value2?: number | null;     // dual-arc secondary value
-  max?: number;               // default 10000
-  valueLabel?: string;        // formatted primary value
-  valueLabel2?: string;       // formatted secondary value (dual mode)
+  value: number | null; // 0–max
+  value2?: number | null; // dual-arc secondary value
+  max?: number; // default 10000
+  valueLabel?: string; // formatted primary value
+  valueLabel2?: string; // formatted secondary value (dual mode)
   /** Secondary info shown below value, e.g. "8.2 / 16 GB" */
   subLabel?: string;
   /** Sparkline data — rendered as area chart at bottom of card */
@@ -74,7 +74,12 @@ function arcDash(r: number, pct: number, totalSweepDeg: number) {
 
 /** Full-width sparkline rendered at the bottom of a Gauge card. */
 function InlineSparkline({
-  data, data2, max, color, color2, t,
+  data,
+  data2,
+  max,
+  color,
+  color2,
+  t,
 }: {
   data: number[];
   data2?: number[];
@@ -83,7 +88,8 @@ function InlineSparkline({
   color2?: string;
   t: TtTheme;
 }) {
-  const W = 200, H = 28;
+  const W = 200,
+    H = 28;
   const allVals = data2 ? [...data, ...data2] : data;
   const m = max ?? Math.max(...allVals, 1);
 
@@ -105,21 +111,41 @@ function InlineSparkline({
   const fill2 = (color2 ?? color) + '28';
 
   return (
-    <div style={{
-      position: 'absolute', bottom: 0, left: 0, right: 0,
-      height: H, overflow: 'hidden',
-      borderRadius: `0 0 ${t.radius ?? 6}px ${t.radius ?? 6}px`,
-    }}>
+    <div
+      style={{
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: H,
+        overflow: 'hidden',
+        borderRadius: `0 0 ${t.radius ?? 6}px ${t.radius ?? 6}px`,
+      }}
+    >
       <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ display: 'block' }}>
         {/* Area fills */}
         <polygon points={area1} fill={fill1} />
         {area2 && <polygon points={area2} fill={fill2} />}
         {/* Lines */}
-        <polyline points={pts1.join(' ')} fill="none" stroke={color}
-          strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" opacity={0.8} />
+        <polyline
+          points={pts1.join(' ')}
+          fill="none"
+          stroke={color}
+          strokeWidth="1.5"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          opacity={0.8}
+        />
         {pts2 && (
-          <polyline points={pts2.join(' ')} fill="none" stroke={color2 ?? color}
-            strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" opacity={0.8} />
+          <polyline
+            points={pts2.join(' ')}
+            fill="none"
+            stroke={color2 ?? color}
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            opacity={0.8}
+          />
         )}
       </svg>
     </div>
@@ -127,16 +153,28 @@ function InlineSparkline({
 }
 
 export function Gauge({
-  label, value, value2, max = 10000,
-  valueLabel, valueLabel2, subLabel,
-  sparkData, sparkData2, sparkMax,
-  color, color2, t, size = 96, onClick,
+  label,
+  value,
+  value2,
+  max = 10000,
+  valueLabel,
+  valueLabel2,
+  subLabel,
+  sparkData,
+  sparkData2,
+  sparkMax,
+  color,
+  color2,
+  t,
+  size = 96,
+  onClick,
 }: GaugeProps) {
-  const cx = size / 2, cy = size / 2;
-  const dual   = value2 !== undefined && value2 !== null;
-  const rOuter = size * (dual ? 0.40 : 0.38);
-  const rInner = size * 0.30;
-  const sw      = size * 0.07;
+  const cx = size / 2,
+    cy = size / 2;
+  const dual = value2 !== undefined && value2 !== null;
+  const rOuter = size * (dual ? 0.4 : 0.38);
+  const rInner = size * 0.3;
+  const sw = size * 0.07;
   const swInner = size * 0.055;
 
   /* ── Session min/max ─────────────────────────────────────────────────── */
@@ -152,7 +190,10 @@ export function Gauge({
   }, [value, max]);
 
   useEffect(() => {
-    const onReset = () => { minRef.current = null; maxRef.current = null; };
+    const onReset = () => {
+      minRef.current = null;
+      maxRef.current = null;
+    };
     window.addEventListener('tt-gauge-reset', onReset);
     return () => window.removeEventListener('tt-gauge-reset', onReset);
   }, []);
@@ -166,8 +207,8 @@ export function Gauge({
 
   /* ── Derived ─────────────────────────────────────────────────────────── */
   const hasValue = value !== null && value !== undefined;
-  const pct  = hasValue ? Math.min((value!  / max) * 100, 100) : 0;
-  const pct2 = (value2 !== null && value2 !== undefined) ? Math.min((value2 / max) * 100, 100) : 0;
+  const pct = hasValue ? Math.min((value! / max) * 100, 100) : 0;
+  const pct2 = value2 !== null && value2 !== undefined ? Math.min((value2 / max) * 100, 100) : 0;
 
   // Arc always uses metric color — level shown only via stripe + glow
   const isCrit = pct >= 80;
@@ -175,7 +216,7 @@ export function Gauge({
   const trackColor = t.bgAlt ?? t.surface ?? '#1e2533';
 
   // stroke-dasharray animation
-  const outerDash = arcDash(rOuter, mounted ? pct  : 0, ARC_SWEEP);
+  const outerDash = arcDash(rOuter, mounted ? pct : 0, ARC_SWEEP);
   const innerDash = arcDash(rInner, mounted ? pct2 : 0, ARC_SWEEP);
 
   // Status stripe: ok/warn/crit independent of metric color
@@ -187,7 +228,9 @@ export function Gauge({
     <div
       style={{
         position: 'relative',
-        display: 'inline-flex', flexDirection: 'column', alignItems: 'center',
+        display: 'inline-flex',
+        flexDirection: 'column',
+        alignItems: 'center',
         gap: size * 0.04,
         cursor: onClick ? 'pointer' : 'default',
         background: t.surface,
@@ -198,94 +241,137 @@ export function Gauge({
         transition: 'border-color 0.4s ease, box-shadow 0.4s ease',
         width: '100%',
         boxSizing: 'border-box',
-        boxShadow: isCrit
-          ? `0 0 ${size * 0.18}px ${t.crit}33`
-          : `0 2px 8px ${t.shadowColor ?? '#0004'}`,
+        boxShadow: isCrit ? `0 0 ${size * 0.18}px ${t.crit}33` : `0 2px 8px ${t.shadowColor ?? '#0004'}`,
       }}
       onClick={onClick}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
     >
       {/* ── Status stripe ──────────────────────────────────────────────── */}
-      <div style={{
-        position: 'absolute', top: 0, left: 0, right: 0,
-        height: 3,
-        background: stripeColor,
-        transition: 'background 0.4s ease',
-        animation: isCrit ? 'tt-gauge-crit-pulse 1.4s ease-in-out infinite' : undefined,
-      }} />
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 3,
+          background: stripeColor,
+          transition: 'background 0.4s ease',
+          animation: isCrit ? 'tt-gauge-crit-pulse 1.4s ease-in-out infinite' : undefined,
+        }}
+      />
 
       {/* ── SVG arc ────────────────────────────────────────────────────── */}
       <svg width={size} height={size * 0.72} viewBox={`0 0 ${size} ${size}`} style={{ overflow: 'visible' }}>
         {/* Outer track */}
-        <path d={arcPath(cx, cy, rOuter, ARC_START, ARC_START + ARC_SWEEP)}
-          fill="none" stroke={trackColor} strokeWidth={sw} strokeLinecap="round" />
+        <path
+          d={arcPath(cx, cy, rOuter, ARC_START, ARC_START + ARC_SWEEP)}
+          fill="none"
+          stroke={trackColor}
+          strokeWidth={sw}
+          strokeLinecap="round"
+        />
 
         {/* Outer fill — metric color always, no warn/crit override */}
         {hasValue && (
-          <path d={arcPath(cx, cy, rOuter, ARC_START, ARC_START + ARC_SWEEP)}
-            fill="none" stroke={color} strokeWidth={sw} strokeLinecap="round"
+          <path
+            d={arcPath(cx, cy, rOuter, ARC_START, ARC_START + ARC_SWEEP)}
+            fill="none"
+            stroke={color}
+            strokeWidth={sw}
+            strokeLinecap="round"
             strokeDasharray={outerDash.dasharray}
             strokeDashoffset={outerDash.dashoffset}
             style={{
               transition: 'stroke-dashoffset 0.7s cubic-bezier(.4,0,.2,1)',
               filter: isCrit ? `drop-shadow(0 0 ${size * 0.07}px ${t.crit}99)` : undefined,
               animation: isCrit ? 'tt-gauge-crit-pulse 1.4s ease-in-out infinite' : undefined,
-            }} />
+            }}
+          />
         )}
 
         {/* Inner arc (dual mode) */}
         {dual && (
           <>
-            <path d={arcPath(cx, cy, rInner, ARC_START, ARC_START + ARC_SWEEP)}
-              fill="none" stroke={trackColor} strokeWidth={swInner} strokeLinecap="round" />
+            <path
+              d={arcPath(cx, cy, rInner, ARC_START, ARC_START + ARC_SWEEP)}
+              fill="none"
+              stroke={trackColor}
+              strokeWidth={swInner}
+              strokeLinecap="round"
+            />
             {value2 !== null && value2 !== undefined && (
-              <path d={arcPath(cx, cy, rInner, ARC_START, ARC_START + ARC_SWEEP)}
-                fill="none" stroke={color2 ?? t.mem} strokeWidth={swInner} strokeLinecap="round"
+              <path
+                d={arcPath(cx, cy, rInner, ARC_START, ARC_START + ARC_SWEEP)}
+                fill="none"
+                stroke={color2 ?? t.mem}
+                strokeWidth={swInner}
+                strokeLinecap="round"
                 strokeDasharray={innerDash.dasharray}
                 strokeDashoffset={innerDash.dashoffset}
-                style={{ transition: 'stroke-dashoffset 0.7s cubic-bezier(.4,0,.2,1)' }} />
+                style={{ transition: 'stroke-dashoffset 0.7s cubic-bezier(.4,0,.2,1)' }}
+              />
             )}
           </>
         )}
 
         {/* Center value */}
-        <text x={cx} y={cy + (dual || subLabel ? -size * 0.06 : size * 0.06)}
-          textAnchor="middle" dominantBaseline="middle"
-          fontSize={size * (dual ? 0.14 : 0.18)} fontWeight={700}
+        <text
+          x={cx}
+          y={cy + (dual || subLabel ? -size * 0.06 : size * 0.06)}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fontSize={size * (dual ? 0.14 : 0.18)}
+          fontWeight={700}
           fill={hasValue ? t.text : t.faint}
-          fontFamily={t.font ?? 'inherit'}>
+          fontFamily={t.font ?? 'inherit'}
+        >
           {valueLabel ?? (hasValue ? `${Math.round(pct)}%` : '—')}
         </text>
 
         {/* Dual secondary label */}
         {dual && valueLabel2 && (
-          <text x={cx} y={cy + size * 0.08}
-            textAnchor="middle" dominantBaseline="middle"
-            fontSize={size * 0.12} fontWeight={600}
-            fill={color2 ?? t.mem} fontFamily={t.font ?? 'inherit'}>
+          <text
+            x={cx}
+            y={cy + size * 0.08}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fontSize={size * 0.12}
+            fontWeight={600}
+            fill={color2 ?? t.mem}
+            fontFamily={t.font ?? 'inherit'}
+          >
             {valueLabel2}
           </text>
         )}
 
         {/* subLabel (secondary info) */}
         {subLabel && (
-          <text x={cx} y={cy + size * (dual ? 0.2 : 0.22)}
-            textAnchor="middle" dominantBaseline="middle"
+          <text
+            x={cx}
+            y={cy + size * (dual ? 0.2 : 0.22)}
+            textAnchor="middle"
+            dominantBaseline="middle"
             fontSize={size * 0.105}
-            fill={t.faint} fontFamily={t.font ?? 'inherit'}>
+            fill={t.faint}
+            fontFamily={t.font ?? 'inherit'}
+          >
             {subLabel}
           </text>
         )}
       </svg>
 
       {/* ── Metric label ───────────────────────────────────────────────── */}
-      <span style={{
-        fontSize: size * 0.13, color: t.text,
-        letterSpacing: '0.06em', fontWeight: 600,
-        marginTop: -size * 0.06,
-        opacity: 0.7,
-      }}>
+      <span
+        style={{
+          fontSize: size * 0.13,
+          color: t.text,
+          letterSpacing: '0.06em',
+          fontWeight: 600,
+          marginTop: -size * 0.06,
+          opacity: 0.7,
+        }}
+      >
         {label}
       </span>
 
@@ -296,16 +382,26 @@ export function Gauge({
 
       {/* ── Hover tooltip: session min/max ─────────────────────────────── */}
       {hover && !dual && (minRef.current !== null || maxRef.current !== null) && (
-        <div style={{
-          position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)',
-          marginBottom: 6, zIndex: 100,
-          background: t.surface, border: `1px solid ${t.border}`,
-          borderRadius: t.radius ?? 4, padding: '4px 8px',
-          fontSize: size * 0.12, color: t.text, whiteSpace: 'nowrap',
-          boxShadow: `0 2px 8px ${t.shadowColor ?? '#0006'}`,
-          fontFamily: t.font ?? 'inherit',
-          pointerEvents: 'none',
-        }}>
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '100%',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            marginBottom: 6,
+            zIndex: 100,
+            background: t.surface,
+            border: `1px solid ${t.border}`,
+            borderRadius: t.radius ?? 4,
+            padding: '4px 8px',
+            fontSize: size * 0.12,
+            color: t.text,
+            whiteSpace: 'nowrap',
+            boxShadow: `0 2px 8px ${t.shadowColor ?? '#0006'}`,
+            fontFamily: t.font ?? 'inherit',
+            pointerEvents: 'none',
+          }}
+        >
           <span style={{ color: t.muted }}>min </span>
           <span style={{ color: t.ok }}>{minRef.current !== null ? `${Math.round(minRef.current)}%` : '—'}</span>
           <span style={{ color: t.faint }}> · </span>

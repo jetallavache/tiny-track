@@ -49,10 +49,7 @@ export function WsConsole({ log, onClear, t, style }: WsConsoleProps) {
             <div
               key={i}
               style={{
-                color: line.includes('→') ? t.muted
-                  : line.includes('←') ? t.ok
-                  : line.includes('✗') ? t.crit
-                  : t.muted,
+                color: line.includes('→') ? t.muted : line.includes('←') ? t.ok : line.includes('✗') ? t.crit : t.muted,
               }}
             >
               {line}
@@ -61,7 +58,9 @@ export function WsConsole({ log, onClear, t, style }: WsConsoleProps) {
         )}
       </div>
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <button style={s.btn} onClick={onClear}>clear</button>
+        <button style={s.btn} onClick={onClear}>
+          clear
+        </button>
       </div>
     </>
   );

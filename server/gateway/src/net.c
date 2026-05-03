@@ -81,7 +81,8 @@ struct ttg_conn* ttg_net_listen(struct ttg_mgr* mgr, const char* url,
   if ((c = ttg_net_alloc_conn(mgr)) == NULL) {
     tt_log_err("OOM %s", url);
   } else if (!ttg_sock_open_listener(c, url)) {
-    tt_log_err("Failed: %s", url);
+    tt_log_err("Cannot listen on %s — check hostname/port in config", url);
+    tt_log_err("  See https://tinytrack.dev/docs/troubleshooting#port-in-use");
     free(c);
     c = NULL;
   } else {
@@ -178,6 +179,24 @@ void ttg_net_mgr_poll(struct ttg_mgr* mgr, int ms) {
 
     if (c->is_draining && c->send.len == 0)
       c->is_closing = 1;
+    /* Header receive timeout */
+    if (!c->is_closing && c->is_accepted && !c->is_websocket &&
+        c->accept_time > 0) {
+      uint32_t hto_ms = mgr->header_timeout_ms ? mgr->header_timeout_ms : 10000;
+      if (now - (uint64_t)c->accept_time * 1000 > hto_ms) {
+        tt_log_info("%lu header timeout (%u ms), closing", c->id, hto_ms);
+        c->is_closing = 1;
+      }
+    }
+    /* Idle timeout for WS connections */
+    if (!c->is_closing && c->is_websocket && mgr->idle_timeout_ms > 0 &&
+        c->last_recv_time > 0) {
+      if (now - (uint64_t)c->last_recv_time * 1000 > mgr->idle_timeout_ms) {
+        tt_log_info("%lu idle timeout (%u ms), closing", c->id,
+                    mgr->idle_timeout_ms);
+        c->is_closing = 1;
+      }
+    }
     if (c->is_closing)
       ttg_sock_close_conn(c);
   }

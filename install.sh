@@ -68,6 +68,10 @@ install_deps() {
         git gcc make autoconf automake libtool pkg-config \
         openssl ncurses
       ;;
+    opensuse-tumbleweed)
+      sudo zypper install -y git gcc make autoconf automake \
+        libtool pkg-config libopenssl-devel ncurses-devel
+      ;;
     *)
       info "Unknown OS '$os' — skipping automatic dependency install."
       info "Please ensure: git gcc make autoconf automake libtool pkg-config libssl-dev libncurses-dev"

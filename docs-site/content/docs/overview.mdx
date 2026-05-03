@@ -1,0 +1,67 @@
+# Overview
+
+TinyTrack is a lightweight Linux system metrics daemon with real-time WebSocket streaming.
+It collects CPU utilization, memory usage, network throughput, disk usage, and load averages —
+and streams them continuously to any connected client over a binary WebSocket protocol.
+
+## Architecture
+
+The system consists of three independent components:
+
+| Component | Language | Role |
+|-----------|----------|------|
+| `tinytd` | C11 | Metrics collector daemon. Reads `/proc`, writes ring buffers in shared memory. |
+| `tinytrack` | C11 | WebSocket gateway. Serves binary protocol v2 over TCP/TLS. |
+| `tiny-cli` | C11 + ncurses | Command-line interface. Reads shared memory directly. |
+| `tinytsdk` | TypeScript | Client SDK. WebSocket client, React components, Vanilla JS. |
+| `tinytsdk-lite` | TypeScript | Lightweight client. Core only, no React, 2.7 KB gzip. |
+
+## Data flow
+
+```
+/proc filesystem
+      │
+      ▼
+   tinytd  ──── writes ────▶  shared memory (ring buffers L1/L2/L3)
+                                    │
+                    ┌───────────────┤
+                    │               │
+                    ▼               ▼
+               tinytrack        tiny-cli
+            (WebSocket/HTTP)   (ncurses TUI)
+                    │
+                    ▼
+              tinytsdk client
+           (browser / Node.js)
+```
+
+## Ring buffer levels
+
+TinyTrack maintains three ring buffers in shared memory (`/dev/shm`):
+
+| Level | Resolution | Duration | Use case |
+|-------|-----------|----------|----------|
+| L1 | 1 second | 1 hour | Real-time monitoring |
+| L2 | 1 minute | 24 hours | Hourly trends |
+| L3 | 1 hour | 30 days | Long-term analysis |
+
+## Protocol
+
+The binary protocol v2 uses compact 10-byte framing over WebSocket.
+All multi-byte integers are little-endian. Metric values are fixed-point integers
+scaled by 100 (divide by 100 to obtain the human-readable value).
+
+See [tinytrack (gateway)](/docs/server/tinytrack) for the full protocol specification.
+
+## Resource usage
+
+TinyTrack is designed for minimal overhead:
+
+- CPU: less than 1% on a single core
+- RAM: under 10 MB total (daemon + gateway)
+- Dependencies: libc and libssl only (server-side)
+
+## Documentation structure
+
+- **SDK** — TypeScript client, React components, tinytsdk-lite
+- **Server** — Installation, configuration, tinytd, tinytrack, tiny-cli, Docker

@@ -1,5 +1,5 @@
 [tinytd]
-log_level   = debug
+log_level   = info
 log_backend = stderr
 
 [collection]
@@ -26,7 +26,18 @@ enable_crc   = false
 auto_recover = true
 
 [gateway]
-log_level       = debug
-log_backend     = stderr
-listen          = ws://0.0.0.0:14029
-update_interval = 1000
+log_level           = info
+log_backend         = stderr
+hostname            = 0.0.0.0
+port                = 14021
+update_interval     = 1000
+max_connections     = 5
+header_timeout_ms   = 5000
+idle_timeout_ms     = 0
+max_uri_size        = 8192
+max_headers_size    = 16384
+cors_origins        = *
+auth_enable         = true
+auth_timeout_ms     = 5000
+auth_token          = qwerty
+

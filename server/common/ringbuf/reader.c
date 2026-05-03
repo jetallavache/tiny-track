@@ -127,10 +127,14 @@ int ttr_reader_get_history(struct ttr_reader* ctx, int level, void* out,
   do {
     seq = ttr_seqlock_read_begin(&meta->seq);
     uint32_t head = meta->head;
-    if (head == 0)
+    /* filled = number of valid entries: capacity once wrapped, head before */
+    uint32_t filled = (meta->first_ts != 0 && head == 0)
+                          ? meta->capacity
+                          : (head < meta->capacity ? head : meta->capacity);
+    if (filled == 0)
       return TTR_READER_ERR_NODATA;
-    if ((uint32_t)count > head)
-      count = (int)head;
+    if ((uint32_t)count > filled)
+      count = (int)filled;
     for (int i = 0; i < count; i++) {
       uint32_t idx = (head - count + i + meta->capacity) % meta->capacity;
       memcpy((uint8_t*)out + i * cs, data + idx * cs, copy_size);

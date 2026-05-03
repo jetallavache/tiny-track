@@ -37,6 +37,9 @@ int ttg_http_get_request_len(const unsigned char* buf, size_t buf_len) {
   return 0;
 }
 
+/* Дублирующиеся заголовки: политика "первый побеждает" — возвращается первое
+ * вхождение. Это соответствует поведению большинства HTTP-серверов и RFC 7230
+ * §3.2.2 для заголовков, не допускающих объединения. */
 struct ttg_str* ttg_http_get_header(struct ttg_http_message* h,
                                     const char* name) {
   size_t i, n = strlen(name), max = sizeof(h->headers) / sizeof(h->headers[0]);
@@ -70,11 +73,14 @@ static size_t clen(const char* s, const char* end) {
 }
 
 /* Skip to a new line. Return the extended letter "s" or NULL in case of an
- * error. */
+ * error. Rejects null bytes and non-printable control characters in values. */
 static const char* skiptorn(const char* s, const char* end, struct ttg_str* v) {
   v->buf = (char*)s;
-  while (s < end && s[0] != '\n' && s[0] != '\r')
+  while (s < end && s[0] != '\n' && s[0] != '\r') {
+    if ((unsigned char)s[0] < ' ' && s[0] != '\t')
+      return NULL; /* null byte or control char in header value */
     s++, v->len++; /* To newline */
+  }
   if (s >= end || (s[0] == '\r' && s[1] != '\n'))
     return NULL; /* Stray \r */
   if (s[0] == '\r')
@@ -435,6 +441,28 @@ static void http_cb(struct ttg_conn* c, int ev, void* ev_data) {
       }
       if (n == 0)
         break; /* Request is not buffered yet */
+
+      /* Validate URI and headers size against configured limits */
+      {
+        uint32_t max_uri = c->mgr->max_uri_size ? c->mgr->max_uri_size : 8192;
+        uint32_t max_hdr =
+            c->mgr->max_headers_size ? c->mgr->max_headers_size : 16384;
+        if (hm.uri.len > max_uri) {
+          tt_log_info("%lu URI too long (%zu > %u), sending 414", c->id,
+                      hm.uri.len, max_uri);
+          ttg_http_reply(c, 414, "", "URI Too Long");
+          c->is_draining = 1;
+          return;
+        }
+        if ((size_t)n > max_hdr) {
+          tt_log_info("%lu headers too large (%d > %u), sending 431", c->id, n,
+                      max_hdr);
+          ttg_http_reply(c, 431, "", "Request Header Fields Too Large");
+          c->is_draining = 1;
+          return;
+        }
+      }
+
       ttg_event_call(c, TTG_EVENT_HTTP_HDRS, &hm); /* Got all HTTP headers */
       if (c->recv.len != old_len) {
         /* User manipulated received data. Wash our hands */

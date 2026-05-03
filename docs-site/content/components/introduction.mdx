@@ -1,0 +1,49 @@
+# Introduction
+
+`tinytsdk/react` is a collection of React components for displaying real-time Linux system metrics
+streamed from a TinyTrack server over WebSocket.
+
+All components are driven by a single `TinyTrackProvider` context. Once connected, every component
+in the tree receives live updates automatically — no prop drilling, no manual subscriptions.
+
+## Available components
+
+| Component | Description |
+|-----------|-------------|
+| `MetricsBar` | Compact single-line status bar |
+| `MetricsPanel` | Vertical card with progress bars |
+| `TimeSeriesChart` | Line chart with L1/L2/L3 history |
+| `Dashboard` | Full admin dashboard with gauges |
+| `Timeline` | Scrollable historical timeline |
+| `DiskMap` | Disk partition usage map |
+| `Metrics3D` | 3D rotating visualization (Three.js) |
+| `Sparkline` | Minimal inline sparkline |
+| `SystemLoad` | Load average with trend indicators |
+
+## Provider setup
+
+Wrap your application (or any subtree) with `TinyTrackProvider`:
+
+```tsx
+import { TinyTrackProvider } from 'tinytsdk/react';
+
+export default function App() {
+  return (
+    <TinyTrackProvider url="ws://your-host:25015">
+      {/* any tinytsdk components here */}
+    </TinyTrackProvider>
+  );
+}
+```
+
+The provider manages the WebSocket connection, handles reconnection, and distributes metrics
+to all child components via React context.
+
+## Theming
+
+Every component accepts an optional `theme` prop for per-instance token overrides.
+For global theming, see the [Themes](/themes) section.
+
+```tsx
+<MetricsPanel theme={{ bg: '#0d1117', cpu: '#f97316', mem: '#a78bfa' }} />
+```

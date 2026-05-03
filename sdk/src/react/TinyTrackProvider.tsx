@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useRef, useCallback, ReactNode } from 'react';
 import { TinyTrackClient, TtMetrics, TtConfig, TtStats, TtHistoryResp, TtSysInfo } from '../client.js';
+import { historyToMetrics } from '../proto.js';
 
 interface TinyTrackContextValue {
   client: TinyTrackClient | null;
@@ -21,14 +22,15 @@ export { TinyTrackContext };
 
 export interface TinyTrackProviderProps {
   url: string;
+  token?: string;
   children: ReactNode;
   reconnect?: boolean;
   reconnectDelay?: number;
 }
 
-export function TinyTrackProvider({ url, children, reconnect, reconnectDelay }: TinyTrackProviderProps) {
+export function TinyTrackProvider({ url, token, children, reconnect, reconnectDelay }: TinyTrackProviderProps) {
   // Client is created once and never recreated
-  const [client] = useState(() => new TinyTrackClient(url, { reconnect, reconnectDelay }));
+  const [client] = useState(() => new TinyTrackClient(url, { reconnect, reconnectDelay, token }));
   const [connected, setConnected] = useState(false);
   const [sysinfo, setSysinfo] = useState<TtSysInfo | null>(null);
   const [streaming, setStreamingState] = useState(true);
@@ -43,9 +45,17 @@ export function TinyTrackProvider({ url, children, reconnect, reconnectDelay }: 
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     const onOpen = () => {
+      if (cancelled) return;
       setConnected(true);
-      setStreamingState(true); // new session always starts streaming
+      setStreamingState(true);
+      /* Don't send commands here — wait for PKT_CONFIG which arrives
+       * only after auth completes. Commands sent before auth are rejected. */
+    };
+    const onConfig = () => {
+      if (cancelled) return;
+      /* Auth complete (or no auth) — safe to send commands now */
       client.getSysInfo();
       client.getSnapshot();
     };
@@ -53,11 +63,21 @@ export function TinyTrackProvider({ url, children, reconnect, reconnectDelay }: 
       setConnected(false);
       setSysinfo(null);
     };
-    client.on('open', onOpen);
+    client.on('ready', onOpen);
+    client.on('config', onConfig);
     client.on('close', onClose);
     client.on('sysinfo', setSysinfo);
-    client.connect();
-    return () => client.disconnect();
+    client.connect().catch(() => {
+      /* reconnect handles retries */
+    });
+    return () => {
+      cancelled = true;
+      client.off('ready', onOpen);
+      client.off('config', onConfig);
+      client.off('close', onClose);
+      client.off('sysinfo', setSysinfo);
+      client.disconnect();
+    };
   }, [client]);
 
   return (
@@ -103,7 +123,9 @@ export function useRawPackets(handler: (pktType: number, payload: DataView) => v
   useEffect(() => {
     if (!client) return;
     client.on('packet', handler);
-    return () => { client.off('packet', handler); };
+    return () => {
+      client.off('packet', handler);
+    };
   }, [client, handler]);
 }
 
@@ -115,7 +137,7 @@ export function useHistory(maxSamples = 3600) {
   useEffect(() => {
     if (!client) return;
     const onHistory = (r: TtHistoryResp) => {
-      buf.current = [...buf.current, ...r.samples].slice(-maxSamples);
+      buf.current = [...buf.current, ...historyToMetrics(r)].slice(-maxSamples);
       setSamples([...buf.current]);
     };
     client.on('history', onHistory);

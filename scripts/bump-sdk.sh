@@ -27,9 +27,12 @@ node -e "
   fs.writeFileSync('$PKG', JSON.stringify(p, null, 2) + '\n');
 "
 
+INTRO=demo/src/pages/Introduction.tsx
+sed -i "s/badge=\"v[0-9]*\.[0-9]*\.[0-9]*\"/badge=\"v$next\"/" $INTRO
+
 echo "SDK: $current → $next"
 
-git add $PKG
+git add $PKG $INTRO
 git commit -m "chore(sdk): bump version to $next"
 git tag "sdk/v$next"
 

@@ -1,0 +1,50 @@
+# Default Theme
+
+The default theme uses a dark terminal aesthetic with green metric accents and a monospace font.
+It is applied automatically when no `theme` prop is provided.
+
+## Token values
+
+| Token | Value | Description |
+|-------|-------|-------------|
+| `bg` | `#0a0a0a` | Component background |
+| `bgAlt` | `#111111` | Alternate row background |
+| `fg` | `#e5e5e5` | Primary text |
+| `fgMuted` | `#737373` | Secondary text |
+| `cpu` | `#22c55e` | CPU metric color |
+| `mem` | `#3b82f6` | Memory metric color |
+| `disk` | `#eab308` | Disk metric color |
+| `net` | `#8b5cf6` | Network metric color |
+| `load` | `#f97316` | Load average color |
+| `ok` | `#22c55e` | Normal status |
+| `warn` | `#f59e0b` | Warning threshold |
+| `crit` | `#ef4444` | Critical threshold |
+| `border` | `#262626` | Border color |
+| `radius` | `8px` | Border radius |
+| `font` | `'JetBrains Mono', monospace` | Font family |
+
+## Usage
+
+The default theme is active without any configuration:
+
+```tsx
+import { TinyTrackProvider, MetricsPanel } from 'tinytsdk/react';
+
+export default function App() {
+  return (
+    <TinyTrackProvider url="ws://your-host:25015">
+      <MetricsPanel />
+    </TinyTrackProvider>
+  );
+}
+```
+
+## Partial override
+
+Override only the tokens you need:
+
+```tsx
+<TinyTrackProvider url="ws://your-host:25015" theme={{ cpu: '#f97316' }}>
+  <MetricsBar />
+</TinyTrackProvider>
+```

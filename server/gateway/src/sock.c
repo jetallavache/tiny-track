@@ -113,7 +113,11 @@ bool ttg_sock_open_listener(struct ttg_conn* c, const char* url) {
                                 sizeof(on))) != 0) {
       tt_log_err("setsockopt(SO_REUSEADDR): %d", TTG_SOCK_ERR(rc));
     } else if ((rc = bind(fd, &usa.sa, slen)) != 0) {
-      tt_log_err("bind: %d", TTG_SOCK_ERR(rc));
+      tt_log_err("Cannot bind to port %u: %s (errno=%d)", ntohs(c->local.port),
+                 strerror(errno), TTG_SOCK_ERR(rc));
+      tt_log_err(
+          "  Port already in use?  See "
+          "https://tinytrack.dev/docs/troubleshooting#port-in-use");
     } else if ((rc = listen(fd, TTG_SOCK_LISTEN_BACKLOG_SIZE)) != 0) {
       tt_log_err("listen: %d", TTG_SOCK_ERR(rc));
     } else {
@@ -166,7 +170,24 @@ void ttg_sock_accept_conn(struct ttg_mgr* mgr, struct ttg_conn* lsn) {
   TTG_SOCK_TYPE fd = raccept(FD(lsn), &usa, &sa_len);
   if (fd == TTG_INVALID_SOCKET) {
     tt_log_err("%lu accept failed, errno %d", lsn->id, TTG_SOCK_ERR(-1));
-  } else if ((c = ttg_net_alloc_conn(mgr)) == NULL) {
+    return;
+  }
+
+  /* Enforce max_connections limit */
+  if (mgr->max_connections > 0) {
+    uint32_t active = 0;
+    for (struct ttg_conn* p = mgr->conns; p != NULL; p = p->next)
+      if (!p->is_listening)
+        active++;
+    if (active >= mgr->max_connections) {
+      tt_log_warning("max_connections=%u reached, rejecting connection",
+                     mgr->max_connections);
+      closesocket(fd);
+      return;
+    }
+  }
+
+  if ((c = ttg_net_alloc_conn(mgr)) == NULL) {
     tt_log_err("%lu OOM", lsn->id);
     closesocket(fd);
   } else {
@@ -177,6 +198,7 @@ void ttg_sock_accept_conn(struct ttg_mgr* mgr, struct ttg_conn* lsn) {
     ttg_sock_set_nonblocking(FD(c));
     setsockopts(c);
     c->is_accepted = 1;
+    c->accept_time = time(NULL);
     c->is_hexdumping = lsn->is_hexdumping;
     c->local = lsn->local;
     c->pfn = lsn->pfn;
@@ -272,6 +294,7 @@ static void iolog(struct ttg_conn* c, char* buf, long n, bool r) {
     }
     if (r) {
       c->recv.len += (size_t)n;
+      c->last_recv_time = time(NULL);
       ttg_event_call(c, TTG_EVENT_READ, &n);
     } else {
       ttg_iobuf_del(&c->send, 0, (size_t)n);
