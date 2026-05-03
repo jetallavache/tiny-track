@@ -1,0 +1,46 @@
+{
+  "name": "tinytsdk-lite",
+  "version": "0.7.0",
+  "type": "module",
+  "description": "TinyTrack SDK Lite — Minimal WebSocket client for system metrics (core only, no React)",
+  "main": "dist/index.cjs.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.cjs.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "npm run build:types && rollup -c",
+    "build:types": "tsc --emitDeclarationOnly --declaration --declarationDir dist",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "format": "prettier --write \"./**/*.{js,jsx,json,css}\""
+  },
+  "devDependencies": {
+    "@rollup/plugin-node-resolve": "^15.3.1",
+    "@rollup/plugin-terser": "^1.0.0",
+    "@rollup/plugin-typescript": "^11.1.6",
+    "rollup": "^4.60.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.4"
+  },
+  "keywords": [
+    "tinytrack",
+    "metrics",
+    "monitoring",
+    "websocket",
+    "lightweight"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jetallavache/tiny-track"
+  }
+}
