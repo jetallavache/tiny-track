@@ -50,4 +50,5 @@ analyse() {
 }
 
 analyse "sdk"    "sdk/"
+analyse "sdk-lite"    "sdk-lite/"
 analyse "server" "server/"
