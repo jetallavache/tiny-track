@@ -1,6 +1,7 @@
-# TinyTrack — Linux System Metrics Daemon
 
-<img src="docs/assets/logo.svg" width="42" height="42" align="left" style="float:left; margin-right:16px;" />
+<img src="docs/assets/logo.svg" width="32" height="32" align="left" style="float:left; margin-top:-2px; padding-right:8px" />
+
+# tinytrack.dev
 
 TinyTrack is a lightweight Linux system metrics daemon with real-time WebSocket streaming.
 It collects CPU, memory, network, disk, and load average — and streams them live to any
@@ -14,6 +15,8 @@ Runs on any Linux VPS. Consumes less than 1% CPU and under 10 MB of RAM.
 [![License: MIT](https://img.shields.io/badge/license-MIT-27AE60.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/docker-hub-2496ED.svg?logo=docker&logoColor=white)](https://hub.docker.com/r/jetallavache/tinytrack)
 [![Platform: Linux](https://img.shields.io/badge/platform-Linux-E67E22.svg)](https://kernel.org/)
+[![npm version](https://img.shields.io/npm/v/tinytsdk.svg)](https://www.npmjs.com/package/tinytsdk)
+[![npm version lite](https://img.shields.io/npm/v/tinytsdk-lite.svg)](https://www.npmjs.com/package/tinytsdk-lite)
 
 [![npm](https://nodei.co/npm/tinytsdk.png)](https://www.npmjs.com/package/tinytsdk)
 
@@ -115,29 +118,15 @@ Once running, the server is available at `ws://your-host:25015/websocket`.
 
 ## Add metrics to your website
 
+### npm (React / TypeScript)
+
 Install the SDK:
 
 ```bash
 npm install tinytsdk
 ```
 
-### Vanilla JS / any framework
-
-```js
-import { TinyTrackClient } from 'tinytsdk';
-
-const client = new TinyTrackClient('ws://your-host:25015');
-client.on('metrics', (m) => {
-  console.log(`CPU: ${m.cpu / 100}%  RAM: ${m.mem / 100}%`);
-});
-client.connect();
-```
-
-### React / Next.js
-
-```bash
-npm install tinytsdk
-```
+React component:
 
 ```jsx
 import { TinyTrackProvider, MetricsBar } from 'tinytsdk/react';
@@ -151,16 +140,12 @@ export default function App() {
 }
 ```
 
-Available React components: `MetricsBar`, `MetricsPanel`, `Dashboard`, `TimeSeriesChart`,
-`Timeline`, `SystemLoad`, `Metrics3D`, `DiskMap`, `Sparkline`.
-
-### CDN (plain HTML, no build step)
+### CDN (Vanilla JS, no build step)
 
 ```html
-<script type="module">
-  import { TinyTrackClient } from 'https://cdn.jsdelivr.net/npm/tinytsdk/dist/index.esm.js';
-
-  const client = new TinyTrackClient('ws://your-host:25015');
+<script src="https://cdn.jsdelivr.net/npm/tinytsdk/dist/tinytsdk.min.js"></script>
+<script>
+  const client = new TinyTrack.TinyTrackClient('ws://your-host:25015');
   client.on('metrics', (m) => {
     document.getElementById('cpu').textContent = (m.cpu / 100).toFixed(1) + '%';
   });
@@ -169,6 +154,17 @@ Available React components: `MetricsBar`, `MetricsPanel`, `Dashboard`, `TimeSeri
 
 <span id="cpu">—</span>
 ```
+
+### TypeScript (ESM)
+
+```ts
+import { TinyTrackClient } from 'tinytsdk';
+
+const client = new TinyTrackClient('ws://your-host:25015');
+client.on('metrics', (m) => {
+  console.log(`CPU: ${m.cpu / 100}%  RAM: ${m.mem / 100}%`);
+});
+client.connect();
 
 ---
 
