@@ -6,7 +6,7 @@
             "type": "shell",
             "command": "pkill -x tinytd 2>/dev/null; rm -f /tmp/tinytd-live.dat; ./tinytd/tinytd -c etc/tinytrack.conf-debug & until [ -f /tmp/tinytd-live.dat ]; do sleep 0.1; done",
             "options": {
-                "cwd": "${workspaceFolder}"
+                "cwd": "${workspaceFolder}/server"
             },
             "isBackground": false,
             "presentation": {
@@ -20,7 +20,7 @@
             "type": "shell",
             "command": "make -j$(nproc)",
             "options": {
-                "cwd": "${workspaceFolder}"
+                "cwd": "${workspaceFolder}/server"
             },
             "group": {
                 "kind": "build",
