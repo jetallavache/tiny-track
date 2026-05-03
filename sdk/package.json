@@ -80,6 +80,6 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jetallavache/tinytrack"
+    "url": "git+https://github.com/jetallavache/tinytrack.git"
   }
 }
